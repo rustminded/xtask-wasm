@@ -47,7 +47,7 @@ pub fn build(metadata: Metadata, package_name: &str) -> Result<Utf8PathBuf> {
     let static_dir_path = metadata.workspace_root.join("static");
 
     let wasm_js_path = build_dir_path.join("app.js");
-    let wasm_bin_path = build_dir_path.join("app.wasm");
+    let wasm_bin_path = build_dir_path.join("app_bg.wasm");
 
     let _ = fs::create_dir(&build_dir_path);
 
