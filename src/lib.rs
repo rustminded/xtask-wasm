@@ -1,26 +1,65 @@
-use anyhow::{ensure, Context, Result};
-use cargo_metadata::{camino::Utf8PathBuf, Metadata};
+use anyhow::{bail, ensure, Context, Result};
+use std::path::PathBuf;
+use std::str::FromStr;
 use std::{fs, process};
+use structopt::StructOpt;
 use wasm_bindgen_cli_support::Bindgen;
 
-pub fn get_metadata() -> Result<Metadata> {
-    cargo_metadata::MetadataCommand::new()
-        .exec()
-        .context("Cannot get metadata")
+#[derive(Debug, StructOpt)]
+pub struct BuildArgs {
+    profile: Profile,
 }
 
-pub fn build(metadata: Metadata, package_name: &str) -> Result<Utf8PathBuf> {
-    let mut command = process::Command::new("cargo");
-    command.current_dir(&metadata.workspace_root).args([
-        "build",
+#[derive(Debug, StructOpt)]
+pub enum Command {
+    Build(BuildArgs),
+}
+
+#[derive(Debug, StructOpt, PartialEq)]
+pub enum Profile {
+    Dev,
+    Release,
+}
+
+impl FromStr for Profile {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "dev" => Ok(Profile::Dev),
+            "release" => Ok(Profile::Release),
+            _ => Err("Not a profile"),
+        }
+    }
+}
+
+pub fn run(args: BuildArgs, crate_name: &'static str) -> Result<PathBuf> {
+    let metadata = match cargo_metadata::MetadataCommand::new().exec() {
+        Ok(metadata) => metadata,
+        Err(_) => bail!("Cannot get package's metadata"),
+    };
+
+    let mut build_process = process::Command::new("cargo");
+    build_process
+        .current_dir(&metadata.workspace_root)
+        .arg("build");
+
+    if args.profile == Profile::Release {
+        build_process.arg("--release");
+    }
+
+    build_process.args([
         "--target",
         "wasm32-unknown-unknown",
         "--package",
-        package_name,
+        &crate_name,
     ]);
 
     ensure!(
-        command.status().context("Could not start cargo")?.success(),
+        build_process
+            .status()
+            .context("Could not start cargo")?
+            .success(),
         "Cargo command failed"
     );
 
@@ -28,7 +67,7 @@ pub fn build(metadata: Metadata, package_name: &str) -> Result<Utf8PathBuf> {
         .target_directory
         .join("wasm32-unknown-unknown")
         .join("debug")
-        .join(package_name.replace("-", "_"))
+        .join(&crate_name.replace("-", "_"))
         .with_extension("wasm");
 
     let mut output = Bindgen::new()
@@ -36,7 +75,10 @@ pub fn build(metadata: Metadata, package_name: &str) -> Result<Utf8PathBuf> {
         .out_name("app")
         .web(true)
         .expect("web have panic")
-        .debug(true)
+        .debug(match args.profile {
+            Profile::Dev => true,
+            Profile::Release => false,
+        })
         .generate_output()
         .context("could not generate WASM bindgen file")?;
 
@@ -60,5 +102,5 @@ pub fn build(metadata: Metadata, package_name: &str) -> Result<Utf8PathBuf> {
     )
     .context(format!("could not copy index.html from static directory"))?;
 
-    Ok(build_dir_path)
+    Ok(PathBuf::from(build_dir_path))
 }

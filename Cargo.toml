@@ -8,4 +8,5 @@ edition = "2018"
 [dependencies]
 anyhow = "1.0"
 cargo_metadata = "0.14"
+structopt = "0.3"
 wasm-bindgen-cli-support = "0.2.68"
