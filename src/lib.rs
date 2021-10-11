@@ -1,36 +1,18 @@
 use anyhow::{bail, ensure, Context, Result};
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::{fs, process};
 use structopt::StructOpt;
 use wasm_bindgen_cli_support::Bindgen;
 
 #[derive(Debug, StructOpt)]
 pub struct BuildArgs {
-    profile: Profile,
+    #[structopt(long)]
+    release: bool,
 }
 
 #[derive(Debug, StructOpt)]
 pub enum Command {
     Build(BuildArgs),
-}
-
-#[derive(Debug, StructOpt, PartialEq)]
-pub enum Profile {
-    Dev,
-    Release,
-}
-
-impl FromStr for Profile {
-    type Err = &'static str;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "dev" => Ok(Profile::Dev),
-            "release" => Ok(Profile::Release),
-            _ => Err("Not a profile"),
-        }
-    }
 }
 
 pub fn run(args: BuildArgs, crate_name: &'static str) -> Result<PathBuf> {
@@ -44,7 +26,7 @@ pub fn run(args: BuildArgs, crate_name: &'static str) -> Result<PathBuf> {
         .current_dir(&metadata.workspace_root)
         .arg("build");
 
-    if args.profile == Profile::Release {
+    if args.release {
         build_process.arg("--release");
     }
 
@@ -75,10 +57,7 @@ pub fn run(args: BuildArgs, crate_name: &'static str) -> Result<PathBuf> {
         .out_name("app")
         .web(true)
         .expect("web have panic")
-        .debug(match args.profile {
-            Profile::Dev => true,
-            Profile::Release => false,
-        })
+        .debug(!args.release)
         .generate_output()
         .context("could not generate WASM bindgen file")?;
 
