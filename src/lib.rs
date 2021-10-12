@@ -1,7 +1,6 @@
 use anyhow::{bail, ensure, Context, Result};
 use std::{fs, process};
 use structopt::StructOpt;
-use walkdir::WalkDir;
 use wasm_bindgen_cli_support::Bindgen;
 
 #[derive(Debug, StructOpt)]
@@ -75,33 +74,21 @@ pub fn build(
     let wasm_js_path = build_dir_path.join("app.js");
     let wasm_bin_path = build_dir_path.join("app_bg.wasm");
 
+    if build_dir_path.exists() {
+        fs::remove_dir_all(&build_dir_path)?;
+    }
+
     let _ = fs::create_dir(&build_dir_path);
 
     fs::write(wasm_js_path, wasm_js).with_context(|| "Cannot write js file")?;
     fs::write(wasm_bin_path, wasm_bin).with_context(|| "Cannot write WASM file")?;
 
-    for entry in WalkDir::new(static_dir_path) {
-        match entry {
-            Ok(value) => {
-                let entry_path = value.path();
-                if entry_path.is_file() {
-                    let destination_filename = entry_path
-                        .file_name()
-                        .expect("Cannot get filename when iterating on static directory")
-                        .to_str()
-                        .expect("Cannot convert filename");
-                    fs::copy(&entry_path, build_dir_path.join(destination_filename))
-                        .context("Could not copy the content of the static directory")?;
-                }
-            }
-            Err(err) => {
-                bail!(
-                    "An error occurred when iterating on the static directory: {}",
-                    err
-                );
-            }
-        }
-    }
+    let mut copy_options = fs_extra::dir::CopyOptions::new();
+    copy_options.overwrite = true;
+    copy_options.content_only = true;
+
+    fs_extra::dir::copy(static_dir_path, build_dir_path, &copy_options)
+        .context("Cannot copy static directory")?;
 
     Ok(())
 }
