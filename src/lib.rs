@@ -34,7 +34,7 @@ pub fn run(args: BuildArgs, crate_name: &'static str) -> Result<PathBuf> {
         "--target",
         "wasm32-unknown-unknown",
         "--package",
-        &crate_name,
+        crate_name,
     ]);
 
     ensure!(
@@ -79,7 +79,7 @@ pub fn run(args: BuildArgs, crate_name: &'static str) -> Result<PathBuf> {
         static_dir_path.join("index.html"),
         build_dir_path.join("index.html"),
     )
-    .context(format!("could not copy index.html from static directory"))?;
+    .context("Could not copy index.html from static directory")?;
 
     Ok(PathBuf::from(build_dir_path))
 }
