@@ -1,4 +1,5 @@
 use anyhow::{bail, ensure, Context, Result};
+use std::path::Path;
 use std::{fs, process};
 use structopt::StructOpt;
 use wasm_bindgen_cli_support::Bindgen;
@@ -10,11 +11,11 @@ pub struct Build {
 }
 
 impl Build {
-    pub fn run(
+    pub fn run<P: AsRef<Path>>(
         &self,
         crate_name: &'static str,
-        static_dir_path: &'static str,
-        build_dir_path: &'static str,
+        static_dir_path: P,
+        build_dir_path: P,
     ) -> Result<()> {
         let metadata = match cargo_metadata::MetadataCommand::new().exec() {
             Ok(metadata) => metadata,
@@ -64,13 +65,12 @@ impl Build {
         let wasm_js = output.js().to_owned();
         let wasm_bin = output.wasm_mut().emit_wasm();
 
-        let build_dir_path = metadata.workspace_root.join(build_dir_path);
-        let static_dir_path = metadata.workspace_root.join(static_dir_path);
+        let build_dir = build_dir_path.as_ref();
 
-        let wasm_js_path = build_dir_path.join("app.js");
-        let wasm_bin_path = build_dir_path.join("app_bg.wasm");
+        let wasm_js_path = build_dir.join("app.js");
+        let wasm_bin_path = build_dir.join("app_bg.wasm");
 
-        if build_dir_path.exists() {
+        if build_dir.exists() {
             fs::remove_dir_all(&build_dir_path)?;
         }
 
