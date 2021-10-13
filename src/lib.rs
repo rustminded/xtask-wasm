@@ -134,7 +134,11 @@ impl DevServer {
             let response_path = if requested_path.ends_with("/") {
                 build_dir_path.join("index.html")
             } else {
-                build_dir_path.join(requested_path.file_name().unwrap())
+                build_dir_path.join(
+                    requested_path
+                        .file_name()
+                        .expect("Cannot get request filename"),
+                )
             };
 
             let (response, content) = if response_path.exists() {
