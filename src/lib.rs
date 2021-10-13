@@ -101,28 +101,33 @@ impl Build {
 }
 
 use std::io::prelude::*;
+use std::net::IpAddr;
 use std::net::TcpListener;
 
 #[derive(Debug, StructOpt)]
-pub struct Serve {
+pub struct DevServer {
     #[structopt(long, default_value = "127.0.0.1")]
-    ip: String,
+    ip: IpAddr,
     #[structopt(long, default_value = "8000")]
     port: u16,
 }
 
-impl Serve {
-    pub fn run(&self, build_dir_path: impl AsRef<Path>) -> Result<()> {
+impl DevServer {
+    pub fn serve(&self, build_dir_path: impl AsRef<Path>) -> Result<()> {
         let address = format!("{}:{}", self.ip, self.port);
         let listener = TcpListener::bind(&address).context("Cannot bind to the given address")?;
         let build_dir_path = build_dir_path.as_ref();
         let index = build_dir_path.join("index.html");
 
+        println!("{}", &address);
+
         for stream in listener.incoming() {
-            let mut stream = stream.unwrap();
+            let mut stream = stream.context("Error in the incoming stream")?;
             let mut buffer = [0; 1024];
 
-            stream.read(&mut buffer).unwrap();
+            stream
+                .read(&mut buffer)
+                .context("Cannot read from the stream")?;
 
             let contents = fs::read_to_string(&index).expect("Cannot read index content");
 
@@ -132,10 +137,10 @@ impl Serve {
                 contents
             );
 
-            stream.write(response.as_bytes()).unwrap();
+            stream
+                .write(response.as_bytes())
+                .context("Cannot write response")?;
             stream.flush()?;
-
-            println!("{}", &address);
         }
 
         Ok(())
