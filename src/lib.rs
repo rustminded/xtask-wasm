@@ -112,9 +112,11 @@ pub struct Serve {
 }
 
 impl Serve {
-    pub fn run(&self, index_path: impl AsRef<Path>) -> Result<()> {
+    pub fn run(&self, build_dir_path: impl AsRef<Path>) -> Result<()> {
         let address = format!("{}:{}", self.ip, self.port);
         let listener = TcpListener::bind(&address).context("Cannot bind to the given address")?;
+        let build_dir_path = build_dir_path.as_ref();
+        let index = build_dir_path.join("index.html");
 
         for stream in listener.incoming() {
             let mut stream = stream.unwrap();
@@ -122,7 +124,7 @@ impl Serve {
 
             stream.read(&mut buffer).unwrap();
 
-            let contents = fs::read_to_string(&index_path).expect("Cannot read index content");
+            let contents = fs::read_to_string(&index).expect("Cannot read index content");
 
             let response = format!(
                 "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{}",
