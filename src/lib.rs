@@ -99,3 +99,43 @@ impl Build {
         Ok(())
     }
 }
+
+use std::io::prelude::*;
+use std::net::TcpListener;
+
+#[derive(Debug, StructOpt)]
+pub struct Serve {
+    #[structopt(long, default_value = "127.0.0.1")]
+    ip: String,
+    #[structopt(long, default_value = "8000")]
+    port: u16,
+}
+
+impl Serve {
+    pub fn run(&self, index_path: impl AsRef<Path>) -> Result<()> {
+        let address = format!("{}:{}", self.ip, self.port);
+        let listener = TcpListener::bind(&address).context("Cannot bind to the given address")?;
+
+        for stream in listener.incoming() {
+            let mut stream = stream.unwrap();
+            let mut buffer = [0; 1024];
+
+            stream.read(&mut buffer).unwrap();
+
+            let contents = fs::read_to_string(&index_path).expect("Cannot read index content");
+
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{}",
+                contents.len(),
+                contents
+            );
+
+            stream.write(response.as_bytes()).unwrap();
+            stream.flush()?;
+
+            println!("{}", &address);
+        }
+
+        Ok(())
+    }
+}
