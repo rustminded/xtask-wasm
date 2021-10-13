@@ -137,33 +137,38 @@ impl DevServer {
                 build_dir_path.join(requested_path.file_name().unwrap())
             };
 
-            let response = if response_path.exists() {
-                let content =
-                    fs::read_to_string(&response_path).context("Cannot read from file")?;
+            let (response, content) = if response_path.exists() {
+                let content = fs::read(&response_path).context("Cannot read from file")?;
 
                 let content_type = if response_path.ends_with("html") {
                     "content-type: text/html;charset=utf-8"
                 } else if response_path.ends_with("js") {
-                    "content-type: application/javascript;charset=utf-8"
+                    "content-type: application/script;charset=utf-8"
                 } else if response_path.ends_with("wasm") {
                     "content-type: application/wasm;charset=utf8"
                 } else {
                     Default::default()
                 };
 
-                format!(
-                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n{}\r\n{}",
-                    content.len(),
-                    content_type,
-                    content
+                (
+                    format!(
+                        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n{}\r\n",
+                        content.len(),
+                        content_type,
+                    ),
+                    Some(content),
                 )
             } else {
-                "HTTP/1.1 400 NOT FOUND\r\n\r\n".to_string()
+                ("HTTP/1.1 400 NOT FOUND\r\n\r\n".to_string(), None)
             };
 
             stream
                 .write(response.as_bytes())
                 .context("Cannot write response")?;
+
+            if let Some(content) = content {
+                stream.write(&content).context("Cannot write content")?;
+            }
             stream.flush()?;
         }
 
