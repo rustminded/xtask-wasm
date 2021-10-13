@@ -118,7 +118,7 @@ impl DevServer {
         let listener = TcpListener::bind(&address).context("Cannot bind to the given address")?;
         let build_dir_path = build_dir_path.as_ref();
 
-        println!("{}", &address);
+        println!("Development server at: http://{}", &address);
 
         for stream in listener.incoming() {
             let mut stream = stream.context("Error in the incoming stream")?;
@@ -134,11 +134,7 @@ impl DevServer {
             let response_path = if requested_path.ends_with("/") {
                 build_dir_path.join("index.html")
             } else {
-                build_dir_path.join(
-                    requested_path
-                        .file_name()
-                        .expect("Cannot get request filename"),
-                )
+                build_dir_path.join(requested_path.strip_prefix("/").unwrap())
             };
 
             let (response, content) = if response_path.exists() {
@@ -147,9 +143,9 @@ impl DevServer {
                 let content_type = if response_path.ends_with("html") {
                     "content-type: text/html;charset=utf-8"
                 } else if response_path.ends_with("js") {
-                    "content-type: application/script;charset=utf-8"
+                    "content-type: application/javascript;charset=utf-8"
                 } else if response_path.ends_with("wasm") {
-                    "content-type: application/wasm;charset=utf-8"
+                    "content-type: application/wasm"
                 } else if response_path.ends_with("css") {
                     "content-type: text/css;charset=utf-8"
                 } else {
@@ -162,19 +158,25 @@ impl DevServer {
                         content.len(),
                         content_type,
                     ),
-                    Some(content),
+                    content,
                 )
             } else {
-                ("HTTP/1.1 404 NOT FOUND\r\n\r\n".to_string(), None)
+                let content = "Page not found".as_bytes().to_vec();
+                let content_type = "content-type: text/html;charset=utf-8";
+                (
+                    format!(
+                        "HTTP/1.1 404 NOT FOUND\r\nContent-Length: {}\r\n{}\r\n",
+                        content.len(),
+                        content_type,
+                    ),
+                    content,
+                )
             };
 
             stream
                 .write(response.as_bytes())
                 .context("Cannot write response")?;
-
-            if let Some(content) = content {
-                stream.write(&content).context("Cannot write content")?;
-            }
+            stream.write(&content).context("Cannot write content")?;
             stream.flush()?;
         }
 
