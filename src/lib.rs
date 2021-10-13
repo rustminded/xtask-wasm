@@ -145,7 +145,9 @@ impl DevServer {
                 } else if response_path.ends_with("js") {
                     "content-type: application/script;charset=utf-8"
                 } else if response_path.ends_with("wasm") {
-                    "content-type: application/wasm;charset=utf8"
+                    "content-type: application/wasm;charset=utf-8"
+                } else if response_path.ends_with("css") {
+                    "content-type: text/css;charset=utf-8"
                 } else {
                     Default::default()
                 };
@@ -159,7 +161,7 @@ impl DevServer {
                     Some(content),
                 )
             } else {
-                ("HTTP/1.1 400 NOT FOUND\r\n\r\n".to_string(), None)
+                ("HTTP/1.1 404 NOT FOUND\r\n\r\n".to_string(), None)
             };
 
             stream
