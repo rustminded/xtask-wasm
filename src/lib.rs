@@ -122,15 +122,12 @@ impl DevServer {
 
         println!("Development server at: http://{}", &address);
 
-        for stream in listener.incoming() {
-            if stream.is_ok() {
-                let stream = stream.unwrap();
-
-                respond_to_request(stream, build_dir_path.to_path_buf()).unwrap_or_else(|e| {
-                    warn!("An error occurred: {}", e);
-                });
-            }
+        for stream in listener.incoming().filter_map(|x| x.ok()) {
+            respond_to_request(stream, build_dir_path.to_path_buf()).unwrap_or_else(|e| {
+                warn!("An error occurred: {}", e);
+            });
         }
+
         Ok(())
     }
 }
@@ -162,7 +159,7 @@ fn respond_to_request(mut stream: TcpStream, build_dir_path: PathBuf) -> Result<
         let content_type = if response_path.ends_with("html") {
             "content-type: text/html;charset=utf-8"
         } else if response_path.ends_with("js") {
-            "content-type: application/javascript;charset=utf-8"
+            "content-type: application/javascript"
         } else if response_path.ends_with("wasm") {
             "content-type: application/wasm"
         } else if response_path.ends_with("css") {
