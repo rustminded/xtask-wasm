@@ -101,8 +101,9 @@ impl Build {
 }
 
 use std::io::prelude::*;
-use std::net::TcpListener;
 use std::net::{IpAddr, SocketAddr};
+use std::net::{TcpListener, TcpStream};
+use std::path::PathBuf;
 
 #[derive(Debug, StructOpt)]
 pub struct DevServer {
@@ -121,65 +122,87 @@ impl DevServer {
         println!("Development server at: http://{}", &address);
 
         for stream in listener.incoming() {
-            let mut stream = stream.context("Error in the incoming stream")?;
-            let mut buffer = [0; 4096];
+            if stream.is_ok() {
+                let stream = stream.unwrap();
 
-            stream
-                .read(&mut buffer)
-                .context("Cannot read from the stream")?;
-
-            let request = String::from_utf8(buffer.to_vec())?;
-
-            let requested_path = Path::new(request.split_whitespace().nth(1).unwrap());
-            let response_path = if requested_path.ends_with("/") {
-                build_dir_path.join("index.html")
-            } else {
-                build_dir_path.join(requested_path.strip_prefix("/").unwrap())
-            };
-
-            let (response, content) = if response_path.exists() {
-                let content = fs::read(&response_path).context("Cannot read from file")?;
-
-                let content_type = if response_path.ends_with("html") {
-                    "content-type: text/html;charset=utf-8"
-                } else if response_path.ends_with("js") {
-                    "content-type: application/javascript;charset=utf-8"
-                } else if response_path.ends_with("wasm") {
-                    "content-type: application/wasm"
-                } else if response_path.ends_with("css") {
-                    "content-type: text/css;charset=utf-8"
-                } else {
-                    Default::default()
+                match respond_to_request(stream, build_dir_path.to_path_buf()) {
+                    Ok(response) => {
+                        println!("{}", response);
+                    }
+                    Err(e) => {
+                        println!("Error when starting the server: {}", e);
+                    }
                 };
-
-                (
-                    format!(
-                        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n{}\r\n",
-                        content.len(),
-                        content_type,
-                    ),
-                    content,
-                )
-            } else {
-                let content = "Page not found".as_bytes().to_vec();
-                let content_type = "content-type: text/html;charset=utf-8";
-                (
-                    format!(
-                        "HTTP/1.1 404 NOT FOUND\r\nContent-Length: {}\r\n{}\r\n",
-                        content.len(),
-                        content_type,
-                    ),
-                    content,
-                )
-            };
-
-            stream
-                .write(response.as_bytes())
-                .context("Cannot write response")?;
-            stream.write(&content).context("Cannot write content")?;
-            stream.flush()?;
+            }
         }
-
         Ok(())
     }
+}
+
+fn respond_to_request(mut stream: TcpStream, build_dir_path: PathBuf) -> Result<String> {
+    let mut buffer = [0; 4096];
+
+    stream
+        .read(&mut buffer)
+        .context("Cannot read from the stream")?;
+
+    let request = String::from_utf8(buffer.to_vec())?;
+
+    let requested_path = Path::new(
+        request
+            .split_whitespace()
+            .nth(1)
+            .expect("No path in the request"),
+    );
+    let response_path = if requested_path.ends_with("/") {
+        build_dir_path.join("index.html")
+    } else {
+        build_dir_path.join(requested_path.strip_prefix("/").unwrap())
+    };
+
+    let (response, content) = if response_path.exists() {
+        let content = fs::read(&response_path).context("Cannot read from file")?;
+
+        let content_type = if response_path.ends_with("html") {
+            "content-type: text/html;charset=utf-8"
+        } else if response_path.ends_with("js") {
+            "content-type: application/javascript;charset=utf-8"
+        } else if response_path.ends_with("wasm") {
+            "content-type: application/wasm"
+        } else if response_path.ends_with("css") {
+            "content-type: text/css;charset=utf-8"
+        } else {
+            Default::default()
+        };
+
+        (
+            format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n{}\r\n",
+                content.len(),
+                content_type,
+            ),
+            content,
+        )
+    } else {
+        let content = "Page not found".as_bytes().to_vec();
+        let content_type = "content-type: text/html;charset=utf-8";
+
+        (
+            format!(
+                "HTTP/1.1 404 NOT FOUND\r\nContent-Length: {}\r\n{}\r\n",
+                content.len(),
+                content_type,
+            ),
+            content,
+        )
+    };
+
+    stream
+        .write(response.as_bytes())
+        .context("Cannot write response")?;
+
+    stream.write(&content).context("Cannot write content")?;
+    stream.flush()?;
+
+    Ok(response)
 }
