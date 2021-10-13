@@ -126,21 +126,16 @@ impl DevServer {
             if stream.is_ok() {
                 let stream = stream.unwrap();
 
-                match respond_to_request(stream, build_dir_path.to_path_buf()) {
-                    Ok(response) => {
-                        info!("{}", response);
-                    }
-                    Err(e) => {
-                        warn!("Error when starting the server: {}", e);
-                    }
-                };
+                respond_to_request(stream, build_dir_path.to_path_buf()).unwrap_or_else(|e| {
+                    warn!("An error occurred: {}", e);
+                });
             }
         }
         Ok(())
     }
 }
 
-fn respond_to_request(mut stream: TcpStream, build_dir_path: PathBuf) -> Result<String> {
+fn respond_to_request(mut stream: TcpStream, build_dir_path: PathBuf) -> Result<()> {
     let mut buffer = [0; 4096];
 
     stream
@@ -161,7 +156,7 @@ fn respond_to_request(mut stream: TcpStream, build_dir_path: PathBuf) -> Result<
         build_dir_path.join(requested_path.strip_prefix("/").unwrap())
     };
 
-    let (response, content) = if response_path.exists() {
+    if response_path.exists() {
         let content = fs::read(&response_path).context("Cannot read from file")?;
 
         let content_type = if response_path.ends_with("html") {
@@ -176,26 +171,22 @@ fn respond_to_request(mut stream: TcpStream, build_dir_path: PathBuf) -> Result<
             Default::default()
         };
 
-        (
-            format!(
-                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n{}\r\n",
-                content.len(),
-                content_type,
-            ),
-            content,
-        )
+        stream
+            .write(
+                format!(
+                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n{}\r\n",
+                    content.len(),
+                    content_type,
+                )
+                .as_bytes(),
+            )
+            .context("Cannot write response")?;
+        stream.write(&content).context("Cannot write content")?;
     } else {
-        let content: Vec<u8> = Default::default();
-
-        ("HTTP/1.1 404 NOT FOUND\r\n\r\n".to_string(), content)
+        stream
+            .write("HTTP/1.1 404 NOT FOUND\r\n\r\n".as_bytes())
+            .context("Cannot write response")?;
     };
 
-    stream
-        .write(response.as_bytes())
-        .context("Cannot write response")?;
-
-    stream.write(&content).context("Cannot write content")?;
-    stream.flush()?;
-
-    Ok(response)
+    Ok(())
 }
