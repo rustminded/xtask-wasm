@@ -117,25 +117,49 @@ impl DevServer {
         let address = SocketAddr::new(self.ip, self.port);
         let listener = TcpListener::bind(&address).context("Cannot bind to the given address")?;
         let build_dir_path = build_dir_path.as_ref();
-        let index = build_dir_path.join("index.html");
 
         println!("{}", &address);
 
         for stream in listener.incoming() {
             let mut stream = stream.context("Error in the incoming stream")?;
-            let mut buffer = [0; 1024];
+            let mut buffer = [0; 4096];
 
             stream
                 .read(&mut buffer)
                 .context("Cannot read from the stream")?;
 
-            let contents = fs::read_to_string(&index).expect("Cannot read index content");
+            let request = String::from_utf8(buffer.to_vec())?;
 
-            let response = format!(
-                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{}",
-                contents.len(),
-                contents
-            );
+            let requested_path = Path::new(request.split_whitespace().nth(1).unwrap());
+            let response_path = if requested_path.ends_with("/") {
+                build_dir_path.join("index.html")
+            } else {
+                build_dir_path.join(requested_path.file_name().unwrap())
+            };
+
+            let response = if response_path.exists() {
+                let content =
+                    fs::read_to_string(&response_path).context("Cannot read from file")?;
+
+                let content_type = if response_path.ends_with("html") {
+                    "content-type: text/html;charset=utf-8"
+                } else if response_path.ends_with("js") {
+                    "content-type: application/javascript;charset=utf-8"
+                } else if response_path.ends_with("wasm") {
+                    "content-type: application/wasm;charset=utf8"
+                } else {
+                    Default::default()
+                };
+
+                format!(
+                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n{}\r\n{}",
+                    content.len(),
+                    content_type,
+                    content
+                )
+            } else {
+                "HTTP/1.1 400 NOT FOUND\r\n\r\n".to_string()
+            };
 
             stream
                 .write(response.as_bytes())
