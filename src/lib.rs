@@ -101,8 +101,8 @@ impl Build {
 }
 
 use std::io::prelude::*;
-use std::net::IpAddr;
 use std::net::TcpListener;
+use std::net::{IpAddr, SocketAddr};
 
 #[derive(Debug, StructOpt)]
 pub struct DevServer {
@@ -114,7 +114,7 @@ pub struct DevServer {
 
 impl DevServer {
     pub fn serve(&self, build_dir_path: impl AsRef<Path>) -> Result<()> {
-        let address = format!("{}:{}", self.ip, self.port);
+        let address = SocketAddr::new(self.ip, self.port);
         let listener = TcpListener::bind(&address).context("Cannot bind to the given address")?;
         let build_dir_path = build_dir_path.as_ref();
         let index = build_dir_path.join("index.html");
