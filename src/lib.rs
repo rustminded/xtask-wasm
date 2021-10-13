@@ -1,4 +1,5 @@
 use anyhow::{bail, ensure, Context, Result};
+use log::{info, warn};
 use std::path::Path;
 use std::{fs, process};
 use structopt::StructOpt;
@@ -53,7 +54,7 @@ impl Build {
         );
 
         if !self.quiet {
-            println!("Generating build...")
+            info!("Generating build...")
         }
 
         let input_path = metadata
@@ -127,10 +128,10 @@ impl DevServer {
 
                 match respond_to_request(stream, build_dir_path.to_path_buf()) {
                     Ok(response) => {
-                        println!("{}", response);
+                        info!("{}", response);
                     }
                     Err(e) => {
-                        println!("Error when starting the server: {}", e);
+                        warn!("Error when starting the server: {}", e);
                     }
                 };
             }
@@ -184,17 +185,9 @@ fn respond_to_request(mut stream: TcpStream, build_dir_path: PathBuf) -> Result<
             content,
         )
     } else {
-        let content = "Page not found".as_bytes().to_vec();
-        let content_type = "content-type: text/html;charset=utf-8";
+        let content: Vec<u8> = Default::default();
 
-        (
-            format!(
-                "HTTP/1.1 404 NOT FOUND\r\nContent-Length: {}\r\n{}\r\n",
-                content.len(),
-                content_type,
-            ),
-            content,
-        )
+        ("HTTP/1.1 404 NOT FOUND\r\n\r\n".to_string(), content)
     };
 
     stream
