@@ -1,5 +1,4 @@
 use anyhow::{bail, ensure, Context, Result};
-use log::{info, warn};
 use std::path::Path;
 use std::{fs, process};
 use structopt::StructOpt;
@@ -54,7 +53,7 @@ impl Build {
         );
 
         if !self.quiet {
-            info!("Generating build...")
+            log::info!("Generating build...")
         }
 
         let input_path = metadata
@@ -101,6 +100,7 @@ impl Build {
     }
 }
 
+use cargo_metadata::camino::Utf8Path;
 use std::io::prelude::*;
 use std::net::{IpAddr, SocketAddr};
 use std::net::{TcpListener, TcpStream};
@@ -118,13 +118,12 @@ impl DevServer {
     pub fn serve(&self, build_dir_path: impl AsRef<Path>) -> Result<()> {
         let address = SocketAddr::new(self.ip, self.port);
         let listener = TcpListener::bind(&address).context("Cannot bind to the given address")?;
-        let build_dir_path = build_dir_path.as_ref();
 
-        println!("Development server at: http://{}", &address);
+        log::info!("Development server at: http://{}", &address);
 
         for stream in listener.incoming().filter_map(|x| x.ok()) {
-            respond_to_request(stream, build_dir_path.to_path_buf()).unwrap_or_else(|e| {
-                warn!("An error occurred: {}", e);
+            respond_to_request(stream, build_dir_path.as_ref().to_path_buf()).unwrap_or_else(|e| {
+                log::warn!("An error occurred: {}", e);
             });
         }
 
@@ -141,31 +140,36 @@ fn respond_to_request(mut stream: TcpStream, build_dir_path: PathBuf) -> Result<
 
     let request = String::from_utf8(buffer.to_vec())?;
 
-    let requested_path = Path::new(
-        request
-            .split_whitespace()
-            .nth(1)
-            .expect("No path in the request"),
-    );
-    let response_path = if requested_path.ends_with("/") {
-        build_dir_path.join("index.html")
-    } else {
-        build_dir_path.join(requested_path.strip_prefix("/").unwrap())
-    };
+    let requested_path = request
+        .split_whitespace()
+        .nth(1)
+        .context("Could not find path in request")?;
 
-    if response_path.exists() {
-        let content = fs::read(&response_path).context("Cannot read from file")?;
+    let rel_path = Path::new(requested_path.trim_matches('/'));
 
-        let content_type = if response_path.ends_with("html") {
-            "content-type: text/html;charset=utf-8"
-        } else if response_path.ends_with("js") {
-            "content-type: application/javascript"
-        } else if response_path.ends_with("wasm") {
-            "content-type: application/wasm"
-        } else if response_path.ends_with("css") {
-            "content-type: text/css;charset=utf-8"
+    let mut full_path = build_dir_path.join(rel_path);
+
+    if full_path.is_dir() {
+        if full_path.join("index.html").exists() {
+            full_path = full_path.join("index.html")
+        } else if full_path.join("index.htm").exists() {
+            full_path = full_path.join("index.htm")
         } else {
-            Default::default()
+            bail!("no index.html in {}", full_path.display());
+        }
+    }
+
+    if full_path.exists() {
+        let utf8_path =
+            Utf8Path::from_path(&full_path).context("Request path contains non-utf8 characters")?;
+        let content = fs::read(&full_path).context("Cannot read from file")?;
+
+        let content_type = match utf8_path.extension() {
+            Some("html") => "content-type: text/html;charset=utf-8",
+            Some("css") => "content-type: text/html;charset=utf-8",
+            Some("js") => "content-type: application/javascript",
+            Some("wasm") => "content-type: application/wasm",
+            _ => Default::default(),
         };
 
         stream
