@@ -123,9 +123,7 @@ impl DevServer {
 
         for mut stream in listener.incoming().filter_map(|x| x.ok()) {
             respond_to_request(&mut stream, &build_dir_path).unwrap_or_else(|e| {
-                stream
-                    .write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes())
-                    .expect("Cannot write on the stream");
+                let _ = stream.write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes());
                 log::warn!("An error occurred: {}", e);
             });
         }
