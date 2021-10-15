@@ -105,7 +105,6 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::net::{IpAddr, SocketAddr};
 use std::net::{TcpListener, TcpStream};
-use std::path::PathBuf;
 
 #[derive(Debug, StructOpt)]
 pub struct DevServer {
@@ -179,12 +178,7 @@ fn respond_to_request(mut stream: TcpStream, build_dir_path: impl AsRef<Path>) -
             )
             .context("Cannot write response")?;
 
-        stream
-            .write(
-                &fs::read(&full_path)
-                    .context(format!("Cannot read content of: {:?}", &full_path))?,
-            )
-            .context("Cannot write content")?;
+        std::io::copy(&mut fs::File::open(&full_path)?, &mut stream)?;
     } else {
         stream
             .write("HTTP/1.1 404 NOT FOUND\r\n\r\n".as_bytes())
