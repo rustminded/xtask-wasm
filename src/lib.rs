@@ -123,7 +123,7 @@ impl DevServer {
         log::info!("Development server at: http://{}", &address);
 
         for stream in listener.incoming().filter_map(|x| x.ok()) {
-            respond_to_request(stream, build_dir_path.as_ref().to_path_buf()).unwrap_or_else(|e| {
+            respond_to_request(stream, &build_dir_path).unwrap_or_else(|e| {
                 log::warn!("An error occurred: {}", e);
             });
         }
@@ -132,7 +132,7 @@ impl DevServer {
     }
 }
 
-fn respond_to_request(mut stream: TcpStream, build_dir_path: PathBuf) -> Result<()> {
+fn respond_to_request(mut stream: TcpStream, build_dir_path: impl AsRef<Path>) -> Result<()> {
     let mut reader = BufReader::new(&stream);
     let mut request = String::new();
     reader.read_line(&mut request)?;
@@ -144,7 +144,7 @@ fn respond_to_request(mut stream: TcpStream, build_dir_path: PathBuf) -> Result<
 
     let rel_path = Path::new(requested_path.trim_matches('/'));
 
-    let mut full_path = build_dir_path.join(rel_path);
+    let mut full_path = build_dir_path.as_ref().join(rel_path);
 
     if full_path.is_dir() {
         if full_path.join("index.html").exists() {
@@ -156,22 +156,23 @@ fn respond_to_request(mut stream: TcpStream, build_dir_path: PathBuf) -> Result<
         }
     }
 
-    if full_path.exists() {
-        let utf8_path =
-            Utf8Path::from_path(&full_path).context("Request path contains non-utf8 characters")?;
-
-        let content_type = match utf8_path.extension() {
+    if full_path.is_file() {
+        let content_type = match Utf8Path::from_path(&full_path)
+            .context("Request path contains non-utf8 characters")?
+            .extension()
+        {
+            Some("html") => "content-type: text/html;charset=utf-8",
             Some("css") => "content-type: text/html;charset=utf-8",
             Some("js") => "content-type: application/javascript",
             Some("wasm") => "content-type: application/wasm",
-            _ => "content-type: text/html;charset=utf-8",
+            _ => "content-type: application/octet-stream",
         };
 
         stream
             .write(
                 format!(
                     "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n{}\r\n",
-                    utf8_path.metadata()?.len(),
+                    full_path.metadata()?.len(),
                     content_type,
                 )
                 .as_bytes(),
@@ -180,14 +181,15 @@ fn respond_to_request(mut stream: TcpStream, build_dir_path: PathBuf) -> Result<
 
         stream
             .write(
-                &fs::read(&utf8_path).context(format!("Cannot read content of: {}", &utf8_path))?,
+                &fs::read(&full_path)
+                    .context(format!("Cannot read content of: {:?}", &full_path))?,
             )
             .context("Cannot write content")?;
     } else {
         stream
             .write("HTTP/1.1 404 NOT FOUND\r\n\r\n".as_bytes())
             .context("Cannot write response")?;
-    };
+    }
 
     Ok(())
 }
