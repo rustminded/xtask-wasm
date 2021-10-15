@@ -101,8 +101,8 @@ impl Build {
 }
 
 use cargo_metadata::camino::Utf8Path;
+use std::io::prelude::*;
 use std::io::BufReader;
-use std::io::{prelude::*, BufWriter};
 use std::net::{IpAddr, SocketAddr};
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
@@ -171,7 +171,7 @@ fn respond_to_request(mut stream: TcpStream, build_dir_path: PathBuf) -> Result<
             .write(
                 format!(
                     "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n{}\r\n",
-                    // content-length: todo
+                    utf8_path.metadata()?.len(),
                     content_type,
                 )
                 .as_bytes(),
