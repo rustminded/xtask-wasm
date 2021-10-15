@@ -53,7 +53,7 @@ impl Build {
         );
 
         if !self.quiet {
-            println!("Generating build...")
+            log::info!("Generating build...")
         }
 
         let input_path = metadata
@@ -98,4 +98,95 @@ impl Build {
 
         Ok(())
     }
+}
+
+use cargo_metadata::camino::Utf8Path;
+use std::io::prelude::*;
+use std::io::BufReader;
+use std::net::{IpAddr, SocketAddr};
+use std::net::{TcpListener, TcpStream};
+
+#[derive(Debug, StructOpt)]
+pub struct DevServer {
+    #[structopt(long, default_value = "127.0.0.1")]
+    ip: IpAddr,
+    #[structopt(long, default_value = "8000")]
+    port: u16,
+}
+
+impl DevServer {
+    pub fn serve(&self, build_dir_path: impl AsRef<Path>) -> Result<()> {
+        let address = SocketAddr::new(self.ip, self.port);
+        let listener = TcpListener::bind(&address).context("Cannot bind to the given address")?;
+
+        log::info!("Development server at: http://{}", &address);
+
+        for mut stream in listener.incoming().filter_map(|x| x.ok()) {
+            respond_to_request(&mut stream, &build_dir_path).unwrap_or_else(|e| {
+                let _ = stream.write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes());
+                log::warn!("An error occurred: {}", e);
+            });
+        }
+
+        Ok(())
+    }
+}
+
+fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) -> Result<()> {
+    let mut reader = BufReader::new(stream);
+    let mut request = String::new();
+    reader.read_line(&mut request)?;
+
+    let requested_path = request
+        .split_whitespace()
+        .nth(1)
+        .context("Could not find path in request")?;
+
+    let rel_path = Path::new(requested_path.trim_matches('/'));
+
+    let mut full_path = build_dir_path.as_ref().join(rel_path);
+
+    if full_path.is_dir() {
+        if full_path.join("index.html").exists() {
+            full_path = full_path.join("index.html")
+        } else if full_path.join("index.htm").exists() {
+            full_path = full_path.join("index.htm")
+        } else {
+            bail!("no index.html in {}", full_path.display());
+        }
+    }
+
+    let stream = reader.get_mut();
+
+    if full_path.is_file() {
+        let content_type = match Utf8Path::from_path(&full_path)
+            .context("Request path contains non-utf8 characters")?
+            .extension()
+        {
+            Some("html") => "content-type: text/html;charset=utf-8",
+            Some("css") => "content-type: text/html;charset=utf-8",
+            Some("js") => "content-type: application/javascript",
+            Some("wasm") => "content-type: application/wasm",
+            _ => "content-type: application/octet-stream",
+        };
+
+        stream
+            .write(
+                format!(
+                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n{}\r\n",
+                    full_path.metadata()?.len(),
+                    content_type,
+                )
+                .as_bytes(),
+            )
+            .context("Cannot write response")?;
+
+        std::io::copy(&mut fs::File::open(&full_path)?, stream)?;
+    } else {
+        stream
+            .write("HTTP/1.1 404 NOT FOUND\r\n\r\n".as_bytes())
+            .context("Cannot write response")?;
+    }
+
+    Ok(())
 }
