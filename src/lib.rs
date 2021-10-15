@@ -164,7 +164,7 @@ fn respond_to_request(mut stream: TcpStream, build_dir_path: PathBuf) -> Result<
             Some("css") => "content-type: text/html;charset=utf-8",
             Some("js") => "content-type: application/javascript",
             Some("wasm") => "content-type: application/wasm",
-            Some("html") | _ => "content-type: text/html;charset=utf-8",
+            _ => "content-type: text/html;charset=utf-8",
         };
 
         stream
