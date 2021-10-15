@@ -179,7 +179,9 @@ fn respond_to_request(mut stream: TcpStream, build_dir_path: PathBuf) -> Result<
             .context("Cannot write response")?;
 
         stream
-            .write(&fs::read(&utf8_path).context("Cannot write content of the response")?)
+            .write(
+                &fs::read(&utf8_path).context(format!("Cannot read content of: {}", &utf8_path))?,
+            )
             .context("Cannot write content")?;
     } else {
         stream
