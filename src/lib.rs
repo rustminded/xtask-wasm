@@ -121,8 +121,11 @@ impl DevServer {
 
         log::info!("Development server at: http://{}", &address);
 
-        for stream in listener.incoming().filter_map(|x| x.ok()) {
-            respond_to_request(stream, &build_dir_path).unwrap_or_else(|e| {
+        for mut stream in listener.incoming().filter_map(|x| x.ok()) {
+            respond_to_request(&mut stream, &build_dir_path).unwrap_or_else(|e| {
+                stream
+                    .write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes())
+                    .expect("Cannot write on the stream");
                 log::warn!("An error occurred: {}", e);
             });
         }
@@ -131,8 +134,8 @@ impl DevServer {
     }
 }
 
-fn respond_to_request(mut stream: TcpStream, build_dir_path: impl AsRef<Path>) -> Result<()> {
-    let mut reader = BufReader::new(&stream);
+fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) -> Result<()> {
+    let mut reader = BufReader::new(stream);
     let mut request = String::new();
     reader.read_line(&mut request)?;
 
@@ -154,6 +157,8 @@ fn respond_to_request(mut stream: TcpStream, build_dir_path: impl AsRef<Path>) -
             bail!("no index.html in {}", full_path.display());
         }
     }
+
+    let stream = reader.get_mut();
 
     if full_path.is_file() {
         let content_type = match Utf8Path::from_path(&full_path)
@@ -178,7 +183,7 @@ fn respond_to_request(mut stream: TcpStream, build_dir_path: impl AsRef<Path>) -
             )
             .context("Cannot write response")?;
 
-        std::io::copy(&mut fs::File::open(&full_path)?, &mut stream)?;
+        std::io::copy(&mut fs::File::open(&full_path)?, stream)?;
     } else {
         stream
             .write("HTTP/1.1 404 NOT FOUND\r\n\r\n".as_bytes())
