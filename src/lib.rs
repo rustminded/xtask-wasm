@@ -132,9 +132,8 @@ impl DevServer {
     }
 }
 
-fn respond_to_request(stream: TcpStream, build_dir_path: PathBuf) -> Result<()> {
+fn respond_to_request(mut stream: TcpStream, build_dir_path: PathBuf) -> Result<()> {
     let mut reader = BufReader::new(&stream);
-    let mut writer = BufWriter::new(&stream);
     let mut request = String::new();
     reader.read_line(&mut request)?;
 
@@ -162,29 +161,28 @@ fn respond_to_request(stream: TcpStream, build_dir_path: PathBuf) -> Result<()> 
             Utf8Path::from_path(&full_path).context("Request path contains non-utf8 characters")?;
 
         let content_type = match utf8_path.extension() {
-            Some("html") => "content-type: text/html;charset=utf-8",
             Some("css") => "content-type: text/html;charset=utf-8",
             Some("js") => "content-type: application/javascript",
             Some("wasm") => "content-type: application/wasm",
-            _ => Default::default(),
+            Some("html") | _ => "content-type: text/html;charset=utf-8",
         };
 
-        writer
-            .write(&fs::read(&utf8_path).context("Cannot write content of the response")?)
-            .context("Cannot write content")?;
-
-        writer
+        stream
             .write(
                 format!(
                     "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n{}\r\n",
-                    reader.buffer().len(),
+                    // content-length: todo
                     content_type,
                 )
                 .as_bytes(),
             )
             .context("Cannot write response")?;
+
+        stream
+            .write(&fs::read(&utf8_path).context("Cannot write content of the response")?)
+            .context("Cannot write content")?;
     } else {
-        writer
+        stream
             .write("HTTP/1.1 404 NOT FOUND\r\n\r\n".as_bytes())
             .context("Cannot write response")?;
     };
