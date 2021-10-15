@@ -101,8 +101,8 @@ impl Build {
 }
 
 use cargo_metadata::camino::Utf8Path;
-use std::io::prelude::*;
 use std::io::BufReader;
+use std::io::{prelude::*, BufWriter};
 use std::net::{IpAddr, SocketAddr};
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
@@ -132,8 +132,9 @@ impl DevServer {
     }
 }
 
-fn respond_to_request(mut stream: TcpStream, build_dir_path: PathBuf) -> Result<()> {
+fn respond_to_request(stream: TcpStream, build_dir_path: PathBuf) -> Result<()> {
     let mut reader = BufReader::new(&stream);
+    let mut writer = BufWriter::new(&stream);
     let mut request = String::new();
     reader.read_line(&mut request)?;
 
@@ -159,7 +160,6 @@ fn respond_to_request(mut stream: TcpStream, build_dir_path: PathBuf) -> Result<
     if full_path.exists() {
         let utf8_path =
             Utf8Path::from_path(&full_path).context("Request path contains non-utf8 characters")?;
-        let content = fs::read(&full_path).context("Cannot read from file")?;
 
         let content_type = match utf8_path.extension() {
             Some("html") => "content-type: text/html;charset=utf-8",
@@ -169,19 +169,22 @@ fn respond_to_request(mut stream: TcpStream, build_dir_path: PathBuf) -> Result<
             _ => Default::default(),
         };
 
-        stream
+        writer
+            .write(&fs::read(&utf8_path).context("Cannot write content of the response")?)
+            .context("Cannot write content")?;
+
+        writer
             .write(
                 format!(
                     "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n{}\r\n",
-                    content.len(),
+                    reader.buffer().len(),
                     content_type,
                 )
                 .as_bytes(),
             )
             .context("Cannot write response")?;
-        stream.write(&content).context("Cannot write content")?;
     } else {
-        stream
+        writer
             .write("HTTP/1.1 404 NOT FOUND\r\n\r\n".as_bytes())
             .context("Cannot write response")?;
     };
