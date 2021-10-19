@@ -201,8 +201,7 @@ pub struct Watch {}
 impl Watch {
     pub fn execute(
         &self,
-        build_path: impl AsRef<Path>,
-        crate_path: impl AsRef<Path>,
+        build_path: impl AsRef<Path> + std::convert::AsRef<cargo_metadata::camino::Utf8Path>,
         build_command: &str,
     ) -> Result<()> {
         let (tx, rx) = mpsc::channel();
@@ -211,16 +210,17 @@ impl Watch {
             notify::Watcher::new(tx, time::Duration::from_secs(2))
                 .context("Could not initialize watcher")?;
 
-        watcher
-            .watch(crate_path.as_ref(), RecursiveMode::Recursive)
-            .context("Cannot watch this crate")?;
-
         let metadata = match cargo_metadata::MetadataCommand::new().exec() {
             Ok(metadata) => metadata,
             Err(_) => bail!("Cannot get package's metadata"),
         };
 
+        watcher
+            .watch(&metadata.workspace_root, RecursiveMode::Recursive)
+            .context("Cannot watch this crate")?;
+
         let target_path = &metadata.target_directory;
+        let build_path = &metadata.workspace_root.join(build_path);
 
         let build_command = build_command.split(' ').collect::<Vec<&str>>();
         let build_process = || {
