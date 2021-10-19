@@ -191,7 +191,7 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
     Ok(())
 }
 
-use notify::RecommendedWatcher;
+use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use std::sync::mpsc;
 use std::time;
 
@@ -201,7 +201,6 @@ pub struct Watch {}
 impl Watch {
     pub fn execute(
         &self,
-        command: &'static str,
         build_path: impl AsRef<Path>,
         crate_path: impl AsRef<Path>,
     ) -> Result<()> {
@@ -211,20 +210,13 @@ impl Watch {
             notify::Watcher::new(tx, time::Duration::from_secs(2))
                 .context("Could not initialize watcher")?;
 
+        watcher
+            .watch(crate_path.as_ref(), RecursiveMode::Recursive)
+            .context("Cannot watch this crate")?;
+
         let metadata = match cargo_metadata::MetadataCommand::new().exec() {
             Ok(metadata) => metadata,
             Err(_) => bail!("Cannot get package's metadata"),
-        };
-
-        let args_vec = command.split(' ').collect::<Vec<&str>>();
-
-        let build_process = || -> Result<ProcessChild> {
-            let mut command = process::Command::new("cargo");
-            command.current_dir(&metadata.workspace_root);
-
-            command.args(args_vec.clone());
-
-            Ok(command.spawn().map(ProcessChild)?)
         };
 
         loop {
@@ -235,31 +227,18 @@ impl Watch {
             match &message {
                 Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
                     if !path.starts_with(build_path.as_ref())
-                        && !path.starts_with(crate_path.as_ref().join("target"))
+                        && !path.starts_with(&metadata.target_directory)
                         && !path
                             .file_name()
                             .and_then(|x| x.to_str())
                             .map(|x| x.starts_with('.'))
                             .unwrap_or(false) =>
                 {
-                    if let Err(err) = build_process() {
-                        log::error!("Build error: {}", err);
-                    }
+                    todo!()
                 }
                 Ok(_) => {}
                 Err(err) => log::error!("Watch error: {}", err),
             }
-        }
-    }
-}
-
-struct ProcessChild(process::Child);
-
-impl Drop for ProcessChild {
-    fn drop(&mut self) {
-        match self.0.wait_with_output() {
-            Ok(output) => log::info!("Exited with status code {}", output.status),
-            Err(err) => log::error!("Error exiting watch: {}", err),
         }
     }
 }
