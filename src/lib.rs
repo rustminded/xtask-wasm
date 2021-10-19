@@ -203,6 +203,7 @@ impl Watch {
         &self,
         build_path: impl AsRef<Path>,
         crate_path: impl AsRef<Path>,
+        build_command: &str,
     ) -> Result<()> {
         let (tx, rx) = mpsc::channel();
 
@@ -219,26 +220,51 @@ impl Watch {
             Err(_) => bail!("Cannot get package's metadata"),
         };
 
-        loop {
-            use notify::DebouncedEvent::*;
+        let target_path = &metadata.target_directory;
 
-            let message = rx.recv();
+        let build_command = build_command.split(' ').collect::<Vec<&str>>();
+        let build_process = || {
+            process::Command::new("cargo")
+                .args(build_command.clone())
+                .spawn()
+                .expect("Cannot spawn the build process")
+        };
 
-            match &message {
-                Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
-                    if !path.starts_with(build_path.as_ref())
-                        && !path.starts_with(&metadata.target_directory)
-                        && !path
-                            .file_name()
-                            .and_then(|x| x.to_str())
-                            .map(|x| x.starts_with('.'))
-                            .unwrap_or(false) =>
-                {
-                    todo!()
+        watch_loop(rx, build_path, target_path, build_process);
+    }
+}
+
+fn watch_loop(
+    rx: mpsc::Receiver<notify::DebouncedEvent>,
+    build_path: impl AsRef<Path>,
+    target_path: impl AsRef<Path>,
+    mut build_process: impl FnMut() -> process::Child,
+) -> ! {
+    loop {
+        use notify::DebouncedEvent::*;
+
+        let message = rx.recv();
+
+        match &message {
+            Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
+                if !path.starts_with(build_path.as_ref())
+                    && !path.starts_with(target_path.as_ref())
+                    && !path
+                        .file_name()
+                        .and_then(|x| x.to_str())
+                        .map(|x| x.starts_with('.'))
+                        .unwrap_or(false) =>
+            {
+                let output = build_process()
+                    .wait_with_output()
+                    .expect("Error when watching");
+
+                if !output.status.success() {
+                    log::error!("Error when building");
                 }
-                Ok(_) => {}
-                Err(err) => log::error!("Watch error: {}", err),
             }
+            Ok(_) => {}
+            Err(err) => log::error!("Watch error: {}", err),
         }
     }
 }
