@@ -230,6 +230,10 @@ impl Watch {
                 .expect("Cannot spawn the build process")
         };
 
+        build_process()
+            .wait_with_output()
+            .context("Error on building")?;
+
         watch_loop(rx, build_path, target_path, build_process);
     }
 }
