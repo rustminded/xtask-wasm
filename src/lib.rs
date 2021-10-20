@@ -191,6 +191,7 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
 }
 
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
+use std::convert::TryInto;
 use std::sync::mpsc;
 use std::time;
 
@@ -245,12 +246,37 @@ fn watch_loop(
                         .map(|x| x.starts_with('.'))
                         .unwrap_or(false) =>
             {
-                let _ = child_process.kill();
-                let _ = child_process.wait();
+                kill_process(&mut child_process);
                 command.spawn().context("error in the loop")?;
             }
             Ok(_) => {}
             Err(err) => log::error!("watch error: {}", err),
         }
+    }
+}
+
+fn kill_process(child: &mut process::Child) {
+    #[cfg(unix)]
+    {
+        unsafe {
+            libc::kill(
+                child.id().try_into().expect("cannot get process id"),
+                libc::SIGTERM,
+            );
+            std::thread::sleep(time::Duration::new(2, 0));
+            match child.try_wait() {
+                Ok(_) => {}
+                Err(_) => {
+                    child.kill().expect("Error on exiting process");
+                }
+            }
+        }
+        child.wait().expect("Error on waiting process");
+    }
+
+    #[cfg(windows)]
+    {
+        child.kill();
+        child.wait();
     }
 }
