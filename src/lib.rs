@@ -21,7 +21,7 @@ impl Build {
     ) -> Result<()> {
         let metadata = match cargo_metadata::MetadataCommand::new().exec() {
             Ok(metadata) => metadata,
-            Err(_) => bail!("Cannot get package's metadata"),
+            Err(_) => bail!("cannot get package's metadata"),
         };
 
         let mut build_process = process::Command::new("cargo");
@@ -47,9 +47,9 @@ impl Build {
         ensure!(
             build_process
                 .status()
-                .context("Could not start cargo")?
+                .context("could not start cargo")?
                 .success(),
-            "Cargo command failed"
+            "cargo command failed"
         );
 
         if !self.quiet {
@@ -86,15 +86,15 @@ impl Build {
 
         let _ = fs::create_dir(&build_dir_path);
 
-        fs::write(wasm_js_path, wasm_js).with_context(|| "Cannot write js file")?;
-        fs::write(wasm_bin_path, wasm_bin).with_context(|| "Cannot write WASM file")?;
+        fs::write(wasm_js_path, wasm_js).with_context(|| "cannot write js file")?;
+        fs::write(wasm_bin_path, wasm_bin).with_context(|| "cannot write WASM file")?;
 
         let mut copy_options = fs_extra::dir::CopyOptions::new();
         copy_options.overwrite = true;
         copy_options.content_only = true;
 
         fs_extra::dir::copy(static_dir_path, build_dir_path, &copy_options)
-            .context("Cannot copy static directory")?;
+            .context("cannot copy static directory")?;
 
         Ok(())
     }
@@ -117,14 +117,14 @@ pub struct DevServer {
 impl DevServer {
     pub fn serve(&self, build_dir_path: impl AsRef<Path>) -> Result<()> {
         let address = SocketAddr::new(self.ip, self.port);
-        let listener = TcpListener::bind(&address).context("Cannot bind to the given address")?;
+        let listener = TcpListener::bind(&address).context("cannot bind to the given address")?;
 
         log::info!("Development server at: http://{}", &address);
 
         for mut stream in listener.incoming().filter_map(|x| x.ok()) {
             respond_to_request(&mut stream, &build_dir_path).unwrap_or_else(|e| {
                 let _ = stream.write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes());
-                log::warn!("An error occurred: {}", e);
+                log::error!("an error occurred: {}", e);
             });
         }
 
@@ -179,13 +179,13 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
                 )
                 .as_bytes(),
             )
-            .context("Cannot write response")?;
+            .context("cannot write response")?;
 
         std::io::copy(&mut fs::File::open(&full_path)?, stream)?;
     } else {
         stream
             .write("HTTP/1.1 404 NOT FOUND\r\n\r\n".as_bytes())
-            .context("Cannot write response")?;
+            .context("cannot write response")?;
     }
 
     Ok(())
@@ -202,28 +202,23 @@ impl Watch {
     pub fn execute(
         &self,
         build_path: impl AsRef<Path> + std::convert::AsRef<cargo_metadata::camino::Utf8Path>,
-        mut command: impl FnMut() -> Result<process::Child, std::io::Error>,
+        command: &mut process::Command,
     ) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
             notify::Watcher::new(tx, time::Duration::from_secs(2))
-                .context("Could not initialize watcher")?;
+                .context("could not initialize watcher")?;
 
         let metadata = match cargo_metadata::MetadataCommand::new().exec() {
             Ok(metadata) => metadata,
-            Err(_) => bail!("Cannot get package's metadata"),
+            Err(_) => bail!("cannot get package's metadata"),
         };
         let target_path = &metadata.target_directory;
         let build_path = &metadata.workspace_root.join(build_path);
 
         watcher
             .watch(&metadata.workspace_root, RecursiveMode::Recursive)
-            .context("Cannot watch this crate")?;
-
-        command()
-            .context("Cannot spawn user command")?
-            .wait_with_output()
-            .context("Error on building")?;
+            .context("cannot watch this crate")?;
 
         watch_loop(rx, build_path, target_path, command)
     }
@@ -233,8 +228,10 @@ fn watch_loop(
     rx: mpsc::Receiver<notify::DebouncedEvent>,
     build_path: impl AsRef<Path>,
     target_path: impl AsRef<Path>,
-    mut command: impl FnMut() -> Result<process::Child, std::io::Error>,
+    command: &mut process::Command,
 ) -> ! {
+    let mut child_process = command.spawn().expect("error when spawning commmand");
+
     loop {
         use notify::DebouncedEvent::*;
 
@@ -250,21 +247,12 @@ fn watch_loop(
                         .map(|x| x.starts_with('.'))
                         .unwrap_or(false) =>
             {
-                match command() {
-                    Ok(child) => {
-                        if let Ok(output) = child.wait_with_output() {
-                            if !output.status.success() {
-                                log::error!("Error in command execution");
-                            }
-                        }
-                    }
-                    Err(err) => {
-                        log::error!("Command error: {}", err);
-                    }
-                }
+                let _ = child_process.kill();
+                let _ = child_process.wait();
+                command.spawn().expect("error in the loop");
             }
             Ok(_) => {}
-            Err(err) => log::error!("Watch error: {}", err),
+            Err(err) => log::error!("watch error: {}", err),
         }
     }
 }
