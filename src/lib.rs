@@ -230,6 +230,39 @@ fn watch_loop(
     command: &mut process::Command,
 ) -> Result<()> {
     let mut child_process = command.spawn().context("error when spawning command")?;
+    struct ChildProcess(std::process::Child);
+
+    impl Drop for ChildProcess {
+        fn drop(&mut self) {
+            #[cfg(unix)]
+            {
+                unsafe {
+                    libc::kill(
+                        self.0.id().try_into().expect("cannot get process id"),
+                        libc::SIGTERM,
+                    );
+                }
+
+                std::thread::sleep(time::Duration::from_secs(2));
+
+                match self.0.try_wait() {
+                    Ok(Some(_)) => {}
+                    _ => {
+                        let _ = self.0.kill();
+                        let _ = self.0.wait();
+                    }
+                }
+            }
+
+            #[cfg(windows)]
+            {
+                child.kill();
+                child.wait();
+
+                Ok(())
+            }
+        }
+    }
 
     loop {
         use notify::DebouncedEvent::*;
@@ -246,43 +279,11 @@ fn watch_loop(
                         .map(|x| x.starts_with('.'))
                         .unwrap_or(false) =>
             {
-                kill_process(&mut child_process).context("error when killing child process")?;
+                drop(&mut child_process);
                 command.spawn().context("error in the loop")?;
             }
             Ok(_) => {}
             Err(err) => log::error!("watch error: {}", err),
         }
-    }
-}
-
-fn kill_process(child: &mut process::Child) -> Result<()> {
-    #[cfg(unix)]
-    {
-        unsafe {
-            libc::kill(
-                child.id().try_into().context("cannot get process id")?,
-                libc::SIGTERM,
-            );
-        }
-
-        std::thread::sleep(time::Duration::from_secs(2));
-
-        match child.try_wait() {
-            Ok(Some(_)) => {}
-            _ => {
-                child.kill().context("error on killing process")?;
-                child.wait().context("error on waiting end of process")?;
-            }
-        }
-
-        Ok(())
-    }
-
-    #[cfg(windows)]
-    {
-        child.kill();
-        child.wait();
-
-        Ok(())
     }
 }
