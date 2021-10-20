@@ -227,8 +227,8 @@ fn watch_loop(
     build_path: impl AsRef<Path>,
     target_path: impl AsRef<Path>,
     command: &mut process::Command,
-) -> ! {
-    let mut child_process = command.spawn().expect("error when spawning commmand");
+) -> Result<()> {
+    let mut child_process = command.spawn().context("error when spawning command")?;
 
     loop {
         use notify::DebouncedEvent::*;
@@ -247,7 +247,7 @@ fn watch_loop(
             {
                 let _ = child_process.kill();
                 let _ = child_process.wait();
-                command.spawn().expect("error in the loop");
+                command.spawn().context("error in the loop")?;
             }
             Ok(_) => {}
             Err(err) => log::error!("watch error: {}", err),
