@@ -265,13 +265,16 @@ fn kill_process(child: &mut process::Child) {
             );
             std::thread::sleep(time::Duration::new(2, 0));
             match child.try_wait() {
-                Ok(_) => {}
+                Ok(Some(_)) => {}
+                Ok(None) => {
+                    child.wait().expect("error on waiting process");
+                }
                 Err(_) => {
-                    child.kill().expect("Error on exiting process");
+                    child.kill().expect("error on killing process");
+                    child.wait().expect("error on waiting end of process");
                 }
             }
         }
-        child.wait().expect("Error on waiting process");
     }
 
     #[cfg(windows)]
