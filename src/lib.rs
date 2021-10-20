@@ -19,10 +19,9 @@ impl Build {
         static_dir_path: impl AsRef<Path>,
         build_dir_path: impl AsRef<Path>,
     ) -> Result<()> {
-        let metadata = match cargo_metadata::MetadataCommand::new().exec() {
-            Ok(metadata) => metadata,
-            Err(_) => bail!("cannot get package's metadata"),
-        };
+        let metadata = cargo_metadata::MetadataCommand::new()
+            .exec()
+            .context("cannot get package's metadata")?;
 
         let mut build_process = process::Command::new("cargo");
         build_process
@@ -209,10 +208,9 @@ impl Watch {
             notify::Watcher::new(tx, time::Duration::from_secs(2))
                 .context("could not initialize watcher")?;
 
-        let metadata = match cargo_metadata::MetadataCommand::new().exec() {
-            Ok(metadata) => metadata,
-            Err(_) => bail!("cannot get package's metadata"),
-        };
+        let metadata = cargo_metadata::MetadataCommand::new()
+            .exec()
+            .context("cannot get package's metadata")?;
         let target_path = &metadata.target_directory;
         let build_path = &metadata.workspace_root.join(build_path);
 
