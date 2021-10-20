@@ -202,10 +202,9 @@ impl Watch {
     pub fn execute(
         &self,
         build_path: impl AsRef<Path> + std::convert::AsRef<cargo_metadata::camino::Utf8Path>,
-        mut command: impl FnMut() -> Result<process::Child>,
+        mut command: impl FnMut() -> Result<process::Child, std::io::Error>,
     ) -> Result<()> {
         let (tx, rx) = mpsc::channel();
-
         let mut watcher: RecommendedWatcher =
             notify::Watcher::new(tx, time::Duration::from_secs(2))
                 .context("Could not initialize watcher")?;
@@ -214,13 +213,12 @@ impl Watch {
             Ok(metadata) => metadata,
             Err(_) => bail!("Cannot get package's metadata"),
         };
+        let target_path = &metadata.target_directory;
+        let build_path = &metadata.workspace_root.join(build_path);
 
         watcher
             .watch(&metadata.workspace_root, RecursiveMode::Recursive)
             .context("Cannot watch this crate")?;
-
-        let target_path = &metadata.target_directory;
-        let build_path = &metadata.workspace_root.join(build_path);
 
         command()
             .context("Cannot spawn user command")?
@@ -235,7 +233,7 @@ fn watch_loop(
     rx: mpsc::Receiver<notify::DebouncedEvent>,
     build_path: impl AsRef<Path>,
     target_path: impl AsRef<Path>,
-    mut command: impl FnMut() -> Result<process::Child>,
+    mut command: impl FnMut() -> Result<process::Child, std::io::Error>,
 ) -> ! {
     loop {
         use notify::DebouncedEvent::*;
