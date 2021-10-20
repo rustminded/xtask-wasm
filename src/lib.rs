@@ -280,7 +280,7 @@ fn watch_loop(
                         .unwrap_or(false) =>
             {
                 drop(&mut child_process);
-                command.spawn().context("error in the loop")?;
+                command.spawn().map(ChildProcess)?;
             }
             Ok(_) => {}
             Err(err) => log::error!("watch error: {}", err),
