@@ -263,13 +263,13 @@ fn kill_process(child: &mut process::Child) -> Result<()> {
                 child.id().try_into().context("cannot get process id")?,
                 libc::SIGTERM,
             );
-            std::thread::sleep(time::Duration::new(2, 0));
+            std::thread::sleep(time::Duration::from_secs(2));
             match child.try_wait() {
-                Ok(Some(_)) => {}
-                Ok(None) => {
-                    child.wait().context("error on waiting process")?;
+                Ok(Some(_)) => {
+                    log::info!("end of child process");
                 }
-                Err(_) => {
+                _ => {
+                    log::warn!("terminate process was too long");
                     child.kill().context("error on killing process")?;
                     child.wait().context("error on waiting end of process")?;
                 }
