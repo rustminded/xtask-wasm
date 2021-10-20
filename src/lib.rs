@@ -202,7 +202,7 @@ impl Watch {
     pub fn execute(
         &self,
         build_path: impl AsRef<Path> + std::convert::AsRef<cargo_metadata::camino::Utf8Path>,
-        build_command: &str,
+        mut command: impl FnMut() -> Result<process::Child>,
     ) -> Result<()> {
         let (tx, rx) = mpsc::channel();
 
@@ -222,19 +222,12 @@ impl Watch {
         let target_path = &metadata.target_directory;
         let build_path = &metadata.workspace_root.join(build_path);
 
-        let build_command = build_command.split(' ').collect::<Vec<&str>>();
-        let build_process = || {
-            process::Command::new("cargo")
-                .args(build_command.clone())
-                .spawn()
-                .expect("Cannot spawn the build process")
-        };
-
-        build_process()
+        command()
+            .context("Cannot spawn user command")?
             .wait_with_output()
             .context("Error on building")?;
 
-        watch_loop(rx, build_path, target_path, build_process);
+        watch_loop(rx, build_path, target_path, command)
     }
 }
 
@@ -242,7 +235,7 @@ fn watch_loop(
     rx: mpsc::Receiver<notify::DebouncedEvent>,
     build_path: impl AsRef<Path>,
     target_path: impl AsRef<Path>,
-    mut build_process: impl FnMut() -> process::Child,
+    mut command: impl FnMut() -> Result<process::Child>,
 ) -> ! {
     loop {
         use notify::DebouncedEvent::*;
@@ -259,12 +252,17 @@ fn watch_loop(
                         .map(|x| x.starts_with('.'))
                         .unwrap_or(false) =>
             {
-                let output = build_process()
-                    .wait_with_output()
-                    .expect("Error when watching");
-
-                if !output.status.success() {
-                    log::error!("Error when building");
+                match command() {
+                    Ok(child) => {
+                        if let Ok(output) = child.wait_with_output() {
+                            if !output.status.success() {
+                                log::error!("Error in command execution");
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        log::error!("Command error: {}", err);
+                    }
                 }
             }
             Ok(_) => {}
