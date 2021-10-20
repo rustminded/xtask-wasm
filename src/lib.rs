@@ -246,7 +246,7 @@ fn watch_loop(
                         .map(|x| x.starts_with('.'))
                         .unwrap_or(false) =>
             {
-                kill_process(&mut child_process);
+                kill_process(&mut child_process)?;
                 command.spawn().context("error in the loop")?;
             }
             Ok(_) => {}
@@ -255,31 +255,35 @@ fn watch_loop(
     }
 }
 
-fn kill_process(child: &mut process::Child) {
+fn kill_process(child: &mut process::Child) -> Result<()> {
     #[cfg(unix)]
     {
         unsafe {
             libc::kill(
-                child.id().try_into().expect("cannot get process id"),
+                child.id().try_into().context("cannot get process id")?,
                 libc::SIGTERM,
             );
             std::thread::sleep(time::Duration::new(2, 0));
             match child.try_wait() {
                 Ok(Some(_)) => {}
                 Ok(None) => {
-                    child.wait().expect("error on waiting process");
+                    child.wait().context("error on waiting process")?;
                 }
                 Err(_) => {
-                    child.kill().expect("error on killing process");
-                    child.wait().expect("error on waiting end of process");
+                    child.kill().context("error on killing process")?;
+                    child.wait().context("error on waiting end of process")?;
                 }
             }
         }
+
+        Ok(())
     }
 
     #[cfg(windows)]
     {
         child.kill();
         child.wait();
+
+        Ok(())
     }
 }
