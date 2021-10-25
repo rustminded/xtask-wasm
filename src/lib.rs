@@ -229,7 +229,6 @@ fn watch_loop(
     target_path: impl AsRef<Path>,
     command: &mut process::Command,
 ) -> Result<()> {
-    let mut child_process = command.spawn().context("error when spawning command")?;
     struct ChildProcess(std::process::Child);
 
     impl Drop for ChildProcess {
@@ -256,10 +255,8 @@ fn watch_loop(
 
             #[cfg(windows)]
             {
-                child.kill();
-                child.wait();
-
-                Ok(())
+                self.0.kill();
+                self.0.wait();
             }
         }
     }
@@ -279,7 +276,6 @@ fn watch_loop(
                         .map(|x| x.starts_with('.'))
                         .unwrap_or(false) =>
             {
-                drop(&mut child_process);
                 command.spawn().map(ChildProcess)?;
             }
             Ok(_) => {}
