@@ -1,6 +1,6 @@
 use std::io::{prelude::*, BufReader};
 use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
-use std::{convert::TryInto, path::Path, sync::mpsc};
+use std::{path::Path, sync::mpsc};
 use std::{fs, process, time};
 
 use anyhow::{bail, ensure, Context, Result};
@@ -231,6 +231,8 @@ impl Drop for ChildProcess {
     fn drop(&mut self) {
         #[cfg(unix)]
         {
+            use std::convert::TryInto;
+
             unsafe {
                 libc::kill(
                     self.0.id().try_into().expect("cannot get process id"),
