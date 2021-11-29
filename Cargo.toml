@@ -15,6 +15,3 @@ notify = "4.0"
 structopt = "0.3"
 walkdir = "2.3"
 wasm-bindgen-cli-support = "0.2.68"
-
-[target.'cfg(windows)'.dependencies]
-create_process_w = { version = "0.1", package = "CreateProcessW" }

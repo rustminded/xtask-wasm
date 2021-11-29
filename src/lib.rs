@@ -189,11 +189,6 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
     Ok(())
 }
 
-#[cfg(unix)]
-type Command = std::process::Command;
-#[cfg(windows)]
-type Command = create_process_w::Command;
-
 #[derive(Debug, StructOpt)]
 pub struct Watch {}
 
@@ -201,7 +196,7 @@ impl Watch {
     pub fn execute(
         &self,
         build_path: impl AsRef<Path> + std::convert::AsRef<cargo_metadata::camino::Utf8Path>,
-        command: &mut Command,
+        command: &mut process::Command,
     ) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
@@ -222,10 +217,37 @@ impl Watch {
     }
 }
 
+fn watch_loop(
+    rx: mpsc::Receiver<notify::DebouncedEvent>,
+    build_path: impl AsRef<Path>,
+    target_path: impl AsRef<Path>,
+    command: &mut process::Command,
+) -> Result<()> {
+    loop {
+        use notify::DebouncedEvent::*;
+
+        let message = rx.recv();
+
+        match &message {
+            Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
+                if !path.starts_with(build_path.as_ref())
+                    && !path.starts_with(target_path.as_ref())
+                    && !path
+                        .file_name()
+                        .and_then(|x| x.to_str())
+                        .map(|x| x.starts_with('.'))
+                        .unwrap_or(false) =>
+            {
+                command.spawn().map(ChildProcess)?;
+            }
+            Ok(_) => {}
+            Err(err) => log::error!("watch error: {}", err),
+        }
+    }
+}
+
 #[cfg(unix)]
 struct ChildProcess(std::process::Child);
-#[cfg(windows)]
-struct ChildProcess(create_process_w::Child);
 
 impl Drop for ChildProcess {
     fn drop(&mut self) {
@@ -249,35 +271,6 @@ impl Drop for ChildProcess {
                 let _ = self.0.kill();
                 let _ = self.0.wait();
             }
-        }
-    }
-}
-
-fn watch_loop(
-    rx: mpsc::Receiver<notify::DebouncedEvent>,
-    build_path: impl AsRef<Path>,
-    target_path: impl AsRef<Path>,
-    command: &mut Command,
-) -> Result<()> {
-    loop {
-        use notify::DebouncedEvent::*;
-
-        let message = rx.recv();
-
-        match &message {
-            Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
-                if !path.starts_with(build_path.as_ref())
-                    && !path.starts_with(target_path.as_ref())
-                    && !path
-                        .file_name()
-                        .and_then(|x| x.to_str())
-                        .map(|x| x.starts_with('.'))
-                        .unwrap_or(false) =>
-            {
-                command.spawn().map(ChildProcess)?;
-            }
-            Ok(_) => {}
-            Err(err) => log::error!("watch error: {}", err),
         }
     }
 }
