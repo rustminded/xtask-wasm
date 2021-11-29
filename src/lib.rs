@@ -1,7 +1,7 @@
 use std::io::{prelude::*, BufReader};
 use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
-use std::{path::Path, sync::mpsc};
 use std::{fs, process, time};
+use std::{path::Path, sync::mpsc};
 
 use anyhow::{bail, ensure, Context, Result};
 use cargo_metadata::camino::Utf8Path;
