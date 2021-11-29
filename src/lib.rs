@@ -246,7 +246,6 @@ fn watch_loop(
     }
 }
 
-#[cfg(unix)]
 struct ChildProcess(std::process::Child);
 
 impl Drop for ChildProcess {
