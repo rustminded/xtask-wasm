@@ -1,6 +1,11 @@
+use std::io::{prelude::*, BufReader};
+use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
+use std::{convert::TryInto, path::Path, sync::mpsc};
+use std::{fs, process, time};
+
 use anyhow::{bail, ensure, Context, Result};
-use std::path::Path;
-use std::{fs, process};
+use cargo_metadata::camino::Utf8Path;
+use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use structopt::StructOpt;
 use wasm_bindgen_cli_support::Bindgen;
 
@@ -99,12 +104,6 @@ impl Build {
     }
 }
 
-use cargo_metadata::camino::Utf8Path;
-use std::io::prelude::*;
-use std::io::BufReader;
-use std::net::{IpAddr, SocketAddr};
-use std::net::{TcpListener, TcpStream};
-
 #[derive(Debug, StructOpt)]
 pub struct DevServer {
     #[structopt(long, default_value = "127.0.0.1")]
@@ -190,10 +189,10 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
     Ok(())
 }
 
-use notify::{RecommendedWatcher, RecursiveMode, Watcher};
-use std::convert::TryInto;
-use std::sync::mpsc;
-use std::time;
+#[cfg(unix)]
+type Command = std::process::Command;
+#[cfg(windows)]
+type Command = create_process_w::Command;
 
 #[derive(Debug, StructOpt)]
 pub struct Watch {}
@@ -202,7 +201,7 @@ impl Watch {
     pub fn execute(
         &self,
         build_path: impl AsRef<Path> + std::convert::AsRef<cargo_metadata::camino::Utf8Path>,
-        command: &mut process::Command,
+        command: &mut Command,
     ) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
@@ -223,44 +222,41 @@ impl Watch {
     }
 }
 
+#[cfg(unix)]
+struct ChildProcess(std::process::Child);
+#[cfg(windows)]
+struct ChildProcess(create_process_w::Child);
+
+impl Drop for ChildProcess {
+    fn drop(&mut self) {
+        #[cfg(unix)]
+        {
+            unsafe {
+                libc::kill(
+                    self.0.id().try_into().expect("cannot get process id"),
+                    libc::SIGTERM,
+                );
+            }
+
+            std::thread::sleep(time::Duration::from_secs(2));
+        }
+
+        match self.0.try_wait() {
+            Ok(Some(_)) => {}
+            _ => {
+                let _ = self.0.kill();
+                let _ = self.0.wait();
+            }
+        }
+    }
+}
+
 fn watch_loop(
     rx: mpsc::Receiver<notify::DebouncedEvent>,
     build_path: impl AsRef<Path>,
     target_path: impl AsRef<Path>,
-    command: &mut process::Command,
+    command: &mut Command,
 ) -> Result<()> {
-    struct ChildProcess(std::process::Child);
-
-    impl Drop for ChildProcess {
-        fn drop(&mut self) {
-            #[cfg(unix)]
-            {
-                unsafe {
-                    libc::kill(
-                        self.0.id().try_into().expect("cannot get process id"),
-                        libc::SIGTERM,
-                    );
-                }
-
-                std::thread::sleep(time::Duration::from_secs(2));
-
-                match self.0.try_wait() {
-                    Ok(Some(_)) => {}
-                    _ => {
-                        let _ = self.0.kill();
-                        let _ = self.0.wait();
-                    }
-                }
-            }
-
-            #[cfg(windows)]
-            {
-                self.0.kill();
-                self.0.wait();
-            }
-        }
-    }
-
     loop {
         use notify::DebouncedEvent::*;
 
