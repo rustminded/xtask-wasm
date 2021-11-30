@@ -213,65 +213,53 @@ impl Watch {
             .watch(&metadata.workspace_root, RecursiveMode::Recursive)
             .context("cannot watch this crate")?;
 
-        watch_loop(rx, build_path, target_path, command)
-    }
-}
+        loop {
+            match command.spawn() {
+                Ok(mut child) => loop {
+                    use notify::DebouncedEvent::*;
 
-fn watch_loop(
-    rx: mpsc::Receiver<notify::DebouncedEvent>,
-    build_path: impl AsRef<Path>,
-    target_path: impl AsRef<Path>,
-    command: &mut process::Command,
-) -> Result<()> {
-    loop {
-        match command.spawn() {
-            Ok(mut child) => loop {
-                use notify::DebouncedEvent::*;
+                    let message = rx.recv();
 
-                let message = rx.recv();
+                    match &message {
+                        Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path))
+                        | Ok(Rename(_, path))
+                            if !path.starts_with(build_path)
+                                && !path.starts_with(target_path)
+                                && !path
+                                    .file_name()
+                                    .and_then(|x| x.to_str())
+                                    .map(|x| x.starts_with('.'))
+                                    .unwrap_or(false) =>
+                        {
+                            #[cfg(unix)]
+                            {
+                                use std::convert::TryInto;
 
-                match &message {
-                    Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
-                        if !path.starts_with(build_path.as_ref())
-                            && !path.starts_with(target_path.as_ref())
-                            && !path
-                                .file_name()
-                                .and_then(|x| x.to_str())
-                                .map(|x| x.starts_with('.'))
-                                .unwrap_or(false) =>
-                    {
-                        clean_child_process(&mut child);
-                        break;
+                                unsafe {
+                                    libc::kill(
+                                        child.id().try_into().expect("cannot get process id"),
+                                        libc::SIGTERM,
+                                    );
+
+                                    std::thread::sleep(std::time::Duration::from_secs(1));
+                                }
+
+                                match child.try_wait() {
+                                    Ok(Some(_)) => {}
+                                    _ => {
+                                        let _ = child.kill();
+                                        let _ = child.wait();
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                        Ok(_) => {}
+                        Err(err) => log::error!("watch error: {}", err),
                     }
-                    Ok(_) => {}
-                    Err(err) => log::error!("watch error: {}", err),
-                }
-            },
-            Err(err) => bail!("cannot spawn command: {}", err),
-        }
-    }
-}
-
-fn clean_child_process(child: &mut process::Child) {
-    #[cfg(unix)]
-    {
-        use std::convert::TryInto;
-
-        unsafe {
-            libc::kill(
-                child.id().try_into().expect("cannot get process id"),
-                libc::SIGTERM,
-            );
-        }
-
-        std::thread::sleep(std::time::Duration::from_secs(2));
-    }
-
-    match child.try_wait() {
-        Ok(Some(_)) => {}
-        _ => {
-            let _ = child.kill();
-            let _ = child.wait();
+                },
+                Err(err) => bail!("cannot spawn command: {}", err),
+            }
         }
     }
 }
