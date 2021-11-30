@@ -243,22 +243,20 @@ impl Watch {
                             );
                         }
 
-                        loop {
-                            if now.elapsed().as_secs() != 2 {
-                                match child.try_wait() {
-                                    Ok(Some(_)) => {
-                                        break;
-                                    }
-                                    _ => {
-                                        std::thread::sleep(std::time::Duration::from_millis(200));
-                                        continue;
-                                    }
-                                }
+                        while now.elapsed().as_secs() < 2 {
+                            std::thread::sleep(std::time::Duration::from_millis(200));
+                            if let Ok(Some(_)) = child.try_wait() {
+                                break;
                             } else {
-                                let _ = child.kill();
-                                let _ = child.wait();
+                                continue;
                             }
                         }
+
+                        if now.elapsed().as_secs() == 2 {
+                            let _ = child.kill();
+                        }
+
+                        let _ = child.wait();
                     }
 
                     #[cfg(windows)]
