@@ -251,15 +251,8 @@ impl Watch {
                                 continue;
                             }
                         }
-
-                        if now.elapsed().as_secs() == 2 {
-                            let _ = child.kill();
-                        }
-
-                        let _ = child.wait();
                     }
 
-                    #[cfg(windows)]
                     match child.try_wait() {
                         Ok(Some(_)) => {}
                         _ => {
