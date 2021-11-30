@@ -234,16 +234,34 @@ impl Watch {
                     {
                         use std::convert::TryInto;
 
+                        let now = std::time::Instant::now();
+
                         unsafe {
                             libc::kill(
                                 child.id().try_into().expect("cannot get process id"),
                                 libc::SIGTERM,
                             );
+                        }
 
-                            std::thread::sleep(std::time::Duration::from_secs(1));
+                        loop {
+                            if now.elapsed().as_secs() != 2 {
+                                match child.try_wait() {
+                                    Ok(Some(_)) => {
+                                        break;
+                                    }
+                                    _ => {
+                                        std::thread::sleep(std::time::Duration::from_millis(200));
+                                        continue;
+                                    }
+                                }
+                            } else {
+                                let _ = child.kill();
+                                let _ = child.wait();
+                            }
                         }
                     }
 
+                    #[cfg(windows)]
                     match child.try_wait() {
                         Ok(Some(_)) => {}
                         _ => {
