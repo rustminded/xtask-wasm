@@ -209,8 +209,6 @@ impl Watch {
         let target_path = &metadata.target_directory;
         let build_path = &metadata.workspace_root.join(build_path);
 
-        println!("Initializing Watcher");
-
         watcher
             .watch(&metadata.workspace_root, RecursiveMode::Recursive)
             .context("cannot watch this crate")?;
