@@ -1,6 +1,6 @@
 use std::io::{prelude::*, BufReader};
 use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
-use std::{fs, process, time};
+use std::{fs, process};
 use std::{path::Path, sync::mpsc};
 
 use anyhow::{bail, ensure, Context, Result};
@@ -200,7 +200,7 @@ impl Watch {
     ) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
-            notify::Watcher::new(tx, time::Duration::from_secs(2))
+            notify::Watcher::new(tx, std::time::Duration::from_secs(2))
                 .context("could not initialize watcher")?;
 
         let metadata = cargo_metadata::MetadataCommand::new()
@@ -213,10 +213,7 @@ impl Watch {
             .watch(&metadata.workspace_root, RecursiveMode::Recursive)
             .context("cannot watch this crate")?;
 
-        match command.spawn() {
-            Ok(_child) => watch_loop(rx, build_path, target_path, command),
-            Err(err) => bail!("cannot spawn command: {}", err),
-        }
+        watch_loop(rx, build_path, target_path, command)
     }
 }
 
@@ -227,24 +224,54 @@ fn watch_loop(
     command: &mut process::Command,
 ) -> Result<()> {
     loop {
-        use notify::DebouncedEvent::*;
+        match command.spawn() {
+            Ok(mut child) => loop {
+                use notify::DebouncedEvent::*;
 
-        let message = rx.recv();
+                let message = rx.recv();
 
-        match &message {
-            Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
-                if !path.starts_with(build_path.as_ref())
-                    && !path.starts_with(target_path.as_ref())
-                    && !path
-                        .file_name()
-                        .and_then(|x| x.to_str())
-                        .map(|x| x.starts_with('.'))
-                        .unwrap_or(false) =>
-            {
-                command.spawn().context("cannot spawn command")?;
-            }
-            Ok(_) => {}
-            Err(err) => log::error!("watch error: {}", err),
+                match &message {
+                    Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
+                        if !path.starts_with(build_path.as_ref())
+                            && !path.starts_with(target_path.as_ref())
+                            && !path
+                                .file_name()
+                                .and_then(|x| x.to_str())
+                                .map(|x| x.starts_with('.'))
+                                .unwrap_or(false) =>
+                    {
+                        clean_child_process(&mut child);
+                        break;
+                    }
+                    Ok(_) => {}
+                    Err(err) => log::error!("watch error: {}", err),
+                }
+            },
+            Err(err) => bail!("cannot spawn command: {}", err),
+        }
+    }
+}
+
+fn clean_child_process(child: &mut process::Child) {
+    #[cfg(unix)]
+    {
+        use std::convert::TryInto;
+
+        unsafe {
+            libc::kill(
+                child.id().try_into().expect("cannot get process id"),
+                libc::SIGTERM,
+            );
+        }
+
+        std::thread::sleep(std::time::Duration::from_secs(2));
+    }
+
+    match child.try_wait() {
+        Ok(Some(_)) => {}
+        _ => {
+            let _ = child.kill();
+            let _ = child.wait();
         }
     }
 }
