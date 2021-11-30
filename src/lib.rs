@@ -209,11 +209,16 @@ impl Watch {
         let target_path = &metadata.target_directory;
         let build_path = &metadata.workspace_root.join(build_path);
 
+        println!("Initializing Watcher");
+
         watcher
             .watch(&metadata.workspace_root, RecursiveMode::Recursive)
             .context("cannot watch this crate")?;
 
-        watch_loop(rx, build_path, target_path, command)
+        match command.spawn() {
+            Ok(_child) => watch_loop(rx, build_path, target_path, command),
+            Err(err) => bail!("cannot spawn command: {}", err),
+        }
     }
 }
 
@@ -238,38 +243,10 @@ fn watch_loop(
                         .map(|x| x.starts_with('.'))
                         .unwrap_or(false) =>
             {
-                command.spawn().map(ChildProcess)?;
+                command.spawn().context("cannot spawn command")?;
             }
             Ok(_) => {}
             Err(err) => log::error!("watch error: {}", err),
-        }
-    }
-}
-
-struct ChildProcess(std::process::Child);
-
-impl Drop for ChildProcess {
-    fn drop(&mut self) {
-        #[cfg(unix)]
-        {
-            use std::convert::TryInto;
-
-            unsafe {
-                libc::kill(
-                    self.0.id().try_into().expect("cannot get process id"),
-                    libc::SIGTERM,
-                );
-            }
-
-            std::thread::sleep(time::Duration::from_secs(2));
-        }
-
-        match self.0.try_wait() {
-            Ok(Some(_)) => {}
-            _ => {
-                let _ = self.0.kill();
-                let _ = self.0.wait();
-            }
         }
     }
 }
