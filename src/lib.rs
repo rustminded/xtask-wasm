@@ -247,8 +247,6 @@ impl Watch {
                             std::thread::sleep(std::time::Duration::from_millis(200));
                             if let Ok(Some(_)) = child.try_wait() {
                                 break;
-                            } else {
-                                continue;
                             }
                         }
                     }
