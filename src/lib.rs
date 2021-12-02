@@ -128,6 +128,30 @@ impl DevServer {
 
         Ok(())
     }
+
+    pub fn watch(
+        self,
+        build_dir_path: impl AsRef<Path>,
+        command: &mut process::Command,
+    ) -> Result<()> {
+        let build_dir_pathbuf = build_dir_path.as_ref().to_owned();
+
+        let handle = std::thread::spawn(move || {
+            self.serve(build_dir_pathbuf)
+                .expect("cannot start dev server");
+        });
+
+        println!("Starting to watch");
+        Watch::new()
+            .execute(build_dir_path, command)
+            .context("cannot start to watch")?;
+
+        println!("Making chocapic");
+
+        handle.join().expect("problem waiting end of the watch");
+
+        Ok(())
+    }
 }
 
 fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) -> Result<()> {
@@ -193,9 +217,13 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
 pub struct Watch {}
 
 impl Watch {
+    pub fn new() -> Self {
+        Self {}
+    }
+
     pub fn execute(
         &self,
-        build_path: impl AsRef<Path> + std::convert::AsRef<cargo_metadata::camino::Utf8Path>,
+        build_path: impl AsRef<Path>,
         command: &mut process::Command,
     ) -> Result<()> {
         let (tx, rx) = mpsc::channel();
@@ -207,7 +235,10 @@ impl Watch {
             .exec()
             .context("cannot get package's metadata")?;
         let target_path = &metadata.target_directory;
-        let build_path = &metadata.workspace_root.join(build_path);
+        let build_path = &metadata.workspace_root.join(
+            Utf8Path::from_path(build_path.as_ref())
+                .expect("build directory path is not UTF-8 valid"),
+        );
 
         watcher
             .watch(&metadata.workspace_root, RecursiveMode::Recursive)
