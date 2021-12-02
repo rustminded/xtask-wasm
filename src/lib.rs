@@ -141,12 +141,10 @@ impl DevServer {
                 .expect("cannot start dev server");
         });
 
-        println!("Starting to watch");
-        Watch::new()
+        let watch = Watch {};
+        watch
             .execute(build_dir_path, command)
             .context("cannot start to watch")?;
-
-        println!("Making chocapic");
 
         handle.join().expect("problem waiting end of the watch");
 
@@ -217,10 +215,6 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
 pub struct Watch {}
 
 impl Watch {
-    pub fn new() -> Self {
-        Self {}
-    }
-
     pub fn execute(
         &self,
         build_path: impl AsRef<Path>,
