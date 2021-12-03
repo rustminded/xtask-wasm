@@ -131,15 +131,16 @@ impl DevServer {
     pub fn watch(self, build_dir_path: impl AsRef<Path>, command: process::Command) -> Result<()> {
         let build_dir_pathbuf = build_dir_path.as_ref().to_owned();
 
-        let handle = std::thread::spawn(move || {
-            self.serve(build_dir_pathbuf)
-                .expect("cannot start dev server");
+        let handle = std::thread::spawn(move || match self.serve(build_dir_pathbuf) {
+            Ok(()) => {}
+            Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
         });
 
         let watch = Watch {};
-        watch
-            .execute(build_dir_path, command)
-            .context("cannot start to watch")?;
+        match watch.execute(build_dir_path, command) {
+            Ok(()) => {}
+            Err(err) => log::error!("an error occurred when starting to watch: {}", err),
+        }
 
         handle.join().expect("problem waiting end of the watch");
 
