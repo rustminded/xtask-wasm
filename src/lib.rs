@@ -228,11 +228,8 @@ impl Watch {
         let metadata = cargo_metadata::MetadataCommand::new()
             .exec()
             .context("cannot get package's metadata")?;
-        let target_path = &metadata.target_directory;
-        let build_path = &metadata.workspace_root.join(
-            Utf8Path::from_path(build_path.as_ref())
-                .expect("build directory path is not UTF-8 valid"),
-        );
+        let target_path = metadata.target_directory.as_std_path();
+        let build_path = &metadata.workspace_root.as_std_path().join(build_path);
 
         watcher
             .watch(&metadata.workspace_root, RecursiveMode::Recursive)
