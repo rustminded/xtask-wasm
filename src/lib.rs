@@ -4,7 +4,6 @@ use std::{fs, process};
 use std::{path::Path, sync::mpsc};
 
 use anyhow::{bail, ensure, Context, Result};
-use cargo_metadata::camino::Utf8Path;
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use structopt::StructOpt;
 use wasm_bindgen_cli_support::Bindgen;
@@ -179,14 +178,17 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
     let stream = reader.get_mut();
 
     if full_path.is_file() {
-        let content_type = match Utf8Path::from_path(&full_path)
-            .context("Request path contains non-utf8 characters")?
+        let full_path_extension = full_path
             .extension()
-        {
-            Some("html") => "content-type: text/html;charset=utf-8",
-            Some("css") => "content-type: text/html;charset=utf-8",
-            Some("js") => "content-type: application/javascript",
-            Some("wasm") => "content-type: application/wasm",
+            .unwrap_or_default()
+            .to_str()
+            .unwrap_or_default();
+
+        let content_type = match full_path_extension {
+            "html" => "content-type: text/html;charset=utf-8",
+            "css" => "content-type: text/css;charset=utf-8",
+            "js" => "content-type: application/javascript",
+            "wasm" => "content-type: application/wasm",
             _ => "content-type: application/octet-stream",
         };
 
