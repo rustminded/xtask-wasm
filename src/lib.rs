@@ -128,11 +128,7 @@ impl DevServer {
         Ok(())
     }
 
-    pub fn watch(
-        self,
-        build_dir_path: impl AsRef<Path>,
-        command: &mut process::Command,
-    ) -> Result<()> {
+    pub fn watch(self, build_dir_path: impl AsRef<Path>, command: process::Command) -> Result<()> {
         let build_dir_pathbuf = build_dir_path.as_ref().to_owned();
 
         let handle = std::thread::spawn(move || {
@@ -218,7 +214,7 @@ impl Watch {
     pub fn execute(
         &self,
         build_path: impl AsRef<Path>,
-        command: &mut process::Command,
+        mut command: process::Command,
     ) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
