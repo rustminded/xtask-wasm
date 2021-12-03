@@ -178,17 +178,15 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
     let stream = reader.get_mut();
 
     if full_path.is_file() {
-        let full_path_extension = full_path
-            .extension()
-            .unwrap_or_default()
-            .to_str()
-            .unwrap_or_default();
+        let full_path_extension = cargo_metadata::camino::Utf8Path::from_path(&full_path)
+            .context("request path contains non-utf8 characters")?
+            .extension();
 
         let content_type = match full_path_extension {
-            "html" => "content-type: text/html;charset=utf-8",
-            "css" => "content-type: text/css;charset=utf-8",
-            "js" => "content-type: application/javascript",
-            "wasm" => "content-type: application/wasm",
+            Some("html") => "content-type: text/html;charset=utf-8",
+            Some("css") => "content-type: text/css;charset=utf-8",
+            Some("js") => "content-type: application/javascript",
+            Some("wasm") => "content-type: application/wasm",
             _ => "content-type: application/octet-stream",
         };
 
