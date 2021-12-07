@@ -223,7 +223,7 @@ impl Watch {
             .exec()
             .context("cannot get package's metadata")?;
         let target_path = metadata.target_directory.as_std_path();
-        let build_path = &metadata.workspace_root.as_std_path().join(build_path);
+        let build_path = &metadata.workspace_root.as_std_path().join(watch_path);
 
         watcher
             .watch(&metadata.workspace_root, RecursiveMode::Recursive)
