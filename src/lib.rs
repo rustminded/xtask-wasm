@@ -4,7 +4,6 @@ use std::{fs, process};
 use std::{path::Path, sync::mpsc};
 
 use anyhow::{bail, ensure, Context, Result};
-use cargo_metadata::camino::Utf8Path;
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use structopt::StructOpt;
 use wasm_bindgen_cli_support::Bindgen;
@@ -13,8 +12,6 @@ use wasm_bindgen_cli_support::Bindgen;
 pub struct Build {
     #[structopt(long)]
     release: bool,
-    #[structopt(short, long)]
-    quiet: bool,
 }
 
 impl Build {
@@ -24,10 +21,12 @@ impl Build {
         static_dir_path: impl AsRef<Path>,
         build_dir_path: impl AsRef<Path>,
     ) -> Result<()> {
+        log::trace!("Build: get package's metadata");
         let metadata = cargo_metadata::MetadataCommand::new()
             .exec()
             .context("cannot get package's metadata")?;
 
+        log::trace!("Build: Initialize build process");
         let mut build_process = process::Command::new("cargo");
         build_process
             .current_dir(&metadata.workspace_root)
@@ -37,10 +36,6 @@ impl Build {
             build_process.arg("--release");
         }
 
-        if self.quiet {
-            build_process.arg("--quiet");
-        }
-
         build_process.args([
             "--target",
             "wasm32-unknown-unknown",
@@ -48,6 +43,19 @@ impl Build {
             crate_name,
         ]);
 
+        let input_path = metadata
+            .target_directory
+            .join("wasm32-unknown-unknown")
+            .join(if self.release { "release" } else { "debug" })
+            .join(&crate_name.replace("-", "_"))
+            .with_extension("wasm");
+
+        if input_path.exists() {
+            log::trace!("Build: Removing existing target directory");
+            fs::remove_file(&input_path).context("cannot remove existing target")?;
+        }
+
+        log::trace!("Build: Spawning build process");
         ensure!(
             build_process
                 .status()
@@ -56,17 +64,7 @@ impl Build {
             "cargo command failed"
         );
 
-        if !self.quiet {
-            log::info!("Generating build...")
-        }
-
-        let input_path = metadata
-            .target_directory
-            .join("wasm32-unknown-unknown")
-            .join("debug")
-            .join(&crate_name.replace("-", "_"))
-            .with_extension("wasm");
-
+        log::trace!("Build: Generating wasm output");
         let mut output = Bindgen::new()
             .input_path(input_path)
             .out_name("app")
@@ -85,11 +83,14 @@ impl Build {
         let wasm_bin_path = build_dir_path.join("app_bg.wasm");
 
         if build_dir_path.exists() {
+            log::trace!("Removing already existing build directory");
             fs::remove_dir_all(&build_dir_path)?;
         }
 
-        let _ = fs::create_dir(&build_dir_path);
+        log::trace!("Build: Creating new build directory");
+        fs::create_dir(&build_dir_path).context("cannot create build directory")?;
 
+        log::trace!("Build: Writing files into build directory");
         fs::write(wasm_js_path, wasm_js).with_context(|| "cannot write js file")?;
         fs::write(wasm_bin_path, wasm_bin).with_context(|| "cannot write WASM file")?;
 
@@ -97,6 +98,7 @@ impl Build {
         copy_options.overwrite = true;
         copy_options.content_only = true;
 
+        log::trace!("Build: Copying static directory into build directory");
         fs_extra::dir::copy(static_dir_path, build_dir_path, &copy_options)
             .context("cannot copy static directory")?;
 
@@ -124,6 +126,28 @@ impl DevServer {
                 let _ = stream.write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes());
                 log::error!("an error occurred: {}", e);
             });
+        }
+
+        Ok(())
+    }
+
+    pub fn watch(self, build_dir_path: impl AsRef<Path>, command: process::Command) -> Result<()> {
+        let build_dir_pathbuf = build_dir_path.as_ref().to_owned();
+
+        let handle = std::thread::spawn(move || match self.serve(build_dir_pathbuf) {
+            Ok(()) => {}
+            Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
+        });
+
+        let watch = Watch {};
+        match watch.execute(build_dir_path, command) {
+            Ok(()) => {}
+            Err(err) => log::error!("an error occurred when starting to watch: {}", err),
+        }
+
+        match handle.join() {
+            Ok(()) => {}
+            Err(err) => log::error!("problem waiting end of the watch: {:?}", err),
         }
 
         Ok(())
@@ -157,21 +181,22 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
     let stream = reader.get_mut();
 
     if full_path.is_file() {
-        let content_type = match Utf8Path::from_path(&full_path)
-            .context("Request path contains non-utf8 characters")?
-            .extension()
-        {
-            Some("html") => "content-type: text/html;charset=utf-8",
-            Some("css") => "content-type: text/html;charset=utf-8",
-            Some("js") => "content-type: application/javascript",
-            Some("wasm") => "content-type: application/wasm",
-            _ => "content-type: application/octet-stream",
+        let full_path_extension = cargo_metadata::camino::Utf8Path::from_path(&full_path)
+            .context("request path contains non-utf8 characters")?
+            .extension();
+
+        let content_type = match full_path_extension {
+            Some("html") => "text/html;charset=utf-8",
+            Some("css") => "text/css;charset=utf-8",
+            Some("js") => "application/javascript",
+            Some("wasm") => "application/wasm",
+            _ => "application/octet-stream",
         };
 
         stream
             .write(
                 format!(
-                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n{}\r\n",
+                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nContent-Type: {}\r\n\r\n",
                     full_path.metadata()?.len(),
                     content_type,
                 )
@@ -195,8 +220,8 @@ pub struct Watch {}
 impl Watch {
     pub fn execute(
         &self,
-        build_path: impl AsRef<Path> + std::convert::AsRef<cargo_metadata::camino::Utf8Path>,
-        command: &mut process::Command,
+        watch_path: impl AsRef<Path>,
+        mut command: process::Command,
     ) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
@@ -206,8 +231,8 @@ impl Watch {
         let metadata = cargo_metadata::MetadataCommand::new()
             .exec()
             .context("cannot get package's metadata")?;
-        let target_path = &metadata.target_directory;
-        let build_path = &metadata.workspace_root.join(build_path);
+        let target_path = metadata.target_directory.as_std_path();
+        let build_path = &metadata.workspace_root.as_std_path().join(watch_path);
 
         watcher
             .watch(&metadata.workspace_root, RecursiveMode::Recursive)
