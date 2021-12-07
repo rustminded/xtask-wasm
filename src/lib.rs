@@ -49,7 +49,7 @@ impl Build {
             .with_extension("wasm");
 
         if input_path.exists() {
-            fs::remove_file(&input_path).context("error when removing existing input path")?;
+            fs::remove_file(&input_path).context("cannot remove existing target")?;
         }
 
         ensure!(
@@ -136,7 +136,10 @@ impl DevServer {
             Err(err) => log::error!("an error occurred when starting to watch: {}", err),
         }
 
-        handle.join().expect("problem waiting end of the watch");
+        match handle.join() {
+            Ok(()) => {},
+            Err(err) => log::error!("problem waiting end of the watch: {:?}", err),
+        }
 
         Ok(())
     }
@@ -208,7 +211,7 @@ pub struct Watch {}
 impl Watch {
     pub fn execute(
         &self,
-        build_path: impl AsRef<Path>,
+        watch_path: impl AsRef<Path>,
         mut command: process::Command,
     ) -> Result<()> {
         let (tx, rx) = mpsc::channel();
