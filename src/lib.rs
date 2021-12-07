@@ -257,8 +257,6 @@ impl Watch {
                 {
                     #[cfg(unix)]
                     {
-                        use std::convert::TryInto;
-
                         let now = std::time::Instant::now();
 
                         unsafe {
