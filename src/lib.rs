@@ -21,10 +21,12 @@ impl Build {
         static_dir_path: impl AsRef<Path>,
         build_dir_path: impl AsRef<Path>,
     ) -> Result<()> {
+        log::trace!("Build: get package's metadata");
         let metadata = cargo_metadata::MetadataCommand::new()
             .exec()
             .context("cannot get package's metadata")?;
 
+        log::trace!("Build: Initialize build process");
         let mut build_process = process::Command::new("cargo");
         build_process
             .current_dir(&metadata.workspace_root)
@@ -49,9 +51,11 @@ impl Build {
             .with_extension("wasm");
 
         if input_path.exists() {
+            log::trace!("Build: Removing existing target directory");
             fs::remove_file(&input_path).context("cannot remove existing target")?;
         }
 
+        log::trace!("Build: Spawning build process");
         ensure!(
             build_process
                 .status()
@@ -60,6 +64,7 @@ impl Build {
             "cargo command failed"
         );
 
+        log::trace!("Build: Generating wasm output");
         let mut output = Bindgen::new()
             .input_path(input_path)
             .out_name("app")
@@ -78,11 +83,14 @@ impl Build {
         let wasm_bin_path = build_dir_path.join("app_bg.wasm");
 
         if build_dir_path.exists() {
+            log::trace!("Removing already existing build directory");
             fs::remove_dir_all(&build_dir_path)?;
         }
 
+        log::trace!("Build: Creating new build directory");
         fs::create_dir(&build_dir_path).context("cannot create build directory")?;
 
+        log::trace!("Build: Writing files into build directory");
         fs::write(wasm_js_path, wasm_js).with_context(|| "cannot write js file")?;
         fs::write(wasm_bin_path, wasm_bin).with_context(|| "cannot write WASM file")?;
 
@@ -90,6 +98,7 @@ impl Build {
         copy_options.overwrite = true;
         copy_options.content_only = true;
 
+        log::trace!("Build: Copying static directory into build directory");
         fs_extra::dir::copy(static_dir_path, build_dir_path, &copy_options)
             .context("cannot copy static directory")?;
 
@@ -137,7 +146,7 @@ impl DevServer {
         }
 
         match handle.join() {
-            Ok(()) => {},
+            Ok(()) => {}
             Err(err) => log::error!("problem waiting end of the watch: {:?}", err),
         }
 
