@@ -12,8 +12,6 @@ use wasm_bindgen_cli_support::Bindgen;
 pub struct Build {
     #[structopt(long)]
     release: bool,
-    #[structopt(short, long)]
-    quiet: bool,
 }
 
 impl Build {
@@ -36,10 +34,6 @@ impl Build {
             build_process.arg("--release");
         }
 
-        if self.quiet {
-            build_process.arg("--quiet");
-        }
-
         build_process.args([
             "--target",
             "wasm32-unknown-unknown",
@@ -55,14 +49,10 @@ impl Build {
             "cargo command failed"
         );
 
-        if !self.quiet {
-            log::info!("Generating build...")
-        }
-
         let input_path = metadata
             .target_directory
             .join("wasm32-unknown-unknown")
-            .join("debug")
+            .join(if self.release { "debug" } else { "release" })
             .join(&crate_name.replace("-", "_"))
             .with_extension("wasm");
 
