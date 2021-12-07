@@ -41,6 +41,17 @@ impl Build {
             crate_name,
         ]);
 
+        let input_path = metadata
+            .target_directory
+            .join("wasm32-unknown-unknown")
+            .join(if self.release { "release" } else { "debug" })
+            .join(&crate_name.replace("-", "_"))
+            .with_extension("wasm");
+
+        if input_path.exists() {
+            fs::remove_file(&input_path).context("error when removing existing input path")?;
+        }
+
         ensure!(
             build_process
                 .status()
@@ -48,13 +59,6 @@ impl Build {
                 .success(),
             "cargo command failed"
         );
-
-        let input_path = metadata
-            .target_directory
-            .join("wasm32-unknown-unknown")
-            .join(if self.release { "debug" } else { "release" })
-            .join(&crate_name.replace("-", "_"))
-            .with_extension("wasm");
 
         let mut output = Bindgen::new()
             .input_path(input_path)
@@ -77,7 +81,7 @@ impl Build {
             fs::remove_dir_all(&build_dir_path)?;
         }
 
-        let _ = fs::create_dir(&build_dir_path);
+        fs::create_dir(&build_dir_path).context("cannot create build directory")?;
 
         fs::write(wasm_js_path, wasm_js).with_context(|| "cannot write js file")?;
         fs::write(wasm_bin_path, wasm_bin).with_context(|| "cannot write WASM file")?;
@@ -170,17 +174,17 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
             .extension();
 
         let content_type = match full_path_extension {
-            Some("html") => "content-type: text/html;charset=utf-8",
-            Some("css") => "content-type: text/css;charset=utf-8",
-            Some("js") => "content-type: application/javascript",
-            Some("wasm") => "content-type: application/wasm",
-            _ => "content-type: application/octet-stream",
+            Some("html") => "text/html;charset=utf-8",
+            Some("css") => "text/css;charset=utf-8",
+            Some("js") => "application/javascript",
+            Some("wasm") => "application/wasm",
+            _ => "application/octet-stream",
         };
 
         stream
             .write(
                 format!(
-                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n{}\r\n",
+                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nContent-Type: {}\r\n\r\n",
                     full_path.metadata()?.len(),
                     content_type,
                 )
