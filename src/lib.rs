@@ -1,7 +1,8 @@
 use std::io::{prelude::*, BufReader};
 use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
+use std::path::{Path, PathBuf};
+use std::sync::mpsc;
 use std::{fs, process};
-use std::{path::Path, sync::mpsc};
 
 use anyhow::{bail, ensure, Context, Result};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
@@ -131,7 +132,12 @@ impl DevServer {
         Ok(())
     }
 
-    pub fn watch(self, build_dir_path: impl AsRef<Path>, command: process::Command) -> Result<()> {
+    pub fn watch(
+        self,
+        build_dir_path: impl AsRef<Path>,
+        command: process::Command,
+        watch: Watch,
+    ) -> Result<()> {
         let build_dir_pathbuf = build_dir_path.as_ref().to_owned();
 
         let handle = std::thread::spawn(move || match self.serve(build_dir_pathbuf) {
@@ -139,8 +145,7 @@ impl DevServer {
             Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
         });
 
-        let watch = Watch {};
-        match watch.execute(build_dir_path, command) {
+        match watch.execute(command) {
             Ok(()) => {}
             Err(err) => log::error!("an error occurred when starting to watch: {}", err),
         }
@@ -215,14 +220,13 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
 }
 
 #[derive(Debug, StructOpt)]
-pub struct Watch {}
+pub struct Watch {
+    #[structopt(long, short = "w")]
+    watch_paths: Vec<PathBuf>,
+}
 
 impl Watch {
-    pub fn execute(
-        &self,
-        watch_path: impl AsRef<Path>,
-        mut command: process::Command,
-    ) -> Result<()> {
+    pub fn execute(&self, mut command: process::Command) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
             notify::Watcher::new(tx, std::time::Duration::from_secs(2))
@@ -232,11 +236,17 @@ impl Watch {
             .exec()
             .context("cannot get package's metadata")?;
         let target_path = metadata.target_directory.as_std_path();
-        let build_path = &metadata.workspace_root.as_std_path().join(watch_path);
 
         watcher
             .watch(&metadata.workspace_root, RecursiveMode::Recursive)
             .context("cannot watch this crate")?;
+
+        for path in &self.watch_paths {
+            match watcher.watch(path, RecursiveMode::Recursive) {
+                Ok(()) => {}
+                Err(err) => log::error!("cannot watch \"{:?}\": {}", path, err),
+            }
+        }
 
         let mut child = command.spawn().context("cannot spawn command")?;
 
@@ -247,8 +257,7 @@ impl Watch {
 
             match &message {
                 Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
-                    if !path.starts_with(build_path)
-                        && !path.starts_with(target_path)
+                    if !path.starts_with(target_path)
                         && !path
                             .file_name()
                             .and_then(|x| x.to_str())
