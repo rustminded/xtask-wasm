@@ -145,7 +145,7 @@ impl DevServer {
             Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
         });
 
-        match watch.execute(command) {
+        match watch.execute(command, build_dir_path) {
             Ok(()) => {}
             Err(err) => log::error!("an error occurred when starting to watch: {}", err),
         }
@@ -226,7 +226,19 @@ pub struct Watch {
 }
 
 impl Watch {
-    pub fn execute(&self, mut command: process::Command) -> Result<()> {
+    pub fn new(watch_paths: Vec<impl AsRef<Path>>) -> Self {
+        Self {
+            watch_paths: watch_paths
+                .iter()
+                .map(|path| path.as_ref().to_owned())
+                .collect(),
+        }
+    }
+    pub fn execute(
+        &self,
+        mut command: process::Command,
+        build_dir_path: impl AsRef<Path>,
+    ) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
             notify::Watcher::new(tx, std::time::Duration::from_secs(2))
@@ -236,6 +248,7 @@ impl Watch {
             .exec()
             .context("cannot get package's metadata")?;
         let target_path = metadata.target_directory.as_std_path();
+        let build_path = &metadata.workspace_root.as_std_path().join(build_dir_path);
 
         watcher
             .watch(&metadata.workspace_root, RecursiveMode::Recursive)
@@ -257,7 +270,8 @@ impl Watch {
 
             match &message {
                 Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
-                    if !path.starts_with(target_path)
+                    if !path.starts_with(build_path)
+                        && !path.starts_with(target_path)
                         && !path
                             .file_name()
                             .and_then(|x| x.to_str())
