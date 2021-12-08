@@ -18,15 +18,15 @@ enum Command {
 
 fn main() -> Result<()> {
     env_logger::builder()
-        .filter(Some("xtask"), log::LevelFilter::Trace)
+        .filter(Some("xtask_wasm"), log::LevelFilter::Trace)
         .init();
 
     let mut build_command = process::Command::new("cargo");
-    build_command.args(["run", "--example", "xtask", "--", "build"]);
+    build_command.args(["xtask", "build"]);
 
-    let crate_name = "frontend";
-    let static_dir = "examples/frontend/static";
-    let build_dir = "examples/frontend/build";
+    let crate_name = "demo-webapp";
+    let static_dir = "demo-webapp/static";
+    let build_dir = "demo-webapp/build";
 
     let opt = Opt::from_args();
 
