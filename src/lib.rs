@@ -145,7 +145,7 @@ impl DevServer {
             Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
         });
 
-        match watch.execute(command, build_dir_path) {
+        match watch.execute(command) {
             Ok(()) => {}
             Err(err) => log::error!("an error occurred when starting to watch: {}", err),
         }
@@ -221,24 +221,53 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
 
 #[derive(Debug, StructOpt)]
 pub struct Watch {
-    #[structopt(long, short = "w")]
+    #[structopt(long = "watch", short = "w")]
     watch_paths: Vec<PathBuf>,
+    #[structopt(long = "ignore", short = "i")]
+    exclusion_paths: Vec<PathBuf>,
 }
 
 impl Watch {
-    pub fn new(watch_paths: Vec<impl AsRef<Path>>) -> Self {
+    pub fn new() -> Self {
         Self {
-            watch_paths: watch_paths
-                .iter()
-                .map(|path| path.as_ref().to_owned())
-                .collect(),
+            watch_paths: Vec::new(),
+            exclusion_paths: Vec::new(),
         }
     }
-    pub fn execute(
-        &self,
-        mut command: process::Command,
-        build_dir_path: impl AsRef<Path>,
-    ) -> Result<()> {
+
+    pub fn add_watch_path(&mut self, path: impl AsRef<Path>) -> &mut Self {
+        self.watch_paths.push(path.as_ref().to_owned());
+
+        self
+    }
+
+    pub fn add_watch_paths(&mut self, paths: &[impl AsRef<Path>]) -> &mut Self {
+        for path in paths {
+            self.add_watch_path(path);
+        }
+
+        self
+    }
+
+    pub fn add_exclusion_path(&mut self, path: impl AsRef<Path>) -> &mut Self {
+        self.exclusion_paths.push(path.as_ref().to_owned());
+
+        self
+    }
+
+    pub fn add_exclusion_paths(&mut self, paths: &[impl AsRef<Path>]) -> &mut Self {
+        for path in paths {
+            self.add_exclusion_path(path);
+        }
+
+        self
+    }
+
+    pub fn check_exclusion(&self, path: &PathBuf) -> bool {
+        self.exclusion_paths.contains(path)
+    }
+
+    pub fn execute(&self, mut command: process::Command) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
             notify::Watcher::new(tx, std::time::Duration::from_secs(2))
@@ -248,7 +277,6 @@ impl Watch {
             .exec()
             .context("cannot get package's metadata")?;
         let target_path = metadata.target_directory.as_std_path();
-        let build_path = &metadata.workspace_root.as_std_path().join(build_dir_path);
 
         watcher
             .watch(&metadata.workspace_root, RecursiveMode::Recursive)
@@ -257,7 +285,7 @@ impl Watch {
         for path in &self.watch_paths {
             match watcher.watch(path, RecursiveMode::Recursive) {
                 Ok(()) => {}
-                Err(err) => log::error!("cannot watch \"{:?}\": {}", path, err),
+                Err(err) => log::error!("cannot watch {}: {}", path.display(), err),
             }
         }
 
@@ -270,7 +298,7 @@ impl Watch {
 
             match &message {
                 Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
-                    if !path.starts_with(build_path)
+                    if !self.check_exclusion(path)
                         && !path.starts_with(target_path)
                         && !path
                             .file_name()
