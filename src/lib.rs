@@ -263,8 +263,8 @@ impl Watch {
         self
     }
 
-    pub fn check_exclusion(&self, path: &PathBuf) -> bool {
-        self.exclusion_paths.contains(path)
+    pub fn check_exclusion(&self, path: &Path) -> bool {
+        self.exclusion_paths.contains(&path.to_path_buf())
     }
 
     pub fn execute(&self, mut command: process::Command) -> Result<()> {
@@ -339,5 +339,11 @@ impl Watch {
                 Err(err) => log::error!("watch error: {}", err),
             };
         }
+    }
+}
+
+impl Default for Watch {
+    fn default() -> Self {
+        Self::new()
     }
 }
