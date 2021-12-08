@@ -26,7 +26,7 @@ fn main() -> Result<()> {
 
     let crate_name = "demo-webapp";
     let static_dir = "demo-webapp/static";
-    let build_dir = "demo-webapp/build";
+    let build_dir = "build";
 
     let opt = Opt::from_args();
 

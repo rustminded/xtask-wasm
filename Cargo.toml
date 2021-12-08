@@ -22,4 +22,3 @@ wasm-bindgen-cli-support = "0.2.68"
 libc = "0.2"
 
 [workspace]
-members = ["demo-webapp", "demo-webapp/xtask"]

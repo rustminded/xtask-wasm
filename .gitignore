@@ -1,3 +1,4 @@
 /target
 Cargo.lock
-/examples/demo-webapp/build
+examples/demo/target
+examples/demo/build
