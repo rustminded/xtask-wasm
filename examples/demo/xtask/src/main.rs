@@ -42,12 +42,12 @@ fn main() -> Result<()> {
             log::trace!("Shutting down dev server");
         }
         Command::Serve(arg) => {
-            log::trace!("Starting to serve {:?}", build_command);
+            log::trace!("Starting to serve");
             arg.watch(build_dir, build_command)?;
             log::trace!("Serve stopped");
         }
         Command::Watch(arg) => {
-            log::trace!("Starting to watch {:?}", build_command);
+            log::trace!("Starting to watch");
             arg.execute(build_dir, build_command)?;
             log::trace!("Watch stopped");
         }
