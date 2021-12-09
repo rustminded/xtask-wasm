@@ -256,13 +256,9 @@ impl Watch {
         let metadata = cargo_metadata::MetadataCommand::new()
             .exec()
             .context("cannot get package's metadata")?;
+
         let target_path = metadata.target_directory.as_std_path();
         let exclude_path = &metadata.workspace_root.as_std_path().join(exclude_path);
-
-        log::trace!("Watching {}", &metadata.workspace_root);
-        watcher
-            .watch(&metadata.workspace_root, RecursiveMode::Recursive)
-            .context("cannot watch this crate")?;
 
         for path in &self.watch_paths {
             match watcher.watch(&path, RecursiveMode::Recursive) {
