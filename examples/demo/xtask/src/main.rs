@@ -42,11 +42,7 @@ fn main() -> Result<()> {
         }
         Command::Serve(arg) => {
             log::trace!("Starting to serve");
-            arg.watch(
-                build_dir,
-                build_command,
-                xtask_wasm::Watch::new().add_exclusion_path(build_dir),
-            )?;
+            arg.watch(build_dir, build_command, xtask_wasm::Watch::new())?;
             log::trace!("Serve stopped");
         }
         Command::Watch(mut arg) => {

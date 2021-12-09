@@ -1,6 +1,6 @@
 use std::io::{prelude::*, BufReader};
 use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::mpsc;
 use std::{fs, process};
 
@@ -145,7 +145,7 @@ impl DevServer {
             Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
         });
 
-        match watch.execute(command) {
+        match watch.execute(build_dir_path, command) {
             Ok(()) => log::trace!("starting watch"),
             Err(err) => log::error!("an error occurred when starting to watch: {}", err),
         }
@@ -220,54 +220,18 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
 }
 
 #[derive(Debug, StructOpt)]
-pub struct Watch {
-    #[structopt(long = "watch", short = "w")]
-    watch_paths: Vec<PathBuf>,
-    #[structopt(long = "ignore", short = "i")]
-    exclusion_paths: Vec<PathBuf>,
-}
+pub struct Watch {}
 
 impl Watch {
     pub fn new() -> Self {
-        Self {
-            watch_paths: Vec::new(),
-            exclusion_paths: Vec::new(),
-        }
+        Self {}
     }
 
-    pub fn add_watch_path(&mut self, path: impl AsRef<Path>) -> &mut Self {
-        self.watch_paths.push(path.as_ref().to_owned());
-
-        self
-    }
-
-    pub fn add_watch_paths(&mut self, paths: &[impl AsRef<Path>]) -> &mut Self {
-        for path in paths {
-            self.add_watch_path(path);
-        }
-
-        self
-    }
-
-    pub fn add_exclusion_path(&mut self, path: impl AsRef<Path>) -> &mut Self {
-        self.exclusion_paths.push(path.as_ref().to_owned());
-
-        self
-    }
-
-    pub fn add_exclusion_paths(&mut self, paths: &[impl AsRef<Path>]) -> &mut Self {
-        for path in paths {
-            self.add_exclusion_path(path);
-        }
-
-        self
-    }
-
-    pub fn check_exclusion(&self, path: &Path) -> bool {
-        self.exclusion_paths.contains(&path.to_path_buf())
-    }
-
-    pub fn execute(&mut self, mut command: process::Command) -> Result<()> {
+    pub fn execute(
+        &mut self,
+        exclude_path: impl AsRef<Path>,
+        mut command: process::Command,
+    ) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
             notify::Watcher::new(tx, std::time::Duration::from_secs(2))
@@ -276,18 +240,12 @@ impl Watch {
         let metadata = cargo_metadata::MetadataCommand::new()
             .exec()
             .context("cannot get package's metadata")?;
-        self.add_exclusion_path(metadata.target_directory.as_std_path());
+        let target_path = metadata.target_directory.as_std_path();
+        let exclude_path = &metadata.workspace_root.as_std_path().join(exclude_path);
 
         watcher
             .watch(&metadata.workspace_root, RecursiveMode::Recursive)
             .context("cannot watch this crate")?;
-
-        for path in &self.watch_paths {
-            match watcher.watch(path, RecursiveMode::Recursive) {
-                Ok(()) => {}
-                Err(err) => log::error!("cannot watch {}: {}", path.display(), err),
-            }
-        }
 
         let mut child = command.spawn().context("cannot spawn command")?;
 
@@ -298,7 +256,8 @@ impl Watch {
 
             match &message {
                 Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
-                    if self.check_exclusion(path)
+                    if !path.starts_with(exclude_path)
+                        && !path.starts_with(target_path)
                         && !path
                             .file_name()
                             .and_then(|x| x.to_str())
