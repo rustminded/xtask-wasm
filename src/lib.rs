@@ -247,8 +247,7 @@ impl Watch {
         self.exclude_paths
             .iter()
             .map(|x| path.starts_with(x))
-            .collect::<Vec<bool>>()
-            .contains(&true)
+            .any(|x| x == true)
     }
 
     pub fn is_hidden_path(&mut self, path: &Path) -> bool {
