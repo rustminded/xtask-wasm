@@ -145,7 +145,7 @@ impl DevServer {
             Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
         });
 
-        match watch.execute(build_dir_path, command) {
+        match watch.execute(command) {
             Ok(()) => log::trace!("starting watch"),
             Err(err) => log::error!("an error occurred when starting to watch: {}", err),
         }
@@ -243,11 +243,22 @@ impl Watch {
         self.watch_paths.push(path.as_ref().to_path_buf())
     }
 
-    pub fn execute(
-        &mut self,
-        exclude_path: impl AsRef<Path>,
-        mut command: process::Command,
-    ) -> Result<()> {
+    pub fn is_excluded_path(&mut self, path: &Path) -> bool {
+        self.exclude_paths
+            .iter()
+            .map(|x| path.starts_with(x))
+            .collect::<Vec<bool>>()
+            .contains(&true)
+    }
+
+    pub fn is_hidden_path(&mut self, path: &Path) -> bool {
+        path.file_name()
+            .and_then(|x| x.to_str())
+            .map(|x| x.starts_with('.'))
+            .unwrap_or(false)
+    }
+
+    pub fn execute(&mut self, mut command: process::Command) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
             notify::Watcher::new(tx, std::time::Duration::from_secs(2))
@@ -256,14 +267,21 @@ impl Watch {
         let metadata = cargo_metadata::MetadataCommand::new()
             .exec()
             .context("cannot get package's metadata")?;
-
         let target_path = metadata.target_directory.as_std_path();
-        let exclude_path = &metadata.workspace_root.as_std_path().join(exclude_path);
 
-        for path in &self.watch_paths {
-            match watcher.watch(&path, RecursiveMode::Recursive) {
-                Ok(()) => log::trace!("Watching {}", path.display()),
-                Err(err) => log::error!("cannot watch {}: {}", path.display(), err),
+        self.add_exclude_path(target_path);
+
+        if self.watch_paths.is_empty() {
+            log::trace!("Watching {}", &metadata.workspace_root);
+            watcher
+                .watch(&metadata.workspace_root, RecursiveMode::Recursive)
+                .context("cannot watch this crate")?;
+        } else {
+            for path in &self.watch_paths {
+                match watcher.watch(&path, RecursiveMode::Recursive) {
+                    Ok(()) => log::trace!("Watching {}", path.display()),
+                    Err(err) => log::error!("cannot watch {}: {}", path.display(), err),
+                }
             }
         }
 
@@ -274,17 +292,9 @@ impl Watch {
 
             let message = rx.recv();
 
-            log::debug!("{:?}", message);
-
             match &message {
                 Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
-                    if !path.starts_with(exclude_path)
-                        && !path.starts_with(target_path)
-                        && !path
-                            .file_name()
-                            .and_then(|x| x.to_str())
-                            .map(|x| x.starts_with('.'))
-                            .unwrap_or(false) =>
+                    if !self.is_excluded_path(path) && !self.is_hidden_path(path) =>
                 {
                     #[cfg(unix)]
                     {
