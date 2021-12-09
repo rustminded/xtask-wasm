@@ -1,2 +1,3 @@
-/target
+target
+build
 Cargo.lock

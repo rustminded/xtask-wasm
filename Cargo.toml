@@ -20,3 +20,5 @@ wasm-bindgen-cli-support = "0.2.68"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+[workspace]
