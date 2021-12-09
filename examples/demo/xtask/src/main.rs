@@ -42,12 +42,12 @@ fn main() -> Result<()> {
         }
         Command::Serve(arg) => {
             log::trace!("Starting to serve");
-            arg.watch(build_dir, build_command, xtask_wasm::Watch::new())?;
+            arg.watch(build_dir, build_command, &mut xtask_wasm::Watch::new())?;
             log::trace!("Serve stopped");
         }
         Command::Watch(mut arg) => {
             log::trace!("Starting to watch");
-            arg.execute(build_command)?;
+            arg.execute(build_dir, build_command)?;
             log::trace!("Watch stopped");
         }
     }
