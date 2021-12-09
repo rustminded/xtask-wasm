@@ -141,17 +141,17 @@ impl DevServer {
         let build_dir_pathbuf = build_dir_path.as_ref().to_owned();
 
         let handle = std::thread::spawn(move || match self.serve(build_dir_pathbuf) {
-            Ok(()) => {}
+            Ok(()) => log::trace!("starting server"),
             Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
         });
 
         match watch.execute(command) {
-            Ok(()) => {}
+            Ok(()) => log::trace!("starting watch"),
             Err(err) => log::error!("an error occurred when starting to watch: {}", err),
         }
 
         match handle.join() {
-            Ok(()) => {}
+            Ok(()) => log::trace!("Ending watch"),
             Err(err) => log::error!("problem waiting end of the watch: {:?}", err),
         }
 
@@ -277,13 +277,12 @@ impl Watch {
             .exec()
             .context("cannot get package's metadata")?;
         self.add_exclusion_path(metadata.target_directory.as_std_path());
-        self.add_watch_path(&metadata.workspace_root);
+
+        watcher
+            .watch(&metadata.workspace_root, RecursiveMode::Recursive)
+            .context("cannot watch this crate")?;
 
         for path in &self.watch_paths {
-            watcher
-                .watch(&path, RecursiveMode::Recursive)
-                .context("cannot watch this crate")?;
-
             match watcher.watch(path, RecursiveMode::Recursive) {
                 Ok(()) => {}
                 Err(err) => log::error!("cannot watch {}: {}", path.display(), err),

@@ -25,7 +25,7 @@ fn main() -> Result<()> {
     build_command.args(["xtask", "build"]);
 
     let crate_name = "demo-webapp";
-    let static_dir = "../demo-webapp/static";
+    let static_dir = "demo-webapp/static";
     let build_dir = "build";
 
     let opt = Opt::from_args();
@@ -39,16 +39,19 @@ fn main() -> Result<()> {
         Command::StartServer(arg) => {
             log::trace!("Starting dev server");
             arg.serve(build_dir)?;
-            log::trace!("Shutting down dev server");
         }
         Command::Serve(arg) => {
             log::trace!("Starting to serve");
-            arg.watch(build_dir, build_command)?;
+            arg.watch(
+                build_dir,
+                build_command,
+                xtask_wasm::Watch::new().add_exclusion_path(build_dir),
+            )?;
             log::trace!("Serve stopped");
         }
-        Command::Watch(arg) => {
+        Command::Watch(mut arg) => {
             log::trace!("Starting to watch");
-            arg.execute(build_dir, build_command)?;
+            arg.execute(build_command)?;
             log::trace!("Watch stopped");
         }
     }
