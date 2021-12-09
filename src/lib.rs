@@ -1,6 +1,6 @@
 use std::io::{prelude::*, BufReader};
 use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::{fs, process};
 
@@ -220,11 +220,15 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
 }
 
 #[derive(Debug, StructOpt)]
-pub struct Watch {}
+pub struct Watch {
+    // exclude_paths: Vec<PathBuf>,
+}
 
 impl Watch {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            // exclude_paths: Vec::new(),
+        }
     }
 
     pub fn execute(
