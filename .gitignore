@@ -1,4 +1,3 @@
-/target
+target
+build
 Cargo.lock
-examples/demo/target
-examples/demo/build
