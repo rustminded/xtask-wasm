@@ -47,7 +47,7 @@ fn main() -> Result<()> {
         }
         Command::Watch(mut arg) => {
             log::trace!("Starting to watch");
-            arg.execute(build_command)?;
+            arg.execute(build_dir, build_command)?;
             log::trace!("Watch stopped");
         }
     }

@@ -221,14 +221,26 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
 
 #[derive(Debug, StructOpt)]
 pub struct Watch {
-    // exclude_paths: Vec<PathBuf>,
+    #[structopt(long = "watch", short = "w")]
+    watch_paths: Vec<PathBuf>,
+    #[structopt(long = "ignore", short = "i")]
+    exclude_paths: Vec<PathBuf>,
 }
 
 impl Watch {
     pub fn new() -> Self {
         Self {
-            // exclude_paths: Vec::new(),
+            exclude_paths: Vec::new(),
+            watch_paths: Vec::new(),
         }
+    }
+
+    pub fn add_exclude_path(&mut self, path: impl AsRef<Path>) {
+        self.exclude_paths.push(path.as_ref().to_path_buf())
+    }
+
+    pub fn add_watch_path(&mut self, path: impl AsRef<Path>) {
+        self.watch_paths.push(path.as_ref().to_path_buf())
     }
 
     pub fn execute(
@@ -247,9 +259,17 @@ impl Watch {
         let target_path = metadata.target_directory.as_std_path();
         let exclude_path = &metadata.workspace_root.as_std_path().join(exclude_path);
 
+        log::trace!("Watching {}", &metadata.workspace_root);
         watcher
             .watch(&metadata.workspace_root, RecursiveMode::Recursive)
             .context("cannot watch this crate")?;
+
+        for path in &self.watch_paths {
+            match watcher.watch(&path, RecursiveMode::Recursive) {
+                Ok(()) => log::trace!("Watching {}", path.display()),
+                Err(err) => log::error!("cannot watch {}: {}", path.display(), err),
+            }
+        }
 
         let mut child = command.spawn().context("cannot spawn command")?;
 
@@ -257,6 +277,8 @@ impl Watch {
             use notify::DebouncedEvent::*;
 
             let message = rx.recv();
+
+            log::debug!("{:?}", message);
 
             match &message {
                 Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
