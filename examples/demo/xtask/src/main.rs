@@ -11,9 +11,8 @@ struct Opt {
 #[derive(StructOpt)]
 enum Command {
     Build(xtask_wasm::Build),
-    StartServer(xtask_wasm::DevServer),
-    Serve(xtask_wasm::DevServer),
     Watch(xtask_wasm::Watch),
+    DevServer(xtask_wasm::DevServer),
 }
 
 fn main() -> Result<()> {
@@ -36,19 +35,15 @@ fn main() -> Result<()> {
             arg.execute(crate_name, static_dir, build_dir)?;
             log::trace!("Builded");
         }
-        Command::StartServer(arg) => {
-            log::trace!("Starting dev server");
-            arg.serve(build_dir)?;
-        }
-        Command::Serve(arg) => {
-            log::trace!("Starting to serve");
-            arg.watch(build_dir, build_command, &mut xtask_wasm::Watch::new())?;
-            log::trace!("Serve stopped");
-        }
         Command::Watch(mut arg) => {
             log::trace!("Starting to watch");
             arg.execute(build_command)?;
-            log::trace!("Watch stopped");
+        }
+        Command::DevServer(arg) => {
+            log::trace!("Starting to serve");
+            let watch = xtask_wasm::Watch::new();
+            arg.watch(build_dir, build_command, watch)?;
+            log::trace!("Serve stopped");
         }
     }
 
