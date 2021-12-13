@@ -42,7 +42,7 @@ fn main() -> Result<()> {
         }
         Command::Serve(arg) => {
             log::trace!("Starting to serve");
-            arg.serve_with_watch(build_dir, build_command)?;
+            arg.serve_and_watch(build_dir, build_command)?;
         }
     }
 

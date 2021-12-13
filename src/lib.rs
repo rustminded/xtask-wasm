@@ -268,7 +268,7 @@ impl DevServer {
         Ok(())
     }
 
-    pub fn serve_with_watch(
+    pub fn serve_and_watch(
         self,
         build_dir_path: impl AsRef<Path>,
         command: process::Command,
