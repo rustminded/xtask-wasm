@@ -107,16 +107,148 @@ impl Build {
     }
 }
 
+#[derive(Debug, Clone, StructOpt)]
+pub struct Watch {
+    #[structopt(long = "watch", short = "w")]
+    watch_paths: Vec<PathBuf>,
+    #[structopt(long = "ignore", short = "i")]
+    exclude_paths: Vec<PathBuf>,
+    #[structopt(skip)]
+    workspace_exclude_paths: Vec<PathBuf>,
+}
+
+impl Watch {
+    pub fn new() -> Self {
+        Self {
+            exclude_paths: Vec::new(),
+            watch_paths: Vec::new(),
+            workspace_exclude_paths: Vec::new(),
+        }
+    }
+
+    pub fn exclude(&mut self, path: impl AsRef<Path>) {
+        self.exclude_paths.push(path.as_ref().to_path_buf())
+    }
+
+    pub fn workspace_exclude(&mut self, path: impl AsRef<Path>) {
+        let metadata = cargo_metadata::MetadataCommand::new()
+            .exec()
+            .expect("cannot get workspace metadata");
+
+        self.workspace_exclude_paths
+            .push(metadata.workspace_root.as_std_path().join(path))
+    }
+
+    pub fn watch(&mut self, path: impl AsRef<Path>) {
+        self.watch_paths.push(path.as_ref().to_path_buf())
+    }
+
+    fn is_excluded_path(&mut self, path: &Path) -> bool {
+        self.exclude_paths.iter().any(|x| path.starts_with(x))
+            || self
+                .workspace_exclude_paths
+                .iter()
+                .any(|x| path.starts_with(x))
+    }
+
+    fn is_hidden_path(&mut self, path: &Path) -> bool {
+        path.file_name()
+            .and_then(|x| x.to_str())
+            .map(|x| x.starts_with('.'))
+            .unwrap_or(false)
+    }
+
+    pub fn execute(&mut self, mut command: process::Command) -> Result<()> {
+        let (tx, rx) = mpsc::channel();
+        let mut watcher: RecommendedWatcher =
+            notify::Watcher::new(tx, std::time::Duration::from_secs(2))
+                .context("could not initialize watcher")?;
+
+        let metadata = cargo_metadata::MetadataCommand::new()
+            .exec()
+            .context("cannot get package's metadata")?;
+
+        self.exclude(metadata.target_directory.as_std_path());
+
+        if self.watch_paths.is_empty() {
+            log::trace!("Watching {}", &metadata.workspace_root);
+            watcher
+                .watch(&metadata.workspace_root, RecursiveMode::Recursive)
+                .context("cannot watch this crate")?;
+        } else {
+            for path in &self.watch_paths {
+                match watcher.watch(&path, RecursiveMode::Recursive) {
+                    Ok(()) => log::trace!("Watching {}", path.display()),
+                    Err(err) => log::error!("cannot watch {}: {}", path.display(), err),
+                }
+            }
+        }
+
+        let mut child = command.spawn().context("cannot spawn command")?;
+
+        loop {
+            use notify::DebouncedEvent::*;
+
+            let message = rx.recv();
+
+            match &message {
+                Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
+                    if !self.is_excluded_path(path) && !self.is_hidden_path(path) =>
+                {
+                    #[cfg(unix)]
+                    {
+                        let now = std::time::Instant::now();
+
+                        unsafe {
+                            libc::kill(
+                                child.id().try_into().expect("cannot get process id"),
+                                libc::SIGTERM,
+                            );
+                        }
+
+                        while now.elapsed().as_secs() < 2 {
+                            std::thread::sleep(std::time::Duration::from_millis(200));
+                            if let Ok(Some(_)) = child.try_wait() {
+                                break;
+                            }
+                        }
+                    }
+
+                    match child.try_wait() {
+                        Ok(Some(_)) => {}
+                        _ => {
+                            let _ = child.kill();
+                            let _ = child.wait();
+                        }
+                    }
+
+                    child = command.spawn().context("cannot spawn command")?;
+                }
+                Ok(_) => {}
+                Err(err) => log::error!("watch error: {}", err),
+            };
+        }
+    }
+}
+
+impl Default for Watch {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug, StructOpt)]
-pub struct DevServer {
+pub struct Serve {
     #[structopt(long, default_value = "127.0.0.1")]
     ip: IpAddr,
     #[structopt(long, default_value = "8000")]
     port: u16,
+    #[structopt(skip)]
+    watch: Watch,
 }
 
-impl DevServer {
-    pub fn serve(&self, build_dir_path: impl AsRef<Path>) -> Result<()> {
+impl Serve {
+    pub fn start_server(&self, build_dir_path: impl AsRef<Path>) -> Result<()> {
         let address = SocketAddr::new(self.ip, self.port);
         let listener = TcpListener::bind(&address).context("cannot bind to the given address")?;
 
@@ -132,20 +264,20 @@ impl DevServer {
         Ok(())
     }
 
-    pub fn watch(
+    pub fn execute(
         self,
         build_dir_path: impl AsRef<Path>,
         command: process::Command,
-        watch: &mut Watch,
     ) -> Result<()> {
         let build_dir_pathbuf = build_dir_path.as_ref().to_owned();
+        let mut watch = self.watch.clone();
 
-        dbg!(&self);
-
-        let handle = std::thread::spawn(move || match self.serve(build_dir_pathbuf) {
+        let handle = std::thread::spawn(move || match self.start_server(build_dir_pathbuf) {
             Ok(()) => log::trace!("starting server"),
             Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
         });
+
+        watch.workspace_exclude(build_dir_path);
 
         match watch.execute(command) {
             Ok(()) => log::trace!("starting watch"),
@@ -219,132 +351,4 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
     }
 
     Ok(())
-}
-
-#[derive(Debug, StructOpt)]
-pub struct Watch {
-    #[structopt(long = "watch", short = "w")]
-    watch_paths: Vec<PathBuf>,
-    #[structopt(long = "ignore", short = "i")]
-    exclude_paths: Vec<PathBuf>,
-    #[structopt(skip)]
-    workspace_exclude_paths: Vec<PathBuf>,
-}
-
-impl Watch {
-    pub fn new() -> Self {
-        Self {
-            exclude_paths: Vec::new(),
-            watch_paths: Vec::new(),
-            workspace_exclude_paths: Vec::new(),
-        }
-    }
-
-    pub fn exclude(&mut self, path: impl AsRef<Path>) {
-        self.exclude_paths.push(path.as_ref().to_path_buf())
-    }
-
-    pub fn workspace_exclude(&mut self, path: impl AsRef<Path>) {
-        let metadata = cargo_metadata::MetadataCommand::new()
-            .exec()
-            .expect("cannot get workspace metadata");
-
-        self.workspace_exclude_paths
-            .push(metadata.workspace_root.as_std_path().join(path))
-    }
-
-    pub fn watch(&mut self, path: impl AsRef<Path>) {
-        self.watch_paths.push(path.as_ref().to_path_buf())
-    }
-
-    fn is_excluded_path(&mut self, path: &Path) -> bool {
-        self.exclude_paths.iter().any(|x| path.starts_with(x))
-            || self
-                .workspace_exclude_paths
-                .iter()
-                .any(|x| path.starts_with(x))
-    }
-
-    fn is_hidden_path(&mut self, path: &Path) -> bool {
-        path.file_name()
-            .and_then(|x| x.to_str())
-            .map(|x| x.starts_with('.'))
-            .unwrap_or(false)
-    }
-
-    pub fn execute(&mut self, mut command: process::Command) -> Result<()> {
-        let (tx, rx) = mpsc::channel();
-        let mut watcher: RecommendedWatcher =
-            notify::Watcher::new(tx, std::time::Duration::from_secs(2))
-                .context("could not initialize watcher")?;
-
-        let metadata = cargo_metadata::MetadataCommand::new()
-            .exec()
-            .context("cannot get package's metadata")?;
-
-        if self.watch_paths.is_empty() {
-            log::trace!("Watching {}", &metadata.workspace_root);
-            watcher
-                .watch(&metadata.workspace_root, RecursiveMode::Recursive)
-                .context("cannot watch this crate")?;
-        } else {
-            for path in &self.watch_paths {
-                match watcher.watch(&path, RecursiveMode::Recursive) {
-                    Ok(()) => log::trace!("Watching {}", path.display()),
-                    Err(err) => log::error!("cannot watch {}: {}", path.display(), err),
-                }
-            }
-        }
-
-        let mut child = command.spawn().context("cannot spawn command")?;
-
-        loop {
-            use notify::DebouncedEvent::*;
-
-            let message = rx.recv();
-
-            match &message {
-                Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
-                    if !self.is_excluded_path(path) && !self.is_hidden_path(path) =>
-                {
-                    #[cfg(unix)]
-                    {
-                        let now = std::time::Instant::now();
-
-                        unsafe {
-                            libc::kill(
-                                child.id().try_into().expect("cannot get process id"),
-                                libc::SIGTERM,
-                            );
-                        }
-
-                        while now.elapsed().as_secs() < 2 {
-                            std::thread::sleep(std::time::Duration::from_millis(200));
-                            if let Ok(Some(_)) = child.try_wait() {
-                                break;
-                            }
-                        }
-                    }
-
-                    match child.try_wait() {
-                        Ok(Some(_)) => {}
-                        _ => {
-                            let _ = child.kill();
-                            let _ = child.wait();
-                        }
-                    }
-
-                    child = command.spawn().context("cannot spawn command")?;
-                }
-                Ok(_) => {}
-                Err(err) => log::error!("watch error: {}", err),
-            };
-        }
-    }
-}
-
-impl Default for Watch {
-    fn default() -> Self {
-        Self::new()
-    }
 }

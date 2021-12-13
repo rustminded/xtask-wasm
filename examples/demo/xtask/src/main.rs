@@ -12,7 +12,7 @@ struct Opt {
 enum Command {
     Build(xtask_wasm::Build),
     Watch(xtask_wasm::Watch),
-    DevServer(xtask_wasm::DevServer),
+    Serve(xtask_wasm::Serve),
 }
 
 fn main() -> Result<()> {
@@ -26,7 +26,6 @@ fn main() -> Result<()> {
     let crate_name = "demo-webapp";
     let static_dir = "demo-webapp/static";
     let build_dir = "build";
-    let target_dir = "target";
 
     let opt = Opt::from_args();
 
@@ -40,12 +39,9 @@ fn main() -> Result<()> {
             log::trace!("Starting to watch");
             arg.execute(build_command)?;
         }
-        Command::DevServer(arg) => {
+        Command::Serve(arg) => {
             log::trace!("Starting to serve");
-            let mut watch = xtask_wasm::Watch::new();
-            watch.workspace_exclude(build_dir);
-            watch.workspace_exclude(target_dir);
-            arg.watch(build_dir, build_command, &mut watch)?;
+            arg.execute(build_dir, build_command)?;
             log::trace!("Serve stopped");
         }
     }
