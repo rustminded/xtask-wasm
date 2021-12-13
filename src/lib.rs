@@ -118,17 +118,17 @@ pub struct Watch {
 }
 
 impl Watch {
-    pub fn exclude(&mut self, path: impl AsRef<Path>) {
+    pub fn exclude_path(&mut self, path: impl AsRef<Path>) {
         self.exclude_paths.push(path.as_ref().to_path_buf())
     }
 
-    pub fn excludes(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
+    pub fn exclude_paths(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
         for path in paths {
-            self.exclude(path)
+            self.exclude_path(path)
         }
     }
 
-    pub fn workspace_exclude(&mut self, path: impl AsRef<Path>) {
+    pub fn exclude_workspace_path(&mut self, path: impl AsRef<Path>) {
         let metadata = cargo_metadata::MetadataCommand::new()
             .exec()
             .expect("cannot get workspace metadata");
@@ -137,19 +137,19 @@ impl Watch {
             .push(metadata.workspace_root.as_std_path().join(path))
     }
 
-    pub fn workspace_excludes(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
+    pub fn exclude_workspace_paths(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
         for path in paths {
-            self.workspace_exclude(path)
+            self.exclude_workspace_path(path)
         }
     }
 
-    pub fn watch(&mut self, path: impl AsRef<Path>) {
+    pub fn watch_path(&mut self, path: impl AsRef<Path>) {
         self.watch_paths.push(path.as_ref().to_path_buf())
     }
 
-    pub fn watchs(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
+    pub fn watch_paths(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
         for path in paths {
-            self.watch(path)
+            self.watch_path(path)
         }
     }
 
@@ -178,7 +178,7 @@ impl Watch {
             .exec()
             .context("cannot get package's metadata")?;
 
-        self.exclude(metadata.target_directory.as_std_path());
+        self.exclude_path(metadata.target_directory.as_std_path());
 
         if self.watch_paths.is_empty() {
             log::trace!("Watching {}", &metadata.workspace_root);
@@ -252,7 +252,7 @@ pub struct DevServer {
 }
 
 impl DevServer {
-    pub fn start(&self, build_dir_path: impl AsRef<Path>) -> Result<()> {
+    pub fn serve(&self, build_dir_path: impl AsRef<Path>) -> Result<()> {
         let address = SocketAddr::new(self.ip, self.port);
         let listener = TcpListener::bind(&address).context("cannot bind to the given address")?;
 
@@ -268,16 +268,20 @@ impl DevServer {
         Ok(())
     }
 
-    pub fn serve(self, build_dir_path: impl AsRef<Path>, command: process::Command) -> Result<()> {
+    pub fn serve_with_watch(
+        self,
+        build_dir_path: impl AsRef<Path>,
+        command: process::Command,
+    ) -> Result<()> {
         let build_dir_pathbuf = build_dir_path.as_ref().to_owned();
         let mut watch = self.watch.clone();
 
-        let handle = std::thread::spawn(move || match self.start(build_dir_pathbuf) {
+        let handle = std::thread::spawn(move || match self.serve(build_dir_pathbuf) {
             Ok(()) => log::trace!("starting server"),
             Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
         });
 
-        watch.workspace_exclude(build_dir_path);
+        watch.exclude_workspace_path(build_dir_path);
 
         match watch.execute(command) {
             Ok(()) => log::trace!("starting watch"),

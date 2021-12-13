@@ -37,11 +37,12 @@ fn main() -> Result<()> {
         }
         Command::Watch(mut arg) => {
             log::trace!("Starting to watch");
+            arg.exclude_workspace_path(build_dir);
             arg.execute(build_command)?;
         }
         Command::Serve(arg) => {
             log::trace!("Starting to serve");
-            arg.serve(build_dir, build_command)?;
+            arg.serve_with_watch(build_dir, build_command)?;
         }
     }
 
