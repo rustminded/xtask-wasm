@@ -130,6 +130,12 @@ impl Watch {
         self.exclude_paths.push(path.as_ref().to_path_buf())
     }
 
+    pub fn excludes(&mut self, paths: Vec<impl AsRef<Path>>) {
+        for path in paths {
+            self.exclude(path)
+        }
+    }
+
     pub fn workspace_exclude(&mut self, path: impl AsRef<Path>) {
         let metadata = cargo_metadata::MetadataCommand::new()
             .exec()
@@ -139,8 +145,20 @@ impl Watch {
             .push(metadata.workspace_root.as_std_path().join(path))
     }
 
+    pub fn workspace_excludes(&mut self, paths: Vec<impl AsRef<Path>>) {
+        for path in paths {
+            self.workspace_exclude(path)
+        }
+    }
+
     pub fn watch(&mut self, path: impl AsRef<Path>) {
         self.watch_paths.push(path.as_ref().to_path_buf())
+    }
+
+    pub fn watchs(&mut self, paths: Vec<impl AsRef<Path>>) {
+        for path in paths {
+            self.watch(path)
+        }
     }
 
     fn is_excluded_path(&mut self, path: &Path) -> bool {
