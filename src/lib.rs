@@ -118,19 +118,11 @@ pub struct Watch {
 }
 
 impl Watch {
-    pub fn new() -> Self {
-        Self {
-            exclude_paths: Vec::new(),
-            watch_paths: Vec::new(),
-            workspace_exclude_paths: Vec::new(),
-        }
-    }
-
     pub fn exclude(&mut self, path: impl AsRef<Path>) {
         self.exclude_paths.push(path.as_ref().to_path_buf())
     }
 
-    pub fn excludes(&mut self, paths: Vec<impl AsRef<Path>>) {
+    pub fn excludes(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
         for path in paths {
             self.exclude(path)
         }
@@ -145,7 +137,7 @@ impl Watch {
             .push(metadata.workspace_root.as_std_path().join(path))
     }
 
-    pub fn workspace_excludes(&mut self, paths: Vec<impl AsRef<Path>>) {
+    pub fn workspace_excludes(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
         for path in paths {
             self.workspace_exclude(path)
         }
@@ -155,7 +147,7 @@ impl Watch {
         self.watch_paths.push(path.as_ref().to_path_buf())
     }
 
-    pub fn watchs(&mut self, paths: Vec<impl AsRef<Path>>) {
+    pub fn watchs(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
         for path in paths {
             self.watch(path)
         }
@@ -249,24 +241,18 @@ impl Watch {
     }
 }
 
-impl Default for Watch {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[derive(Debug, StructOpt)]
-pub struct Serve {
+pub struct DevServer {
     #[structopt(long, default_value = "127.0.0.1")]
     ip: IpAddr,
     #[structopt(long, default_value = "8000")]
     port: u16,
-    #[structopt(skip)]
+    #[structopt(flatten)]
     watch: Watch,
 }
 
-impl Serve {
-    pub fn start_server(&self, build_dir_path: impl AsRef<Path>) -> Result<()> {
+impl DevServer {
+    pub fn start(&self, build_dir_path: impl AsRef<Path>) -> Result<()> {
         let address = SocketAddr::new(self.ip, self.port);
         let listener = TcpListener::bind(&address).context("cannot bind to the given address")?;
 
@@ -282,15 +268,11 @@ impl Serve {
         Ok(())
     }
 
-    pub fn execute(
-        self,
-        build_dir_path: impl AsRef<Path>,
-        command: process::Command,
-    ) -> Result<()> {
+    pub fn serve(self, build_dir_path: impl AsRef<Path>, command: process::Command) -> Result<()> {
         let build_dir_pathbuf = build_dir_path.as_ref().to_owned();
         let mut watch = self.watch.clone();
 
-        let handle = std::thread::spawn(move || match self.start_server(build_dir_pathbuf) {
+        let handle = std::thread::spawn(move || match self.start(build_dir_pathbuf) {
             Ok(()) => log::trace!("starting server"),
             Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
         });

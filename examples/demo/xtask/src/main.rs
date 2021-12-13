@@ -12,7 +12,7 @@ struct Opt {
 enum Command {
     Build(xtask_wasm::Build),
     Watch(xtask_wasm::Watch),
-    Serve(xtask_wasm::Serve),
+    Serve(xtask_wasm::DevServer),
 }
 
 fn main() -> Result<()> {
@@ -41,7 +41,7 @@ fn main() -> Result<()> {
         }
         Command::Serve(arg) => {
             log::trace!("Starting to serve");
-            arg.execute(build_dir, build_command)?;
+            arg.serve(build_dir, build_command)?;
         }
     }
 
