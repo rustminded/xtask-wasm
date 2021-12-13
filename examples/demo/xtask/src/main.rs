@@ -26,6 +26,7 @@ fn main() -> Result<()> {
     let crate_name = "demo-webapp";
     let static_dir = "demo-webapp/static";
     let build_dir = "build";
+    let target_dir = "target";
 
     let opt = Opt::from_args();
 
@@ -41,8 +42,10 @@ fn main() -> Result<()> {
         }
         Command::DevServer(arg) => {
             log::trace!("Starting to serve");
-            let watch = xtask_wasm::Watch::new();
-            arg.watch(build_dir, build_command, watch)?;
+            let mut watch = xtask_wasm::Watch::new();
+            watch.workspace_exclude(build_dir);
+            watch.workspace_exclude(target_dir);
+            arg.watch(build_dir, build_command, &mut watch)?;
             log::trace!("Serve stopped");
         }
     }

@@ -140,12 +140,12 @@ impl DevServer {
     ) -> Result<()> {
         let build_dir_pathbuf = build_dir_path.as_ref().to_owned();
 
+        dbg!(&self);
+
         let handle = std::thread::spawn(move || match self.serve(build_dir_pathbuf) {
             Ok(()) => log::trace!("starting server"),
             Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
         });
-
-        watch.exclude(build_dir_path);
 
         match watch.execute(command) {
             Ok(()) => log::trace!("starting watch"),
@@ -227,6 +227,8 @@ pub struct Watch {
     watch_paths: Vec<PathBuf>,
     #[structopt(long = "ignore", short = "i")]
     exclude_paths: Vec<PathBuf>,
+    #[structopt(skip)]
+    workspace_exclude_paths: Vec<PathBuf>,
 }
 
 impl Watch {
@@ -234,11 +236,21 @@ impl Watch {
         Self {
             exclude_paths: Vec::new(),
             watch_paths: Vec::new(),
+            workspace_exclude_paths: Vec::new(),
         }
     }
 
     pub fn exclude(&mut self, path: impl AsRef<Path>) {
         self.exclude_paths.push(path.as_ref().to_path_buf())
+    }
+
+    pub fn workspace_exclude(&mut self, path: impl AsRef<Path>) {
+        let metadata = cargo_metadata::MetadataCommand::new()
+            .exec()
+            .expect("cannot get workspace metadata");
+
+        self.workspace_exclude_paths
+            .push(metadata.workspace_root.as_std_path().join(path))
     }
 
     pub fn watch(&mut self, path: impl AsRef<Path>) {
@@ -247,6 +259,10 @@ impl Watch {
 
     fn is_excluded_path(&mut self, path: &Path) -> bool {
         self.exclude_paths.iter().any(|x| path.starts_with(x))
+            || self
+                .workspace_exclude_paths
+                .iter()
+                .any(|x| path.starts_with(x))
     }
 
     fn is_hidden_path(&mut self, path: &Path) -> bool {
@@ -265,9 +281,6 @@ impl Watch {
         let metadata = cargo_metadata::MetadataCommand::new()
             .exec()
             .context("cannot get package's metadata")?;
-        let target_path = metadata.target_directory.as_std_path();
-
-        self.exclude(target_path);
 
         if self.watch_paths.is_empty() {
             log::trace!("Watching {}", &metadata.workspace_root);
