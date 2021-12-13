@@ -42,7 +42,6 @@ fn main() -> Result<()> {
         Command::Serve(arg) => {
             log::trace!("Starting to serve");
             arg.execute(build_dir, build_command)?;
-            log::trace!("Serve stopped");
         }
     }
 
