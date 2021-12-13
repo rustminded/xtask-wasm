@@ -1,7 +1,8 @@
 use std::io::{prelude::*, BufReader};
 use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
+use std::path::{Path, PathBuf};
+use std::sync::mpsc;
 use std::{fs, process};
-use std::{path::Path, sync::mpsc};
 
 use anyhow::{bail, ensure, Context, Result};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
@@ -106,12 +107,148 @@ impl Build {
     }
 }
 
+#[derive(Debug, Clone, StructOpt)]
+pub struct Watch {
+    #[structopt(long = "watch", short = "w")]
+    watch_paths: Vec<PathBuf>,
+    #[structopt(long = "ignore", short = "i")]
+    exclude_paths: Vec<PathBuf>,
+    #[structopt(skip)]
+    workspace_exclude_paths: Vec<PathBuf>,
+}
+
+impl Watch {
+    pub fn exclude_path(&mut self, path: impl AsRef<Path>) {
+        self.exclude_paths.push(path.as_ref().to_path_buf())
+    }
+
+    pub fn exclude_paths(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
+        for path in paths {
+            self.exclude_path(path)
+        }
+    }
+
+    pub fn exclude_workspace_path(&mut self, path: impl AsRef<Path>) {
+        let metadata = cargo_metadata::MetadataCommand::new()
+            .exec()
+            .expect("cannot get workspace metadata");
+
+        self.workspace_exclude_paths
+            .push(metadata.workspace_root.as_std_path().join(path))
+    }
+
+    pub fn exclude_workspace_paths(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
+        for path in paths {
+            self.exclude_workspace_path(path)
+        }
+    }
+
+    pub fn watch_path(&mut self, path: impl AsRef<Path>) {
+        self.watch_paths.push(path.as_ref().to_path_buf())
+    }
+
+    pub fn watch_paths(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
+        for path in paths {
+            self.watch_path(path)
+        }
+    }
+
+    fn is_excluded_path(&mut self, path: &Path) -> bool {
+        self.exclude_paths.iter().any(|x| path.starts_with(x))
+            || self
+                .workspace_exclude_paths
+                .iter()
+                .any(|x| path.starts_with(x))
+    }
+
+    fn is_hidden_path(&mut self, path: &Path) -> bool {
+        path.file_name()
+            .and_then(|x| x.to_str())
+            .map(|x| x.starts_with('.'))
+            .unwrap_or(false)
+    }
+
+    pub fn execute(&mut self, mut command: process::Command) -> Result<()> {
+        let (tx, rx) = mpsc::channel();
+        let mut watcher: RecommendedWatcher =
+            notify::Watcher::new(tx, std::time::Duration::from_secs(2))
+                .context("could not initialize watcher")?;
+
+        let metadata = cargo_metadata::MetadataCommand::new()
+            .exec()
+            .context("cannot get package's metadata")?;
+
+        self.exclude_path(metadata.target_directory.as_std_path());
+
+        if self.watch_paths.is_empty() {
+            log::trace!("Watching {}", &metadata.workspace_root);
+            watcher
+                .watch(&metadata.workspace_root, RecursiveMode::Recursive)
+                .context("cannot watch this crate")?;
+        } else {
+            for path in &self.watch_paths {
+                match watcher.watch(&path, RecursiveMode::Recursive) {
+                    Ok(()) => log::trace!("Watching {}", path.display()),
+                    Err(err) => log::error!("cannot watch {}: {}", path.display(), err),
+                }
+            }
+        }
+
+        let mut child = command.spawn().context("cannot spawn command")?;
+
+        loop {
+            use notify::DebouncedEvent::*;
+
+            let message = rx.recv();
+
+            match &message {
+                Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
+                    if !self.is_excluded_path(path) && !self.is_hidden_path(path) =>
+                {
+                    #[cfg(unix)]
+                    {
+                        let now = std::time::Instant::now();
+
+                        unsafe {
+                            libc::kill(
+                                child.id().try_into().expect("cannot get process id"),
+                                libc::SIGTERM,
+                            );
+                        }
+
+                        while now.elapsed().as_secs() < 2 {
+                            std::thread::sleep(std::time::Duration::from_millis(200));
+                            if let Ok(Some(_)) = child.try_wait() {
+                                break;
+                            }
+                        }
+                    }
+
+                    match child.try_wait() {
+                        Ok(Some(_)) => {}
+                        _ => {
+                            let _ = child.kill();
+                            let _ = child.wait();
+                        }
+                    }
+
+                    child = command.spawn().context("cannot spawn command")?;
+                }
+                Ok(_) => {}
+                Err(err) => log::error!("watch error: {}", err),
+            };
+        }
+    }
+}
+
 #[derive(Debug, StructOpt)]
 pub struct DevServer {
     #[structopt(long, default_value = "127.0.0.1")]
     ip: IpAddr,
     #[structopt(long, default_value = "8000")]
     port: u16,
+    #[structopt(flatten)]
+    watch: Watch,
 }
 
 impl DevServer {
@@ -131,22 +268,28 @@ impl DevServer {
         Ok(())
     }
 
-    pub fn watch(self, build_dir_path: impl AsRef<Path>, command: process::Command) -> Result<()> {
+    pub fn serve_and_watch(
+        self,
+        build_dir_path: impl AsRef<Path>,
+        command: process::Command,
+    ) -> Result<()> {
         let build_dir_pathbuf = build_dir_path.as_ref().to_owned();
+        let mut watch = self.watch.clone();
 
         let handle = std::thread::spawn(move || match self.serve(build_dir_pathbuf) {
-            Ok(()) => {}
+            Ok(()) => log::trace!("starting server"),
             Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
         });
 
-        let watch = Watch {};
-        match watch.execute(build_dir_path, command) {
-            Ok(()) => {}
+        watch.exclude_workspace_path(build_dir_path);
+
+        match watch.execute(command) {
+            Ok(()) => log::trace!("starting watch"),
             Err(err) => log::error!("an error occurred when starting to watch: {}", err),
         }
 
         match handle.join() {
-            Ok(()) => {}
+            Ok(()) => log::trace!("Ending watch"),
             Err(err) => log::error!("problem waiting end of the watch: {:?}", err),
         }
 
@@ -212,81 +355,4 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
     }
 
     Ok(())
-}
-
-#[derive(Debug, StructOpt)]
-pub struct Watch {}
-
-impl Watch {
-    pub fn execute(
-        &self,
-        watch_path: impl AsRef<Path>,
-        mut command: process::Command,
-    ) -> Result<()> {
-        let (tx, rx) = mpsc::channel();
-        let mut watcher: RecommendedWatcher =
-            notify::Watcher::new(tx, std::time::Duration::from_secs(2))
-                .context("could not initialize watcher")?;
-
-        let metadata = cargo_metadata::MetadataCommand::new()
-            .exec()
-            .context("cannot get package's metadata")?;
-        let target_path = metadata.target_directory.as_std_path();
-        let build_path = &metadata.workspace_root.as_std_path().join(watch_path);
-
-        watcher
-            .watch(&metadata.workspace_root, RecursiveMode::Recursive)
-            .context("cannot watch this crate")?;
-
-        let mut child = command.spawn().context("cannot spawn command")?;
-
-        loop {
-            use notify::DebouncedEvent::*;
-
-            let message = rx.recv();
-
-            match &message {
-                Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
-                    if !path.starts_with(build_path)
-                        && !path.starts_with(target_path)
-                        && !path
-                            .file_name()
-                            .and_then(|x| x.to_str())
-                            .map(|x| x.starts_with('.'))
-                            .unwrap_or(false) =>
-                {
-                    #[cfg(unix)]
-                    {
-                        let now = std::time::Instant::now();
-
-                        unsafe {
-                            libc::kill(
-                                child.id().try_into().expect("cannot get process id"),
-                                libc::SIGTERM,
-                            );
-                        }
-
-                        while now.elapsed().as_secs() < 2 {
-                            std::thread::sleep(std::time::Duration::from_millis(200));
-                            if let Ok(Some(_)) = child.try_wait() {
-                                break;
-                            }
-                        }
-                    }
-
-                    match child.try_wait() {
-                        Ok(Some(_)) => {}
-                        _ => {
-                            let _ = child.kill();
-                            let _ = child.wait();
-                        }
-                    }
-
-                    child = command.spawn().context("cannot spawn command")?;
-                }
-                Ok(_) => {}
-                Err(err) => log::error!("watch error: {}", err),
-            };
-        }
-    }
 }
