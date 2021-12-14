@@ -13,11 +13,21 @@ use wasm_bindgen_cli_support::Bindgen;
 pub struct Build {
     #[structopt(long)]
     release: bool,
+    #[structopt(skip = default_build_command())]
+    command: process::Command,
+}
+
+fn default_build_command() -> process::Command {
+    let mut command = process::Command::new("cargo");
+
+    command.args(["build", "--target", "wasm32-unknown-unknown"]);
+
+    command
 }
 
 impl Build {
     pub fn execute(
-        &self,
+        self,
         crate_name: &'static str,
         static_dir_path: impl AsRef<Path>,
         build_dir_path: impl AsRef<Path>,
@@ -28,21 +38,13 @@ impl Build {
             .context("cannot get package's metadata")?;
 
         log::trace!("Build: Initialize build process");
-        let mut build_process = process::Command::new("cargo");
-        build_process
-            .current_dir(&metadata.workspace_root)
-            .arg("build");
+        let mut build_process = self.command;
 
         if self.release {
             build_process.arg("--release");
         }
 
-        build_process.args([
-            "--target",
-            "wasm32-unknown-unknown",
-            "--package",
-            crate_name,
-        ]);
+        build_process.args(["--package", crate_name]);
 
         let input_path = metadata
             .target_directory
