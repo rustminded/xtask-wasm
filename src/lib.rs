@@ -28,6 +28,7 @@ pub fn package(name: &str) -> Option<&cargo_metadata::Package> {
 pub struct Build {
     #[structopt(long)]
     pub release: bool,
+
     #[structopt(skip = default_build_command())]
     command: process::Command,
     #[structopt(skip = true)]
@@ -134,6 +135,7 @@ pub struct Watch {
     watch_paths: Vec<PathBuf>,
     #[structopt(long = "ignore", short = "i")]
     exclude_paths: Vec<PathBuf>,
+
     #[structopt(skip)]
     workspace_exclude_paths: Vec<PathBuf>,
 }
@@ -264,6 +266,7 @@ pub struct DevServer {
     ip: IpAddr,
     #[structopt(long, default_value = "8000")]
     port: u16,
+
     #[structopt(flatten)]
     watch: Watch,
 }
