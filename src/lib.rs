@@ -5,44 +5,66 @@ use std::sync::mpsc;
 use std::{fs, process};
 
 use anyhow::{bail, ensure, Context, Result};
+use lazy_static::lazy_static;
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use structopt::StructOpt;
 use wasm_bindgen_cli_support::Bindgen;
 
+pub fn metadata() -> &'static cargo_metadata::Metadata {
+    lazy_static! {
+        static ref METADATA: cargo_metadata::Metadata = cargo_metadata::MetadataCommand::new()
+            .exec()
+            .expect("cannot get crate's metadata");
+    }
+
+    &METADATA
+}
+
+pub fn package(name: &str) -> Option<&cargo_metadata::Package> {
+    metadata().packages.iter().find(|x| x.name == name)
+}
+
 #[derive(Debug, StructOpt)]
 pub struct Build {
     #[structopt(long)]
-    release: bool,
+    pub release: bool,
+
+    #[structopt(skip = default_build_command())]
+    command: process::Command,
+    #[structopt(skip = true)]
+    run_in_workspace: bool,
+}
+
+fn default_build_command() -> process::Command {
+    let mut command = process::Command::new("cargo");
+
+    command.args(["build", "--target", "wasm32-unknown-unknown"]);
+
+    command
 }
 
 impl Build {
     pub fn execute(
-        &self,
-        crate_name: &'static str,
+        self,
+        crate_name: &str,
         static_dir_path: impl AsRef<Path>,
         build_dir_path: impl AsRef<Path>,
     ) -> Result<()> {
         log::trace!("Build: get package's metadata");
-        let metadata = cargo_metadata::MetadataCommand::new()
-            .exec()
-            .context("cannot get package's metadata")?;
+        let metadata = metadata();
 
         log::trace!("Build: Initialize build process");
-        let mut build_process = process::Command::new("cargo");
-        build_process
-            .current_dir(&metadata.workspace_root)
-            .arg("build");
+        let mut build_process = self.command;
+
+        if self.run_in_workspace {
+            build_process.current_dir(&metadata.workspace_root);
+        }
 
         if self.release {
             build_process.arg("--release");
         }
 
-        build_process.args([
-            "--target",
-            "wasm32-unknown-unknown",
-            "--package",
-            crate_name,
-        ]);
+        build_process.args(["--package", crate_name]);
 
         let input_path = metadata
             .target_directory
@@ -113,6 +135,7 @@ pub struct Watch {
     watch_paths: Vec<PathBuf>,
     #[structopt(long = "ignore", short = "i")]
     exclude_paths: Vec<PathBuf>,
+
     #[structopt(skip)]
     workspace_exclude_paths: Vec<PathBuf>,
 }
@@ -129,9 +152,7 @@ impl Watch {
     }
 
     pub fn exclude_workspace_path(&mut self, path: impl AsRef<Path>) {
-        let metadata = cargo_metadata::MetadataCommand::new()
-            .exec()
-            .expect("cannot get workspace metadata");
+        let metadata = metadata();
 
         self.workspace_exclude_paths
             .push(metadata.workspace_root.as_std_path().join(path))
@@ -174,9 +195,7 @@ impl Watch {
             notify::Watcher::new(tx, std::time::Duration::from_secs(2))
                 .context("could not initialize watcher")?;
 
-        let metadata = cargo_metadata::MetadataCommand::new()
-            .exec()
-            .context("cannot get package's metadata")?;
+        let metadata = metadata();
 
         self.exclude_path(metadata.target_directory.as_std_path());
 
@@ -247,6 +266,7 @@ pub struct DevServer {
     ip: IpAddr,
     #[structopt(long, default_value = "8000")]
     port: u16,
+
     #[structopt(flatten)]
     watch: Watch,
 }
