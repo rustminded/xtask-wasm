@@ -20,6 +20,10 @@ pub fn metadata() -> &'static cargo_metadata::Metadata {
     &METADATA
 }
 
+pub fn package(name: &str) -> cargo_metadata::Package {
+    todo!()
+}
+
 #[derive(Debug, StructOpt)]
 pub struct Build {
     #[structopt(long)]
@@ -50,6 +54,10 @@ impl Build {
 
         log::trace!("Build: Initialize build process");
         let mut build_process = self.command;
+
+        if self.run_in_workspace {
+            build_process.current_dir(&metadata.workspace_root);
+        }
 
         if self.release {
             build_process.arg("--release");
