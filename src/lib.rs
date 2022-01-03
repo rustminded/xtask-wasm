@@ -5,12 +5,13 @@ use std::sync::mpsc;
 use std::{fs, process};
 
 use anyhow::{bail, ensure, Context, Result};
+use lazy_static::lazy_static;
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
-use structopt::{lazy_static, StructOpt};
+use structopt::StructOpt;
 use wasm_bindgen_cli_support::Bindgen;
 
-pub fn get_metadata() -> &'static cargo_metadata::Metadata {
-    lazy_static::lazy_static! {
+pub fn metadata() -> &'static cargo_metadata::Metadata {
+    lazy_static! {
         static ref METADATA: cargo_metadata::Metadata = cargo_metadata::MetadataCommand::new()
             .exec()
             .expect("cannot get crate's metadata");
@@ -22,9 +23,11 @@ pub fn get_metadata() -> &'static cargo_metadata::Metadata {
 #[derive(Debug, StructOpt)]
 pub struct Build {
     #[structopt(long)]
-    release: bool,
+    pub release: bool,
     #[structopt(skip = default_build_command())]
     command: process::Command,
+    #[structopt(skip = true)]
+    run_in_workspace: bool,
 }
 
 fn default_build_command() -> process::Command {
@@ -38,12 +41,12 @@ fn default_build_command() -> process::Command {
 impl Build {
     pub fn execute(
         self,
-        crate_name: &'static str,
+        crate_name: &str,
         static_dir_path: impl AsRef<Path>,
         build_dir_path: impl AsRef<Path>,
     ) -> Result<()> {
         log::trace!("Build: get package's metadata");
-        let metadata = get_metadata();
+        let metadata = metadata();
 
         log::trace!("Build: Initialize build process");
         let mut build_process = self.command;
@@ -139,7 +142,7 @@ impl Watch {
     }
 
     pub fn exclude_workspace_path(&mut self, path: impl AsRef<Path>) {
-        let metadata = get_metadata();
+        let metadata = metadata();
 
         self.workspace_exclude_paths
             .push(metadata.workspace_root.as_std_path().join(path))
@@ -182,7 +185,7 @@ impl Watch {
             notify::Watcher::new(tx, std::time::Duration::from_secs(2))
                 .context("could not initialize watcher")?;
 
-        let metadata = get_metadata();
+        let metadata = metadata();
 
         self.exclude_path(metadata.target_directory.as_std_path());
 
