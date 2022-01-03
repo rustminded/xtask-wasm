@@ -30,9 +30,9 @@ pub struct Build {
     pub release: bool,
 
     #[structopt(skip = default_build_command())]
-    command: process::Command,
+    pub command: process::Command,
     #[structopt(skip = true)]
-    run_in_workspace: bool,
+    pub run_in_workspace: bool,
 }
 
 fn default_build_command() -> process::Command {
@@ -132,12 +132,12 @@ impl Build {
 #[derive(Debug, Clone, StructOpt)]
 pub struct Watch {
     #[structopt(long = "watch", short = "w")]
-    watch_paths: Vec<PathBuf>,
+    pub watch_paths: Vec<PathBuf>,
     #[structopt(long = "ignore", short = "i")]
-    exclude_paths: Vec<PathBuf>,
+    pub exclude_paths: Vec<PathBuf>,
 
     #[structopt(skip)]
-    workspace_exclude_paths: Vec<PathBuf>,
+    pub workspace_exclude_paths: Vec<PathBuf>,
 }
 
 impl Watch {
@@ -263,12 +263,12 @@ impl Watch {
 #[derive(Debug, StructOpt)]
 pub struct DevServer {
     #[structopt(long, default_value = "127.0.0.1")]
-    ip: IpAddr,
+    pub ip: IpAddr,
     #[structopt(long, default_value = "8000")]
-    port: u16,
+    pub port: u16,
 
     #[structopt(flatten)]
-    watch: Watch,
+    pub watch: Watch,
 }
 
 impl DevServer {
