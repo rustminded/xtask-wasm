@@ -20,8 +20,8 @@ pub fn metadata() -> &'static cargo_metadata::Metadata {
     &METADATA
 }
 
-pub fn package(name: &str) -> cargo_metadata::Package {
-    todo!()
+pub fn package(name: &str) -> Option<&cargo_metadata::Package> {
+    metadata().packages.iter().find(|x| x.name == name)
 }
 
 #[derive(Debug, StructOpt)]

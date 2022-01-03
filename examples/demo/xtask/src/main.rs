@@ -20,6 +20,12 @@ fn main() -> Result<()> {
         .filter(Some("xtask"), log::LevelFilter::Trace)
         .init();
 
+    if let Some(package) = xtask_wasm::package("demo-webapp") {
+        log::debug!("{:?}", package);
+    } else {
+        log::debug!("Nope");
+    }
+
     let mut build_command = process::Command::new("cargo");
     build_command.args(["xtask", "build"]);
 
