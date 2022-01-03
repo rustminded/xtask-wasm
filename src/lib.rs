@@ -6,8 +6,18 @@ use std::{fs, process};
 
 use anyhow::{bail, ensure, Context, Result};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
-use structopt::StructOpt;
+use structopt::{lazy_static, StructOpt};
 use wasm_bindgen_cli_support::Bindgen;
+
+pub fn get_metadata() -> &'static cargo_metadata::Metadata {
+    lazy_static::lazy_static! {
+        static ref METADATA: cargo_metadata::Metadata = cargo_metadata::MetadataCommand::new()
+            .exec()
+            .expect("cannot get crate's metadata");
+    }
+
+    &METADATA
+}
 
 #[derive(Debug, StructOpt)]
 pub struct Build {
@@ -33,9 +43,7 @@ impl Build {
         build_dir_path: impl AsRef<Path>,
     ) -> Result<()> {
         log::trace!("Build: get package's metadata");
-        let metadata = cargo_metadata::MetadataCommand::new()
-            .exec()
-            .context("cannot get package's metadata")?;
+        let metadata = get_metadata();
 
         log::trace!("Build: Initialize build process");
         let mut build_process = self.command;
@@ -131,9 +139,7 @@ impl Watch {
     }
 
     pub fn exclude_workspace_path(&mut self, path: impl AsRef<Path>) {
-        let metadata = cargo_metadata::MetadataCommand::new()
-            .exec()
-            .expect("cannot get workspace metadata");
+        let metadata = get_metadata();
 
         self.workspace_exclude_paths
             .push(metadata.workspace_root.as_std_path().join(path))
@@ -176,9 +182,7 @@ impl Watch {
             notify::Watcher::new(tx, std::time::Duration::from_secs(2))
                 .context("could not initialize watcher")?;
 
-        let metadata = cargo_metadata::MetadataCommand::new()
-            .exec()
-            .context("cannot get package's metadata")?;
+        let metadata = get_metadata();
 
         self.exclude_path(metadata.target_directory.as_std_path());
 
