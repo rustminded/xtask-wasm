@@ -44,14 +44,15 @@ fn default_build_command() -> process::Command {
 }
 
 impl Build {
-    pub fn execute(
-        self,
-        crate_name: &str,
-        static_dir_path: impl AsRef<Path>,
-        build_dir_path: impl AsRef<Path>,
-    ) -> Result<()> {
+    pub fn execute(self, crate_name: &str, static_dir_path: impl AsRef<Path>) -> Result<()> {
         log::trace!("Build: get package's metadata");
         let metadata = metadata();
+
+        let build_dir_path = if self.release {
+            metadata.target_directory.join("release/dist")
+        } else {
+            metadata.target_directory.join("debug/dist")
+        };
 
         log::trace!("Build: Initialize build process");
         let mut build_process = self.command;
@@ -99,8 +100,6 @@ impl Build {
 
         let wasm_js = output.js().to_owned();
         let wasm_bin = output.wasm_mut().emit_wasm();
-
-        let build_dir_path = build_dir_path.as_ref();
 
         let wasm_js_path = build_dir_path.join("app.js");
         let wasm_bin_path = build_dir_path.join("app_bg.wasm");
