@@ -271,14 +271,14 @@ pub struct DevServer {
 }
 
 impl DevServer {
-    pub fn serve(&self, build_dir_path: impl AsRef<Path>) -> Result<()> {
+    pub fn serve(&self, served_path: PathBuf) -> Result<()> {
         let address = SocketAddr::new(self.ip, self.port);
         let listener = TcpListener::bind(&address).context("cannot bind to the given address")?;
 
         log::info!("Development server at: http://{}", &address);
 
         for mut stream in listener.incoming().filter_map(|x| x.ok()) {
-            respond_to_request(&mut stream, &build_dir_path).unwrap_or_else(|e| {
+            respond_to_request(&mut stream, served_path.clone()).unwrap_or_else(|e| {
                 let _ = stream.write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes());
                 log::error!("an error occurred: {}", e);
             });
@@ -289,13 +289,30 @@ impl DevServer {
 
     pub fn serve_and_watch(
         self,
-        build_dir_path: impl AsRef<Path>,
+        path: Option<impl AsRef<Path>>,
         command: process::Command,
     ) -> Result<()> {
-        let build_dir_pathbuf = build_dir_path.as_ref().to_owned();
         let mut watch = self.watch.clone();
 
-        let handle = std::thread::spawn(move || match self.serve(build_dir_pathbuf) {
+        let pathbuf = if let Some(path) = path {
+            path.as_ref().to_owned()
+        } else {
+            let metadata = metadata();
+
+            if metadata.target_directory.join("release/dist").exists() {
+                metadata
+                    .target_directory
+                    .join("release/dist")
+                    .into_std_path_buf()
+            } else {
+                metadata
+                    .target_directory
+                    .join("debug/dist")
+                    .into_std_path_buf()
+            }
+        };
+
+        let handle = std::thread::spawn(move || match self.serve(pathbuf) {
             Ok(()) => log::trace!("starting server"),
             Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
         });
