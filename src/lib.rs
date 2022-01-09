@@ -300,8 +300,6 @@ impl DevServer {
             Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
         });
 
-        watch.exclude_workspace_path(build_dir_path);
-
         match watch.execute(command) {
             Ok(()) => log::trace!("starting watch"),
             Err(err) => log::error!("an error occurred when starting to watch: {}", err),
