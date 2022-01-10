@@ -294,11 +294,10 @@ impl DevServer {
 
         log::info!("DevServer: Development server at: http://{}", &address);
 
-        for mut stream in listener.incoming().filter_map(|x| x.ok()) {
-            respond_to_request(
-                &mut stream,
-                self.served_path.unwrap_or_else(|| {
-                    let metadata = metadata();
+        let served_path = if let Some(path) = &self.served_path {
+            path.to_owned()
+        } else {
+           let metadata = metadata();
 
                     if metadata
                         .target_directory
@@ -318,7 +317,12 @@ impl DevServer {
                             .join("dist")
                             .into_std_path_buf()
                     }
-                }),
+        };
+
+        for mut stream in listener.incoming().filter_map(|x| x.ok()) {
+            respond_to_request(
+                &mut stream,
+                &served_path,
             )
             .unwrap_or_else(|e| {
                 let _ = stream.write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes());
