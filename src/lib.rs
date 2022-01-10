@@ -56,20 +56,18 @@ impl Build {
 
         let build_dir_pathbuf = if let Some(path) = build_dir_path {
             path.as_ref().to_owned()
+        } else if self.release {
+            metadata
+                .target_directory
+                .join("release")
+                .join("dist")
+                .into_std_path_buf()
         } else {
-            if self.release {
-                metadata
-                    .target_directory
-                    .join("release")
-                    .join("dist")
-                    .into_std_path_buf()
-            } else {
-                metadata
-                    .target_directory
-                    .join("debug")
-                    .join("dist")
-                    .into_std_path_buf()
-            }
+            metadata
+                .target_directory
+                .join("debug")
+                .join("dist")
+                .into_std_path_buf()
         };
 
         log::trace!("Build: Initializing build process");
