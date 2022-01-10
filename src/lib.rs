@@ -32,6 +32,8 @@ pub struct Build {
 
     #[structopt(skip = default_build_command())]
     pub command: process::Command,
+    #[structopt(skip)]
+    pub build_dir_path: Option<PathBuf>,
     #[structopt(skip = true)]
     pub run_in_workspace: bool,
 }
@@ -45,17 +47,12 @@ fn default_build_command() -> process::Command {
 }
 
 impl Build {
-    pub fn execute(
-        self,
-        crate_name: &str,
-        static_dir_path: impl AsRef<Path>,
-        build_dir_path: Option<impl AsRef<Path>>,
-    ) -> Result<()> {
+    pub fn execute(self, crate_name: &str, static_dir_path: impl AsRef<Path>) -> Result<()> {
         log::trace!("Build: Getting package's metadata");
         let metadata = metadata();
 
-        let build_dir_pathbuf = if let Some(path) = build_dir_path {
-            path.as_ref().to_owned()
+        let build_dir_path = if let Some(path) = self.build_dir_path {
+            path
         } else if self.release {
             metadata
                 .target_directory
@@ -117,16 +114,16 @@ impl Build {
         let wasm_js = output.js().to_owned();
         let wasm_bin = output.wasm_mut().emit_wasm();
 
-        let wasm_js_path = build_dir_pathbuf.join("app.js");
-        let wasm_bin_path = build_dir_pathbuf.join("app_bg.wasm");
+        let wasm_js_path = build_dir_path.join("app.js");
+        let wasm_bin_path = build_dir_path.join("app_bg.wasm");
 
-        if build_dir_pathbuf.exists() {
+        if build_dir_path.exists() {
             log::trace!("Build: Removing already existing build directory");
-            fs::remove_dir_all(&build_dir_pathbuf)?;
+            fs::remove_dir_all(&build_dir_path)?;
         }
 
         log::trace!("Build: Creating new build directory");
-        fs::create_dir(&build_dir_pathbuf).context("cannot create build directory")?;
+        fs::create_dir(&build_dir_path).context("cannot create build directory")?;
 
         log::trace!("Build: Writing files into build directory");
         fs::write(wasm_js_path, wasm_js).with_context(|| "cannot write js file")?;
@@ -137,7 +134,7 @@ impl Build {
         copy_options.content_only = true;
 
         log::trace!("Build: Copying static directory into build directory");
-        fs_extra::dir::copy(static_dir_path, build_dir_pathbuf, &copy_options)
+        fs_extra::dir::copy(static_dir_path, build_dir_path, &copy_options)
             .context("cannot copy static directory")?;
 
         Ok(())
@@ -286,52 +283,60 @@ pub struct DevServer {
 
     #[structopt(flatten)]
     pub watch: Watch,
+    #[structopt(skip)]
+    pub served_path: Option<PathBuf>,
 }
 
 impl DevServer {
-    pub fn serve(&self, served_path: impl AsRef<Path>) -> Result<()> {
+    pub fn serve(&self) -> Result<()> {
         let address = SocketAddr::new(self.ip, self.port);
         let listener = TcpListener::bind(&address).context("cannot bind to the given address")?;
 
         log::info!("DevServer: Development server at: http://{}", &address);
 
         for mut stream in listener.incoming().filter_map(|x| x.ok()) {
-            respond_to_request(&mut stream, served_path.as_ref().to_owned().clone())
-                .unwrap_or_else(|e| {
-                    let _ = stream.write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes());
-                    log::error!("an error occurred: {}", e);
-                });
+            respond_to_request(
+                &mut stream,
+                self.served_path.unwrap_or_else(|| {
+                    let metadata = metadata();
+
+                    if metadata
+                        .target_directory
+                        .join("release")
+                        .join("dist")
+                        .exists()
+                    {
+                        metadata
+                            .target_directory
+                            .join("release")
+                            .join("dist")
+                            .into_std_path_buf()
+                    } else {
+                        metadata
+                            .target_directory
+                            .join("debug")
+                            .join("dist")
+                            .into_std_path_buf()
+                    }
+                }),
+            )
+            .unwrap_or_else(|e| {
+                let _ = stream.write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes());
+                log::error!("an error occurred: {}", e);
+            });
         }
 
         Ok(())
     }
 
-    pub fn serve_and_watch(
-        self,
-        served_path: Option<PathBuf>,
-        command: process::Command,
-    ) -> Result<()> {
+    pub fn serve_and_watch(self, command: process::Command) -> Result<()> {
         let mut watch = self.watch.clone();
 
-        let pathbuf = if let Some(path) = served_path {
-            path
-        } else {
-            let metadata = metadata();
+        if let Some(path) = &self.served_path {
+            watch.exclude_workspace_path(path);
+        }
 
-            if metadata.target_directory.join("release/dist").exists() {
-                metadata
-                    .target_directory
-                    .join("release/dist")
-                    .into_std_path_buf()
-            } else {
-                metadata
-                    .target_directory
-                    .join("debug/dist")
-                    .into_std_path_buf()
-            }
-        };
-
-        let handle = std::thread::spawn(move || match self.serve(pathbuf) {
+        let handle = std::thread::spawn(move || match self.serve() {
             Ok(()) => log::trace!("DevServer: Starting server"),
             Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
         });
