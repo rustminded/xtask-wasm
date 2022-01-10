@@ -4,6 +4,8 @@ use structopt::StructOpt;
 
 #[derive(StructOpt)]
 struct Opt {
+    #[structopt(long, default_value = "Info")]
+    log_level: log::LevelFilter,
     #[structopt(subcommand)]
     cmd: Command,
 }
@@ -16,8 +18,10 @@ enum Command {
 }
 
 fn main() -> Result<()> {
+    let opt = Opt::from_args();
+
     env_logger::builder()
-        .filter(Some("xtask"), log::LevelFilter::Trace)
+        .filter(Some("xtask"), opt.log_level)
         .init();
 
     let mut build_command = process::Command::new("cargo");
@@ -31,15 +35,15 @@ fn main() -> Result<()> {
     match opt.cmd {
         Command::Build(arg) => {
             arg.execute(crate_name, static_dir)?;
-            log::trace!("Builded");
+            log::info!("Builded");
         }
         Command::Watch(mut arg) => {
-            log::trace!("Starting to watch");
+            log::info!("Starting to watch");
             arg.execute(build_command)?;
         }
         Command::Serve(arg) => {
-            log::trace!("Starting to serve");
-            arg.serve_and_watch(None, build_command)?;
+            log::info!("Starting to serve");
+            arg.serve_and_watch(build_command)?;
         }
     }
 
