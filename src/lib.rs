@@ -289,13 +289,13 @@ impl DevServer {
 
     pub fn serve_and_watch(
         self,
-        path: Option<impl AsRef<Path>>,
+        served_path: Option<PathBuf>,
         command: process::Command,
     ) -> Result<()> {
         let mut watch = self.watch.clone();
 
-        let pathbuf = if let Some(path) = path {
-            path.as_ref().to_owned()
+        let pathbuf = if let Some(path) = served_path {
+            path
         } else {
             let metadata = metadata();
 

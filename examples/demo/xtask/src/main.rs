@@ -20,35 +20,26 @@ fn main() -> Result<()> {
         .filter(Some("xtask"), log::LevelFilter::Trace)
         .init();
 
-    if let Some(package) = xtask_wasm::package("demo-webapp") {
-        log::debug!("{:?}", package);
-    } else {
-        log::debug!("Nope");
-    }
-
     let mut build_command = process::Command::new("cargo");
     build_command.args(["xtask", "build"]);
 
     let crate_name = "demo-webapp";
     let static_dir = "demo-webapp/static";
-    let build_dir = "build";
 
     let opt = Opt::from_args();
 
     match opt.cmd {
         Command::Build(arg) => {
-            log::trace!("Building into {}", build_dir);
-            arg.execute(crate_name, static_dir, build_dir)?;
+            arg.execute(crate_name, static_dir)?;
             log::trace!("Builded");
         }
         Command::Watch(mut arg) => {
             log::trace!("Starting to watch");
-            arg.exclude_workspace_path(build_dir);
             arg.execute(build_command)?;
         }
         Command::Serve(arg) => {
             log::trace!("Starting to serve");
-            arg.serve_and_watch(build_dir, build_command)?;
+            arg.serve_and_watch(None, build_command)?;
         }
     }
 
