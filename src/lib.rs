@@ -24,6 +24,7 @@ pub fn package(name: &str) -> Option<&cargo_metadata::Package> {
     metadata().packages.iter().find(|x| x.name == name)
 }
 
+#[non_exhaustive]
 #[derive(Debug, StructOpt)]
 pub struct Build {
     #[structopt(long)]
@@ -44,17 +45,21 @@ fn default_build_command() -> process::Command {
 }
 
 impl Build {
-    pub fn execute(self, crate_name: &str, static_dir_path: impl AsRef<Path>) -> Result<()> {
-        log::trace!("Build: get package's metadata");
+    pub fn execute(self, crate_name: &str, static_dir_path: impl AsRef<Path>, build_dir_path: Option<impl AsRef<Path>>) -> Result<()> {
+        log::trace!("Build: Getting package's metadata");
         let metadata = metadata();
 
-        let build_dir_path = if self.release {
-            metadata.target_directory.join("release/dist")
+        let build_dir_pathbuf = if let Some(path) = build_dir_path {
+            path.as_ref().to_owned()
         } else {
-            metadata.target_directory.join("debug/dist")
+            if self.release {
+                metadata.target_directory.join("release").join("dist").into_std_path_buf()
+            } else {
+                metadata.target_directory.join("debug").join("dist").into_std_path_buf()
+            }
         };
 
-        log::trace!("Build: Initialize build process");
+        log::trace!("Build: Initializing build process");
         let mut build_process = self.command;
 
         if self.run_in_workspace {
@@ -101,16 +106,16 @@ impl Build {
         let wasm_js = output.js().to_owned();
         let wasm_bin = output.wasm_mut().emit_wasm();
 
-        let wasm_js_path = build_dir_path.join("app.js");
-        let wasm_bin_path = build_dir_path.join("app_bg.wasm");
+        let wasm_js_path = build_dir_pathbuf.join("app.js");
+        let wasm_bin_path = build_dir_pathbuf.join("app_bg.wasm");
 
-        if build_dir_path.exists() {
-            log::trace!("Removing already existing build directory");
-            fs::remove_dir_all(&build_dir_path)?;
+        if build_dir_pathbuf.exists() {
+            log::trace!("Build: Removing already existing build directory");
+            fs::remove_dir_all(&build_dir_pathbuf)?;
         }
 
         log::trace!("Build: Creating new build directory");
-        fs::create_dir(&build_dir_path).context("cannot create build directory")?;
+        fs::create_dir(&build_dir_pathbuf).context("cannot create build directory")?;
 
         log::trace!("Build: Writing files into build directory");
         fs::write(wasm_js_path, wasm_js).with_context(|| "cannot write js file")?;
@@ -121,13 +126,14 @@ impl Build {
         copy_options.content_only = true;
 
         log::trace!("Build: Copying static directory into build directory");
-        fs_extra::dir::copy(static_dir_path, build_dir_path, &copy_options)
+        fs_extra::dir::copy(static_dir_path, build_dir_pathbuf, &copy_options)
             .context("cannot copy static directory")?;
 
         Ok(())
     }
 }
 
+#[non_exhaustive]
 #[derive(Debug, Clone, StructOpt)]
 pub struct Watch {
     #[structopt(long = "watch", short = "w")]
@@ -199,14 +205,14 @@ impl Watch {
         self.exclude_path(metadata.target_directory.as_std_path());
 
         if self.watch_paths.is_empty() {
-            log::trace!("Watching {}", &metadata.workspace_root);
+            log::trace!("Watch: Watching {}", &metadata.workspace_root);
             watcher
                 .watch(&metadata.workspace_root, RecursiveMode::Recursive)
                 .context("cannot watch this crate")?;
         } else {
             for path in &self.watch_paths {
                 match watcher.watch(&path, RecursiveMode::Recursive) {
-                    Ok(()) => log::trace!("Watching {}", path.display()),
+                    Ok(()) => log::trace!("Watch: Watching {}", path.display()),
                     Err(err) => log::error!("cannot watch {}: {}", path.display(), err),
                 }
             }
@@ -259,6 +265,7 @@ impl Watch {
     }
 }
 
+#[non_exhaustive]
 #[derive(Debug, StructOpt)]
 pub struct DevServer {
     #[structopt(long, default_value = "127.0.0.1")]
@@ -271,14 +278,14 @@ pub struct DevServer {
 }
 
 impl DevServer {
-    pub fn serve(&self, served_path: PathBuf) -> Result<()> {
+    pub fn serve(&self, served_path: impl AsRef<Path>) -> Result<()> {
         let address = SocketAddr::new(self.ip, self.port);
         let listener = TcpListener::bind(&address).context("cannot bind to the given address")?;
 
-        log::info!("Development server at: http://{}", &address);
+        log::info!("DevServer: Development server at: http://{}", &address);
 
         for mut stream in listener.incoming().filter_map(|x| x.ok()) {
-            respond_to_request(&mut stream, served_path.clone()).unwrap_or_else(|e| {
+            respond_to_request(&mut stream, served_path.as_ref().to_owned().clone()).unwrap_or_else(|e| {
                 let _ = stream.write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes());
                 log::error!("an error occurred: {}", e);
             });
@@ -313,17 +320,17 @@ impl DevServer {
         };
 
         let handle = std::thread::spawn(move || match self.serve(pathbuf) {
-            Ok(()) => log::trace!("starting server"),
+            Ok(()) => log::trace!("DevServer: Starting server"),
             Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
         });
 
         match watch.execute(command) {
-            Ok(()) => log::trace!("starting watch"),
+            Ok(()) => log::trace!("DevServer: Starting watch"),
             Err(err) => log::error!("an error occurred when starting to watch: {}", err),
         }
 
         match handle.join() {
-            Ok(()) => log::trace!("Ending watch"),
+            Ok(()) => log::trace!("DevServer: Ending watch"),
             Err(err) => log::error!("problem waiting end of the watch: {:?}", err),
         }
 
