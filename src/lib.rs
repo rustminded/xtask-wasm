@@ -45,7 +45,12 @@ fn default_build_command() -> process::Command {
 }
 
 impl Build {
-    pub fn execute(self, crate_name: &str, static_dir_path: impl AsRef<Path>, build_dir_path: Option<impl AsRef<Path>>) -> Result<()> {
+    pub fn execute(
+        self,
+        crate_name: &str,
+        static_dir_path: impl AsRef<Path>,
+        build_dir_path: Option<impl AsRef<Path>>,
+    ) -> Result<()> {
         log::trace!("Build: Getting package's metadata");
         let metadata = metadata();
 
@@ -53,9 +58,17 @@ impl Build {
             path.as_ref().to_owned()
         } else {
             if self.release {
-                metadata.target_directory.join("release").join("dist").into_std_path_buf()
+                metadata
+                    .target_directory
+                    .join("release")
+                    .join("dist")
+                    .into_std_path_buf()
             } else {
-                metadata.target_directory.join("debug").join("dist").into_std_path_buf()
+                metadata
+                    .target_directory
+                    .join("debug")
+                    .join("dist")
+                    .into_std_path_buf()
             }
         };
 
@@ -285,10 +298,11 @@ impl DevServer {
         log::info!("DevServer: Development server at: http://{}", &address);
 
         for mut stream in listener.incoming().filter_map(|x| x.ok()) {
-            respond_to_request(&mut stream, served_path.as_ref().to_owned().clone()).unwrap_or_else(|e| {
-                let _ = stream.write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes());
-                log::error!("an error occurred: {}", e);
-            });
+            respond_to_request(&mut stream, served_path.as_ref().to_owned().clone())
+                .unwrap_or_else(|e| {
+                    let _ = stream.write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes());
+                    log::error!("an error occurred: {}", e);
+                });
         }
 
         Ok(())
