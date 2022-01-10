@@ -303,7 +303,7 @@ impl DevServer {
             &address
         );
 
-        let served_path = build_dir_path(self.served_path, self.release);
+        let served_path = build_dir_path(self.served_path.clone(), self.release);
 
         for mut stream in listener.incoming().filter_map(|x| x.ok()) {
             respond_to_request(&mut stream, &served_path).unwrap_or_else(|e| {
