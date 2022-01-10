@@ -24,10 +24,8 @@ pub fn package(name: &str) -> Option<&cargo_metadata::Package> {
     metadata().packages.iter().find(|x| x.name == name)
 }
 
-fn build_dir_path(maybe_path: Option<PathBuf>, release: bool) -> PathBuf {
-    if let Some(path) = maybe_path {
-        path
-    } else {
+fn build_dir_path(path: Option<PathBuf>, release: bool) -> PathBuf {
+    path.unwrap_or_else(|| {
         if release {
             metadata()
                 .target_directory
@@ -37,11 +35,11 @@ fn build_dir_path(maybe_path: Option<PathBuf>, release: bool) -> PathBuf {
         } else {
             metadata()
                 .target_directory
-                .join("release")
+                .join("debug")
                 .join("dist")
                 .into_std_path_buf()
         }
-    }
+    })
 }
 
 #[non_exhaustive]
