@@ -24,6 +24,26 @@ pub fn package(name: &str) -> Option<&cargo_metadata::Package> {
     metadata().packages.iter().find(|x| x.name == name)
 }
 
+fn build_dir_path(maybe_path: Option<PathBuf>, release: bool) -> PathBuf {
+    if let Some(path) = maybe_path {
+        path
+    } else {
+        if release {
+            metadata()
+                .target_directory
+                .join("release")
+                .join("dist")
+                .into_std_path_buf()
+        } else {
+            metadata()
+                .target_directory
+                .join("release")
+                .join("dist")
+                .into_std_path_buf()
+        }
+    }
+}
+
 #[non_exhaustive]
 #[derive(Debug, StructOpt)]
 pub struct Build {
@@ -51,21 +71,7 @@ impl Build {
         log::trace!("Build: Getting package's metadata");
         let metadata = metadata();
 
-        let build_dir_path = if let Some(path) = self.build_dir_path {
-            path
-        } else if self.release {
-            metadata
-                .target_directory
-                .join("release")
-                .join("dist")
-                .into_std_path_buf()
-        } else {
-            metadata
-                .target_directory
-                .join("debug")
-                .join("dist")
-                .into_std_path_buf()
-        };
+        let build_dir_path = build_dir_path(self.build_dir_path, self.release);
 
         log::trace!("Build: Initializing build process");
         let mut build_process = self.command;
@@ -210,7 +216,7 @@ impl Watch {
 
         let metadata = metadata();
 
-        self.exclude_path(metadata.target_directory.as_std_path());
+        self.exclude_path(&metadata.target_directory);
 
         if self.watch_paths.is_empty() {
             log::trace!("Watch: Watching {}", &metadata.workspace_root);
@@ -285,6 +291,8 @@ pub struct DevServer {
     pub watch: Watch,
     #[structopt(skip)]
     pub served_path: Option<PathBuf>,
+    #[structopt(skip)]
+    pub release: bool,
 }
 
 impl DevServer {
@@ -292,32 +300,12 @@ impl DevServer {
         let address = SocketAddr::new(self.ip, self.port);
         let listener = TcpListener::bind(&address).context("cannot bind to the given address")?;
 
-        log::info!("DevServer: Development server at: http://{}", &address);
+        log::info!(
+            "DevServer: Development server running at: http://{}",
+            &address
+        );
 
-        let served_path = if let Some(path) = &self.served_path {
-            path.to_owned()
-        } else {
-            let metadata = metadata();
-
-            if metadata
-                .target_directory
-                .join("release")
-                .join("dist")
-                .exists()
-            {
-                metadata
-                    .target_directory
-                    .join("release")
-                    .join("dist")
-                    .into_std_path_buf()
-            } else {
-                metadata
-                    .target_directory
-                    .join("debug")
-                    .join("dist")
-                    .into_std_path_buf()
-            }
-        };
+        let served_path = build_dir_path(self.served_path, self.release);
 
         for mut stream in listener.incoming().filter_map(|x| x.ok()) {
             respond_to_request(&mut stream, &served_path).unwrap_or_else(|e| {
