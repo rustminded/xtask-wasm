@@ -5,7 +5,7 @@ use structopt::StructOpt;
 #[derive(StructOpt)]
 struct Opt {
     #[structopt(long, default_value = "Info")]
-    log_level: log::LevelFilter,
+    log: log::LevelFilter,
     #[structopt(subcommand)]
     cmd: Command,
 }
@@ -21,7 +21,7 @@ fn main() -> Result<()> {
     let opt = Opt::from_args();
 
     env_logger::builder()
-        .filter(Some("xtask"), opt.log_level)
+        .filter(Some("xtask"), opt.log)
         .init();
 
     let mut build_command = process::Command::new("cargo");

@@ -24,22 +24,18 @@ pub fn package(name: &str) -> Option<&cargo_metadata::Package> {
     metadata().packages.iter().find(|x| x.name == name)
 }
 
-fn build_dir_path(path: Option<PathBuf>, release: bool) -> PathBuf {
-    path.unwrap_or_else(|| {
-        if release {
-            metadata()
-                .target_directory
-                .join("release")
-                .join("dist")
-                .into_std_path_buf()
-        } else {
-            metadata()
-                .target_directory
-                .join("debug")
-                .join("dist")
-                .into_std_path_buf()
-        }
-    })
+fn default_build_dir(release: bool) -> cargo_metadata::camino::Utf8PathBuf {
+    if release {
+        metadata()
+            .target_directory
+            .join("release")
+            .join("dist")
+    } else {
+        metadata()
+            .target_directory
+            .join("debug")
+            .join("dist")
+    }
 }
 
 #[non_exhaustive]
@@ -69,7 +65,7 @@ impl Build {
         log::trace!("Build: Getting package's metadata");
         let metadata = metadata();
 
-        let build_dir_path = build_dir_path(self.build_dir_path, self.release);
+        let build_dir_path = self.build_dir_path.unwrap_or_else(|| default_build_dir(self.release).into_std_path_buf());
 
         log::trace!("Build: Initializing build process");
         let mut build_process = self.command;
@@ -295,6 +291,8 @@ pub struct DevServer {
 
 impl DevServer {
     pub fn serve(&self) -> Result<()> {
+        let served_path = self.served_path.clone().unwrap_or_else(|| default_build_dir(self.release).into_std_path_buf());
+
         let address = SocketAddr::new(self.ip, self.port);
         let listener = TcpListener::bind(&address).context("cannot bind to the given address")?;
 
@@ -303,7 +301,6 @@ impl DevServer {
             &address
         );
 
-        let served_path = build_dir_path(self.served_path.clone(), self.release);
 
         for mut stream in listener.incoming().filter_map(|x| x.ok()) {
             respond_to_request(&mut stream, &served_path).unwrap_or_else(|e| {
