@@ -143,7 +143,7 @@ impl Build {
         fs_extra::dir::copy(&static_dir_path, &build_dir_path, &copy_options)
             .context("cannot copy static directory")?;
 
-        log::info!("Build: Success");
+        log::info!("Builded successfully at {}", &build_dir_path.display());
 
         Ok(build_dir_path)
     }
@@ -307,10 +307,7 @@ impl DevServer {
         let address = SocketAddr::new(self.ip, self.port);
         let listener = TcpListener::bind(&address).context("cannot bind to the given address")?;
 
-        log::info!(
-            "DevServer: Development server running at: http://{}",
-            &address
-        );
+        log::info!("Development server running at: http://{}", &address);
 
         for mut stream in listener.incoming().filter_map(|x| x.ok()) {
             respond_to_request(&mut stream, &served_path).unwrap_or_else(|e| {
