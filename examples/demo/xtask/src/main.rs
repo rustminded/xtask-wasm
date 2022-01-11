@@ -38,11 +38,11 @@ fn main() -> Result<()> {
         Command::Watch(mut arg) => {
             log::info!("Starting to watch");
             arg.execute(build_command)?;
-        }
+        },
         Command::Serve(arg) => {
             log::info!("Starting to serve");
             arg.serve_and_watch(build_command)?;
-        }
+        },
     }
 
     Ok(())

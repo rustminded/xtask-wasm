@@ -65,7 +65,7 @@ fn default_build_command() -> process::Command {
 }
 
 impl Build {
-    pub fn execute(self, crate_name: &str, static_dir_path: impl AsRef<Path>) -> Result<()> {
+    pub fn execute(self, crate_name: &str, static_dir_path: impl AsRef<Path>) -> Result<PathBuf> {
         log::trace!("Build: Getting package's metadata");
         let metadata = metadata();
 
@@ -140,12 +140,12 @@ impl Build {
         copy_options.content_only = true;
 
         log::trace!("Build: Copying static directory into build directory");
-        fs_extra::dir::copy(static_dir_path, build_dir_path, &copy_options)
+        fs_extra::dir::copy(&static_dir_path, &build_dir_path, &copy_options)
             .context("cannot copy static directory")?;
 
         log::info!("Build: Success");
 
-        Ok(())
+        Ok(build_dir_path)
     }
 }
 
