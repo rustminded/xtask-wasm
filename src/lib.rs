@@ -10,6 +10,8 @@ use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use structopt::StructOpt;
 use wasm_bindgen_cli_support::Bindgen;
 
+pub use camino;
+
 pub fn metadata() -> &'static cargo_metadata::Metadata {
     lazy_static! {
         static ref METADATA: cargo_metadata::Metadata = cargo_metadata::MetadataCommand::new()
