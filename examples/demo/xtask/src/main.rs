@@ -20,9 +20,7 @@ enum Command {
 fn main() -> Result<()> {
     let opt = Opt::from_args();
 
-    env_logger::builder()
-        .filter(Some("xtask"), opt.log)
-        .init();
+    env_logger::builder().filter(Some("xtask"), opt.log).init();
 
     let mut build_command = process::Command::new("cargo");
     build_command.args(["xtask", "build"]);
@@ -33,10 +31,10 @@ fn main() -> Result<()> {
     let opt = Opt::from_args();
 
     match opt.cmd {
-        Command::Build(arg) => {
-            arg.execute(crate_name, static_dir)?;
-            log::info!("Builded");
-        }
+        Command::Build(arg) => match arg.execute(crate_name, static_dir) {
+            Ok(()) => log::info!("Builded"),
+            Err(err) => log::info!("Build failed: {}", err),
+        },
         Command::Watch(mut arg) => {
             log::info!("Starting to watch");
             arg.execute(build_command)?;

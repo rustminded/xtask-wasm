@@ -35,7 +35,7 @@ pub fn default_build_dir(release: bool) -> &'static camino::Utf8PathBuf {
     } else {
         lazy_static! {
             static ref DEFAULT_DEBUG_PATH: camino::Utf8PathBuf =
-                metadata().target_directory.join("release").join("dist");
+                metadata().target_directory.join("debug").join("dist");
         }
 
         &DEFAULT_DEBUG_PATH
@@ -129,7 +129,7 @@ impl Build {
         }
 
         log::trace!("Build: Creating new build directory");
-        fs::create_dir(&build_dir_path).context("cannot create build directory")?;
+        fs::create_dir_all(&build_dir_path).context("cannot create build directory")?;
 
         log::trace!("Build: Writing files into build directory");
         fs::write(wasm_js_path, wasm_js).with_context(|| "cannot write js file")?;
