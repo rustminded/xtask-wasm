@@ -24,11 +24,21 @@ pub fn package(name: &str) -> Option<&cargo_metadata::Package> {
     metadata().packages.iter().find(|x| x.name == name)
 }
 
-fn default_build_dir(release: bool) -> cargo_metadata::camino::Utf8PathBuf {
+pub fn default_build_dir(release: bool) -> &'static camino::Utf8PathBuf {
     if release {
-        metadata().target_directory.join("release").join("dist")
+        lazy_static! {
+            static ref DEFAULT_RELEASE_PATH: camino::Utf8PathBuf =
+                metadata().target_directory.join("release").join("dist");
+        }
+
+        &DEFAULT_RELEASE_PATH
     } else {
-        metadata().target_directory.join("debug").join("dist")
+        lazy_static! {
+            static ref DEFAULT_DEBUG_PATH: camino::Utf8PathBuf =
+                metadata().target_directory.join("release").join("dist");
+        }
+
+        &DEFAULT_DEBUG_PATH
     }
 }
 
@@ -61,7 +71,7 @@ impl Build {
 
         let build_dir_path = self
             .build_dir_path
-            .unwrap_or_else(|| default_build_dir(self.release).into_std_path_buf());
+            .unwrap_or_else(|| default_build_dir(self.release).clone().into_std_path_buf());
 
         log::trace!("Build: Initializing build process");
         let mut build_process = self.command;
@@ -290,7 +300,7 @@ impl DevServer {
         let served_path = self
             .served_path
             .clone()
-            .unwrap_or_else(|| default_build_dir(self.release).into_std_path_buf());
+            .unwrap_or_else(|| default_build_dir(self.release).clone().into_std_path_buf());
 
         let address = SocketAddr::new(self.ip, self.port);
         let listener = TcpListener::bind(&address).context("cannot bind to the given address")?;
@@ -363,7 +373,7 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
     let stream = reader.get_mut();
 
     if full_path.is_file() {
-        let full_path_extension = cargo_metadata::camino::Utf8Path::from_path(&full_path)
+        let full_path_extension = camino::Utf8Path::from_path(&full_path)
             .context("request path contains non-utf8 characters")?
             .extension();
 
