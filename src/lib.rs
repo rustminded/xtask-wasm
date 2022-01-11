@@ -143,6 +143,8 @@ impl Build {
         fs_extra::dir::copy(static_dir_path, build_dir_path, &copy_options)
             .context("cannot copy static directory")?;
 
+        log::info!("Build: Success");
+
         Ok(())
     }
 }

@@ -31,9 +31,9 @@ fn main() -> Result<()> {
     let opt = Opt::from_args();
 
     match opt.cmd {
-        Command::Build(arg) => match arg.execute(crate_name, static_dir) {
-            Ok(()) => log::info!("Builded"),
-            Err(err) => log::info!("Build failed: {}", err),
+        Command::Build(arg) => {
+            log::info!("Starting to build");
+            arg.execute(crate_name, static_dir)?;
         },
         Command::Watch(mut arg) => {
             log::info!("Starting to watch");
