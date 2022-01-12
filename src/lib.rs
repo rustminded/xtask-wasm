@@ -68,14 +68,14 @@ fn default_build_command() -> process::Command {
 
 impl Build {
     pub fn execute(self, crate_name: &str, static_dir_path: impl AsRef<Path>) -> Result<PathBuf> {
-        log::trace!("Build: Getting package's metadata");
+        log::trace!("Getting package's metadata");
         let metadata = metadata();
 
         let build_dir_path = self
             .build_dir_path
             .unwrap_or_else(|| default_build_dir(self.release).clone().into_std_path_buf());
 
-        log::trace!("Build: Initializing build process");
+        log::trace!("Initializing build process");
         let mut build_process = self.command;
 
         if self.run_in_workspace {
@@ -96,11 +96,11 @@ impl Build {
             .with_extension("wasm");
 
         if input_path.exists() {
-            log::trace!("Build: Removing existing target directory");
+            log::trace!("Removing existing target directory");
             fs::remove_file(&input_path).context("cannot remove existing target")?;
         }
 
-        log::trace!("Build: Spawning build process");
+        log::trace!("Spawning build process");
         ensure!(
             build_process
                 .status()
@@ -109,7 +109,7 @@ impl Build {
             "cargo command failed"
         );
 
-        log::trace!("Build: Generating wasm output");
+        log::trace!("Generating wasm output");
         let mut output = Bindgen::new()
             .input_path(input_path)
             .out_name("app")
@@ -126,14 +126,14 @@ impl Build {
         let wasm_bin_path = build_dir_path.join("app_bg.wasm");
 
         if build_dir_path.exists() {
-            log::trace!("Build: Removing already existing build directory");
+            log::trace!("Removing already existing build directory");
             fs::remove_dir_all(&build_dir_path)?;
         }
 
-        log::trace!("Build: Creating new build directory");
+        log::trace!("Creating new build directory");
         fs::create_dir_all(&build_dir_path).context("cannot create build directory")?;
 
-        log::trace!("Build: Writing files into build directory");
+        log::trace!("Writing files into build directory");
         fs::write(wasm_js_path, wasm_js).with_context(|| "cannot write js file")?;
         fs::write(wasm_bin_path, wasm_bin).with_context(|| "cannot write WASM file")?;
 
@@ -141,11 +141,11 @@ impl Build {
         copy_options.overwrite = true;
         copy_options.content_only = true;
 
-        log::trace!("Build: Copying static directory into build directory");
+        log::trace!("Copying static directory into build directory");
         fs_extra::dir::copy(&static_dir_path, &build_dir_path, &copy_options)
             .context("cannot copy static directory")?;
 
-        log::info!("Builded successfully at {}", &build_dir_path.display());
+        log::info!("Builded successfully at {}", build_dir_path.display());
 
         Ok(build_dir_path)
     }
@@ -223,14 +223,14 @@ impl Watch {
         self.exclude_path(&metadata.target_directory);
 
         if self.watch_paths.is_empty() {
-            log::trace!("Watch: Watching {}", &metadata.workspace_root);
+            log::trace!("Watching {}", &metadata.workspace_root);
             watcher
                 .watch(&metadata.workspace_root, RecursiveMode::Recursive)
                 .context("cannot watch this crate")?;
         } else {
             for path in &self.watch_paths {
                 match watcher.watch(&path, RecursiveMode::Recursive) {
-                    Ok(()) => log::trace!("Watch: Watching {}", path.display()),
+                    Ok(()) => log::trace!("Watching {}", path.display()),
                     Err(err) => log::error!("cannot watch {}: {}", path.display(), err),
                 }
             }
@@ -329,17 +329,17 @@ impl DevServer {
         }
 
         let handle = std::thread::spawn(move || match self.serve() {
-            Ok(()) => log::trace!("DevServer: Starting server"),
+            Ok(()) => log::trace!("Starting server"),
             Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
         });
 
         match watch.execute(command) {
-            Ok(()) => log::trace!("DevServer: Starting watch"),
+            Ok(()) => log::trace!("Starting to watch"),
             Err(err) => log::error!("an error occurred when starting to watch: {}", err),
         }
 
         match handle.join() {
-            Ok(()) => log::trace!("DevServer: Ending watch"),
+            Ok(()) => log::trace!("Ending watch"),
             Err(err) => log::error!("problem waiting end of the watch: {:?}", err),
         }
 
