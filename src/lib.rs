@@ -26,18 +26,12 @@ pub fn package(name: &str) -> Option<&cargo_metadata::Package> {
     metadata().packages.iter().find(|x| x.name == name)
 }
 
-pub fn default_build_dir(release: bool) -> &'static PathBuf {
+pub fn default_build_dir(release: bool) -> &'static camino::Utf8PathBuf {
     lazy_static! {
-        static ref DEFAULT_RELEASE_PATH: PathBuf = metadata()
-            .target_directory
-            .join("release")
-            .join("dist")
-            .into_std_path_buf();
-        static ref DEFAULT_DEBUG_PATH: PathBuf = metadata()
-            .target_directory
-            .join("debug")
-            .join("dist")
-            .into_std_path_buf();
+        static ref DEFAULT_RELEASE_PATH: camino::Utf8PathBuf =
+            metadata().target_directory.join("release").join("dist");
+        static ref DEFAULT_DEBUG_PATH: camino::Utf8PathBuf =
+            metadata().target_directory.join("debug").join("dist");
     }
 
     if release {
@@ -86,8 +80,8 @@ impl Build {
 
         let build_dir_path = self
             .build_dir_path
-            .as_ref()
-            .unwrap_or_else(|| default_build_dir(self.release));
+            .as_deref()
+            .unwrap_or_else(|| default_build_dir(self.release).as_std_path());
 
         log::trace!("Initializing build process");
         let mut build_process = self.command;
@@ -163,7 +157,7 @@ impl Build {
 
         log::info!("Builded successfully at {}", build_dir_path.display());
 
-        Ok(build_dir_path.to_path_buf())
+        Ok(build_dir_path.to_owned())
     }
 }
 
@@ -319,8 +313,8 @@ impl DevServer {
     pub fn serve(self) -> Result<()> {
         let served_path = self
             .served_path
-            .as_ref()
-            .unwrap_or_else(|| default_build_dir(self.release));
+            .as_deref()
+            .unwrap_or_else(|| default_build_dir(self.release).as_std_path());
 
         let address = SocketAddr::new(self.ip, self.port);
         let listener = TcpListener::bind(&address).context("cannot bind to the given address")?;
