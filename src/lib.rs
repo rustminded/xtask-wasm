@@ -27,19 +27,16 @@ pub fn package(name: &str) -> Option<&cargo_metadata::Package> {
 }
 
 pub fn default_build_dir(release: bool) -> &'static camino::Utf8PathBuf {
-    if release {
-        lazy_static! {
-            static ref DEFAULT_RELEASE_PATH: camino::Utf8PathBuf =
-                metadata().target_directory.join("release").join("dist");
-        }
+    lazy_static! {
+        static ref DEFAULT_RELEASE_PATH: camino::Utf8PathBuf =
+            metadata().target_directory.join("release").join("dist");
+        static ref DEFAULT_DEBUG_PATH: camino::Utf8PathBuf =
+            metadata().target_directory.join("debug").join("dist");
+    }
 
+    if release {
         &DEFAULT_RELEASE_PATH
     } else {
-        lazy_static! {
-            static ref DEFAULT_DEBUG_PATH: camino::Utf8PathBuf =
-                metadata().target_directory.join("debug").join("dist");
-        }
-
         &DEFAULT_DEBUG_PATH
     }
 }
@@ -197,7 +194,7 @@ impl Watch {
         }
     }
 
-    fn is_excluded_path(&mut self, path: &Path) -> bool {
+    fn is_excluded_path(&self, path: &Path) -> bool {
         self.exclude_paths.iter().any(|x| path.starts_with(x))
             || self
                 .workspace_exclude_paths
@@ -205,22 +202,20 @@ impl Watch {
                 .any(|x| path.starts_with(x))
     }
 
-    fn is_hidden_path(&mut self, path: &Path) -> bool {
+    fn is_hidden_path(&self, path: &Path) -> bool {
         path.file_name()
             .and_then(|x| x.to_str())
             .map(|x| x.starts_with('.'))
             .unwrap_or(false)
     }
 
-    pub fn execute(&mut self, mut command: process::Command) -> Result<()> {
+    pub fn execute(self, mut command: process::Command) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
             notify::Watcher::new(tx, std::time::Duration::from_secs(2))
                 .context("could not initialize watcher")?;
 
         let metadata = metadata();
-
-        self.exclude_path(&metadata.target_directory);
 
         if self.watch_paths.is_empty() {
             log::trace!("Watching {}", &metadata.workspace_root);
@@ -245,7 +240,9 @@ impl Watch {
 
             match &message {
                 Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
-                    if !self.is_excluded_path(path) && !self.is_hidden_path(path) =>
+                    if !self.is_excluded_path(path)
+                        && !self.is_hidden_path(path)
+                        && path != &metadata.target_directory =>
                 {
                     #[cfg(unix)]
                     {
@@ -300,7 +297,7 @@ pub struct DevServer {
 }
 
 impl DevServer {
-    pub fn serve(&self) -> Result<()> {
+    pub fn serve(self) -> Result<()> {
         let served_path = self
             .served_path
             .clone()

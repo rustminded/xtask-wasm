@@ -20,7 +20,9 @@ enum Command {
 fn main() -> Result<()> {
     let opt = Opt::from_args();
 
-    env_logger::builder().filter(Some("xtask"), opt.log_level).init();
+    env_logger::builder()
+        .filter(Some("xtask"), opt.log_level)
+        .init();
 
     let mut build_command = process::Command::new("cargo");
     build_command.args(["xtask", "build"]);
@@ -29,15 +31,15 @@ fn main() -> Result<()> {
         Command::Build(arg) => {
             log::info!("Starting to build");
             arg.execute("demo-webapp", "demo-webapp/static")?;
-        },
+        }
         Command::Watch(mut arg) => {
             log::info!("Starting to watch");
             arg.execute(build_command)?;
-        },
+        }
         Command::Serve(arg) => {
             log::info!("Starting to serve");
             arg.serve_and_watch(build_command)?;
-        },
+        }
     }
 
     Ok(())
