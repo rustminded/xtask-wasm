@@ -209,13 +209,15 @@ impl Watch {
             .unwrap_or(false)
     }
 
-    pub fn execute(self, mut command: process::Command) -> Result<()> {
+    pub fn execute(mut self, mut command: process::Command) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
             notify::Watcher::new(tx, std::time::Duration::from_secs(2))
                 .context("could not initialize watcher")?;
 
         let metadata = metadata();
+
+        self.exclude_path(&metadata.target_directory);
 
         if self.watch_paths.is_empty() {
             log::trace!("Watching {}", &metadata.workspace_root);
@@ -240,9 +242,7 @@ impl Watch {
 
             match &message {
                 Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
-                    if !self.is_excluded_path(path)
-                        && !self.is_hidden_path(path)
-                        && path != &metadata.target_directory =>
+                    if !self.is_excluded_path(path) && !self.is_hidden_path(path) =>
                 {
                     #[cfg(unix)]
                     {
