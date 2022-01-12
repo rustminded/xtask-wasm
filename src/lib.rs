@@ -28,10 +28,16 @@ pub fn package(name: &str) -> Option<&cargo_metadata::Package> {
 
 pub fn default_build_dir(release: bool) -> &'static PathBuf {
     lazy_static! {
-        static ref DEFAULT_RELEASE_PATH: PathBuf =
-            metadata().target_directory.join("release").join("dist").into_std_path_buf();
-        static ref DEFAULT_DEBUG_PATH: PathBuf =
-            metadata().target_directory.join("debug").join("dist").into_std_path_buf();
+        static ref DEFAULT_RELEASE_PATH: PathBuf = metadata()
+            .target_directory
+            .join("release")
+            .join("dist")
+            .into_std_path_buf();
+        static ref DEFAULT_DEBUG_PATH: PathBuf = metadata()
+            .target_directory
+            .join("debug")
+            .join("dist")
+            .into_std_path_buf();
     }
 
     if release {
