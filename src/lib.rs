@@ -26,12 +26,12 @@ pub fn package(name: &str) -> Option<&cargo_metadata::Package> {
     metadata().packages.iter().find(|x| x.name == name)
 }
 
-pub fn default_build_dir(release: bool) -> &'static camino::Utf8PathBuf {
+pub fn default_build_dir(release: bool) -> &'static PathBuf {
     lazy_static! {
-        static ref DEFAULT_RELEASE_PATH: camino::Utf8PathBuf =
-            metadata().target_directory.join("release").join("dist");
-        static ref DEFAULT_DEBUG_PATH: camino::Utf8PathBuf =
-            metadata().target_directory.join("debug").join("dist");
+        static ref DEFAULT_RELEASE_PATH: PathBuf =
+            metadata().target_directory.join("release").join("dist").into_std_path_buf();
+        static ref DEFAULT_DEBUG_PATH: PathBuf =
+            metadata().target_directory.join("debug").join("dist").into_std_path_buf();
     }
 
     if release {
@@ -50,9 +50,9 @@ pub struct Build {
     #[structopt(skip = default_build_command())]
     pub command: process::Command,
     #[structopt(skip)]
-    pub build_dir_path: Option<camino::Utf8PathBuf>,
+    pub build_dir_path: Option<PathBuf>,
     #[structopt(skip)]
-    pub static_dir_path: Option<camino::Utf8PathBuf>,
+    pub static_dir_path: Option<PathBuf>,
     #[structopt(skip = true)]
     pub run_in_workspace: bool,
 }
@@ -66,19 +66,15 @@ fn default_build_command() -> process::Command {
 }
 
 impl Build {
-    pub fn build_dir_path(&mut self, path: impl AsRef<Path>) {
-        let path = camino::Utf8PathBuf::from_path_buf(path.as_ref().to_owned())
-            .expect("build_dir_path is not valid Unicode");
-        self.build_dir_path = Some(path);
+    pub fn build_dir_path(&mut self, path: impl Into<PathBuf>) {
+        self.build_dir_path = Some(path.into());
     }
 
-    pub fn static_dir_path(&mut self, path: impl AsRef<Path>) {
-        let path = camino::Utf8PathBuf::from_path_buf(path.as_ref().to_owned())
-            .expect("static_dir_path is not valid Unicode");
-        self.static_dir_path = Some(path);
+    pub fn static_dir_path(&mut self, path: impl Into<PathBuf>) {
+        self.static_dir_path = Some(path.into());
     }
 
-    pub fn execute(self, crate_name: &str) -> Result<camino::Utf8PathBuf> {
+    pub fn execute(self, crate_name: &str) -> Result<PathBuf> {
         log::trace!("Getting package's metadata");
         let metadata = metadata();
 
@@ -159,9 +155,9 @@ impl Build {
                 .context("cannot copy static directory")?;
         }
 
-        log::info!("Builded successfully at {}", build_dir_path);
+        log::info!("Builded successfully at {}", build_dir_path.display());
 
-        Ok(build_dir_path.clone())
+        Ok(build_dir_path.to_path_buf())
     }
 }
 
@@ -308,7 +304,7 @@ pub struct DevServer {
     #[structopt(flatten)]
     pub watch: Watch,
     #[structopt(skip)]
-    pub served_path: Option<camino::Utf8PathBuf>,
+    pub served_path: Option<PathBuf>,
     #[structopt(skip)]
     pub release: bool,
 }
