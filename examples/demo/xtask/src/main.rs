@@ -28,11 +28,12 @@ fn main() -> Result<()> {
     build_command.args(["xtask", "build"]);
 
     match opt.cmd {
-        Command::Build(arg) => {
+        Command::Build(mut arg) => {
             log::info!("Starting to build");
-            arg.execute("demo-webapp", "demo-webapp/static")?;
+            arg.static_dir_path("demo-webapp/static");
+            arg.execute("demo-webapp")?;
         }
-        Command::Watch(mut arg) => {
+        Command::Watch(arg) => {
             log::info!("Starting to watch");
             arg.execute(build_command)?;
         }

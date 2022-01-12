@@ -50,7 +50,9 @@ pub struct Build {
     #[structopt(skip = default_build_command())]
     pub command: process::Command,
     #[structopt(skip)]
-    pub build_dir_path: Option<PathBuf>,
+    pub build_dir_path: Option<camino::Utf8PathBuf>,
+    #[structopt(skip)]
+    pub static_dir_path: Option<camino::Utf8PathBuf>,
     #[structopt(skip = true)]
     pub run_in_workspace: bool,
 }
@@ -64,13 +66,26 @@ fn default_build_command() -> process::Command {
 }
 
 impl Build {
-    pub fn execute(self, crate_name: &str, static_dir_path: impl AsRef<Path>) -> Result<PathBuf> {
+    pub fn build_dir_path(&mut self, path: impl AsRef<Path>) {
+        let path = camino::Utf8PathBuf::from_path_buf(path.as_ref().to_owned())
+            .expect("build_dir_path is not valid Unicode");
+        self.build_dir_path = Some(path);
+    }
+
+    pub fn static_dir_path(&mut self, path: impl AsRef<Path>) {
+        let path = camino::Utf8PathBuf::from_path_buf(path.as_ref().to_owned())
+            .expect("static_dir_path is not valid Unicode");
+        self.static_dir_path = Some(path);
+    }
+
+    pub fn execute(self, crate_name: &str) -> Result<camino::Utf8PathBuf> {
         log::trace!("Getting package's metadata");
         let metadata = metadata();
 
         let build_dir_path = self
             .build_dir_path
-            .unwrap_or_else(|| default_build_dir(self.release).clone().into_std_path_buf());
+            .as_ref()
+            .unwrap_or_else(|| default_build_dir(self.release));
 
         log::trace!("Initializing build process");
         let mut build_process = self.command;
@@ -138,13 +153,15 @@ impl Build {
         copy_options.overwrite = true;
         copy_options.content_only = true;
 
-        log::trace!("Copying static directory into build directory");
-        fs_extra::dir::copy(&static_dir_path, &build_dir_path, &copy_options)
-            .context("cannot copy static directory")?;
+        if let Some(static_dir) = self.static_dir_path {
+            log::trace!("Copying static directory into build directory");
+            fs_extra::dir::copy(static_dir, build_dir_path, &copy_options)
+                .context("cannot copy static directory")?;
+        }
 
-        log::info!("Builded successfully at {}", build_dir_path.display());
+        log::info!("Builded successfully at {}", build_dir_path);
 
-        Ok(build_dir_path)
+        Ok(build_dir_path.clone())
     }
 }
 
@@ -291,7 +308,7 @@ pub struct DevServer {
     #[structopt(flatten)]
     pub watch: Watch,
     #[structopt(skip)]
-    pub served_path: Option<PathBuf>,
+    pub served_path: Option<camino::Utf8PathBuf>,
     #[structopt(skip)]
     pub release: bool,
 }
@@ -300,8 +317,8 @@ impl DevServer {
     pub fn serve(self) -> Result<()> {
         let served_path = self
             .served_path
-            .clone()
-            .unwrap_or_else(|| default_build_dir(self.release).clone().into_std_path_buf());
+            .as_ref()
+            .unwrap_or_else(|| default_build_dir(self.release));
 
         let address = SocketAddr::new(self.ip, self.port);
         let listener = TcpListener::bind(&address).context("cannot bind to the given address")?;
