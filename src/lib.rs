@@ -171,8 +171,6 @@ pub struct Watch {
 
     #[structopt(skip)]
     pub workspace_exclude_paths: Vec<PathBuf>,
-    #[structopt(skip = default_watch_command())]
-    pub command: process::Command,
 }
 
 fn default_watch_command() -> process::Command {
@@ -183,15 +181,6 @@ fn default_watch_command() -> process::Command {
 }
 
 impl Watch {
-    pub fn new(command: process::Command) -> Self {
-        Self {
-            watch_paths: Vec::new(),
-            exclude_paths: Vec::new(),
-            workspace_exclude_paths: Vec::new(),
-            command,
-        }
-    }
-
     pub fn exclude_path(&mut self, path: impl AsRef<Path>) {
         self.exclude_paths.push(path.as_ref().to_path_buf())
     }
@@ -240,7 +229,7 @@ impl Watch {
             .unwrap_or(false)
     }
 
-    pub fn execute(mut self) -> Result<()> {
+    pub fn execute(mut self, mut command: process::Command) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
             notify::Watcher::new(tx, std::time::Duration::from_secs(2))
@@ -264,7 +253,7 @@ impl Watch {
             }
         }
 
-        let mut child = self.command.spawn().context("cannot spawn command")?;
+        let mut child = command.spawn().context("cannot spawn command")?;
 
         loop {
             use notify::DebouncedEvent::*;
@@ -302,7 +291,7 @@ impl Watch {
                         }
                     }
 
-                    child = self.command.spawn().context("cannot spawn command")?;
+                    child = command.spawn().context("cannot spawn command")?;
                 }
                 Ok(_) => {}
                 Err(err) => log::error!("watch error: {}", err),
@@ -323,10 +312,12 @@ pub struct DevServer {
     pub served_path: Option<PathBuf>,
     #[structopt(skip)]
     pub release: bool,
+    #[structopt(flatten)]
+    pub watch: Watch,
 }
 
 impl DevServer {
-    fn serve(self) -> Result<()> {
+    fn serve(&self) -> Result<()> {
         let served_path = self
             .served_path
             .as_deref()
@@ -347,21 +338,21 @@ impl DevServer {
         Ok(())
     }
 
-    pub fn start(self, watch: Option<Watch>) -> Result<()> {
-        if let Some(mut watch) = watch {
-            watch.exclude_path(
+    pub fn start(mut self, command: Option<process::Command>) -> Result<()> {
+        if let Some(command) = command {
+            self.watch.exclude_path(
                 self.served_path
                     .as_deref()
                     .unwrap_or_else(|| default_build_dir(self.release).as_std_path()),
             );
-            let handle = std::thread::spawn(move || match watch.execute() {
-                Ok(()) => log::trace!("Starting to watch"),
-                Err(err) => log::error!("an error occurred when starting to watch: {}", err),
-            });
-
-            match self.serve() {
+            let handle = std::thread::spawn(move || match self.serve() {
                 Ok(()) => log::trace!("Starting server"),
                 Err(err) => log::trace!("an error occurred when starting the dev server: {}", err),
+            });
+
+            match self.watch.execute(command) {
+                Ok(()) => log::trace!("Starting to watch"),
+                Err(err) => log::error!("an error occurred when starting to watch: {}", err),
             }
 
             match handle.join() {
