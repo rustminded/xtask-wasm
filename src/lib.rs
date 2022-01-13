@@ -81,7 +81,7 @@ impl Build {
         let build_dir_path = self
             .build_dir_path
             .as_deref()
-            .unwrap_or_else(|| default_build_dir(self.release).as_std_path());
+            .unwrap_or_else(|| default_build_dir(self.release).as_std_path()).to_owned();
 
         log::trace!("Initializing build process");
         let mut build_process = self.command;
@@ -151,13 +151,13 @@ impl Build {
 
         if let Some(static_dir) = self.static_dir_path {
             log::trace!("Copying static directory into build directory");
-            fs_extra::dir::copy(static_dir, build_dir_path, &copy_options)
+            fs_extra::dir::copy(static_dir, &build_dir_path, &copy_options)
                 .context("cannot copy static directory")?;
         }
 
         log::info!("Builded successfully at {}", build_dir_path.display());
 
-        Ok(build_dir_path.to_owned())
+        Ok(build_dir_path)
     }
 }
 
