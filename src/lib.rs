@@ -26,7 +26,7 @@ pub fn package(name: &str) -> Option<&cargo_metadata::Package> {
     metadata().packages.iter().find(|x| x.name == name)
 }
 
-pub fn default_build_dir(release: bool) -> &'static camino::Utf8PathBuf {
+pub fn default_build_dir(release: bool) -> &'static camino::Utf8Path {
     lazy_static! {
         static ref DEFAULT_RELEASE_PATH: camino::Utf8PathBuf =
             metadata().target_directory.join("release").join("dist");
