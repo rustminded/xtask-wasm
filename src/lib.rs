@@ -162,7 +162,7 @@ impl Build {
 }
 
 #[non_exhaustive]
-#[derive(Debug, Clone, StructOpt)]
+#[derive(Debug, StructOpt)]
 pub struct Watch {
     #[structopt(long = "watch", short = "w")]
     pub watch_paths: Vec<PathBuf>,
@@ -171,9 +171,27 @@ pub struct Watch {
 
     #[structopt(skip)]
     pub workspace_exclude_paths: Vec<PathBuf>,
+    #[structopt(skip = default_watch_command())]
+    pub command: process::Command,
+}
+
+fn default_watch_command() -> process::Command {
+    let mut command = process::Command::new("cargo");
+    command.arg("check");
+
+    command
 }
 
 impl Watch {
+    pub fn new(command: process::Command) -> Self {
+        Self {
+            watch_paths: Vec::new(),
+            exclude_paths: Vec::new(),
+            workspace_exclude_paths: Vec::new(),
+            command,
+        }
+    }
+
     pub fn exclude_path(&mut self, path: impl AsRef<Path>) {
         self.exclude_paths.push(path.as_ref().to_path_buf())
     }
@@ -222,7 +240,7 @@ impl Watch {
             .unwrap_or(false)
     }
 
-    pub fn execute(mut self, mut command: process::Command) -> Result<()> {
+    pub fn execute(mut self) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
             notify::Watcher::new(tx, std::time::Duration::from_secs(2))
@@ -246,7 +264,7 @@ impl Watch {
             }
         }
 
-        let mut child = command.spawn().context("cannot spawn command")?;
+        let mut child = self.command.spawn().context("cannot spawn command")?;
 
         loop {
             use notify::DebouncedEvent::*;
@@ -284,7 +302,7 @@ impl Watch {
                         }
                     }
 
-                    child = command.spawn().context("cannot spawn command")?;
+                    child = self.command.spawn().context("cannot spawn command")?;
                 }
                 Ok(_) => {}
                 Err(err) => log::error!("watch error: {}", err),
@@ -301,8 +319,6 @@ pub struct DevServer {
     #[structopt(long, default_value = "8000")]
     pub port: u16,
 
-    #[structopt(flatten)]
-    pub watch: Watch,
     #[structopt(skip)]
     pub served_path: Option<PathBuf>,
     #[structopt(skip)]
@@ -310,7 +326,7 @@ pub struct DevServer {
 }
 
 impl DevServer {
-    pub fn serve(self) -> Result<()> {
+    fn serve(self) -> Result<()> {
         let served_path = self
             .served_path
             .as_deref()
@@ -331,29 +347,37 @@ impl DevServer {
         Ok(())
     }
 
-    pub fn serve_and_watch(self, command: process::Command) -> Result<()> {
-        let mut watch = self.watch.clone();
+    pub fn start(self, watch: Option<Watch>) -> Result<()> {
+        if let Some(mut watch) = watch {
+            watch.exclude_path(
+                self.served_path
+                    .as_deref()
+                    .unwrap_or_else(|| default_build_dir(self.release).as_std_path()),
+            );
+            let handle = std::thread::spawn(move || match watch.execute() {
+                Ok(()) => log::trace!("Starting to watch"),
+                Err(err) => log::error!("an error occurred when starting to watch: {}", err),
+            });
 
-        if let Some(path) = &self.served_path {
-            watch.exclude_workspace_path(path);
+            match self.serve() {
+                Ok(()) => log::trace!("Starting server"),
+                Err(err) => log::trace!("an error occurred when starting the dev server: {}", err),
+            }
+
+            match handle.join() {
+                Ok(()) => log::trace!("End of the watch"),
+                Err(err) => log::error!("an error occurred on shutdown: {:?}", err),
+            }
+
+            Ok(())
+        } else {
+            match self.serve() {
+                Ok(()) => log::trace!("Starting server"),
+                Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
+            }
+
+            Ok(())
         }
-
-        let handle = std::thread::spawn(move || match self.serve() {
-            Ok(()) => log::trace!("Starting server"),
-            Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
-        });
-
-        match watch.execute(command) {
-            Ok(()) => log::trace!("Starting to watch"),
-            Err(err) => log::error!("an error occurred when starting to watch: {}", err),
-        }
-
-        match handle.join() {
-            Ok(()) => log::trace!("Ending watch"),
-            Err(err) => log::error!("problem waiting end of the watch: {:?}", err),
-        }
-
-        Ok(())
     }
 }
 
