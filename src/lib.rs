@@ -317,38 +317,21 @@ pub struct DevServer {
 }
 
 impl DevServer {
-    fn serve(&self) -> Result<()> {
-        let served_path = self
-            .served_path
-            .as_deref()
-            .unwrap_or_else(|| default_build_dir(self.release).as_std_path());
-
-        let address = SocketAddr::new(self.ip, self.port);
-        let listener = TcpListener::bind(&address).context("cannot bind to the given address")?;
-
-        log::info!("Development server running at: http://{}", &address);
-
-        for mut stream in listener.incoming().filter_map(|x| x.ok()) {
-            respond_to_request(&mut stream, &served_path).unwrap_or_else(|e| {
-                let _ = stream.write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes());
-                log::error!("an error occurred: {}", e);
-            });
-        }
-
-        Ok(())
-    }
-
     pub fn start(mut self, command: Option<process::Command>) -> Result<()> {
         if let Some(command) = command {
-            self.watch.exclude_path(
-                self.served_path
-                    .as_deref()
-                    .unwrap_or_else(|| default_build_dir(self.release).as_std_path()),
-            );
-            let handle = std::thread::spawn(move || match self.serve() {
-                Ok(()) => log::trace!("Starting server"),
-                Err(err) => log::trace!("an error occurred when starting the dev server: {}", err),
-            });
+            let served_path = self
+                .served_path
+                .as_deref()
+                .unwrap_or_else(|| default_build_dir(self.release).as_std_path())
+                .to_owned();
+            self.watch.exclude_path(&served_path);
+            let handle =
+                std::thread::spawn(move || match serve(self.ip, self.port, &served_path) {
+                    Ok(()) => log::trace!("Starting server"),
+                    Err(err) => {
+                        log::trace!("an error occurred when starting the dev server: {}", err)
+                    }
+                });
 
             match self.watch.execute(command) {
                 Ok(()) => log::trace!("Starting to watch"),
@@ -362,7 +345,11 @@ impl DevServer {
 
             Ok(())
         } else {
-            match self.serve() {
+            let served_path = self
+                .served_path
+                .as_deref()
+                .unwrap_or_else(|| default_build_dir(self.release).as_std_path());
+            match serve(self.ip, self.port, served_path) {
                 Ok(()) => log::trace!("Starting server"),
                 Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
             }
@@ -370,6 +357,22 @@ impl DevServer {
             Ok(())
         }
     }
+}
+
+fn serve(ip: IpAddr, port: u16, served_path: &Path) -> Result<()> {
+    let address = SocketAddr::new(ip, port);
+    let listener = TcpListener::bind(&address).context("cannot bind to the given address")?;
+
+    log::info!("Development server running at: http://{}", &address);
+
+    for mut stream in listener.incoming().filter_map(|x| x.ok()) {
+        respond_to_request(&mut stream, &served_path).unwrap_or_else(|e| {
+            let _ = stream.write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes());
+            log::error!("an error occurred: {}", e);
+        });
+    }
+
+    Ok(())
 }
 
 fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) -> Result<()> {
