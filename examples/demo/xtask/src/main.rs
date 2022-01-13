@@ -33,13 +33,14 @@ fn main() -> Result<()> {
             arg.static_dir_path("demo-webapp/static");
             arg.execute("demo-webapp")?;
         }
-        Command::Watch(arg) => {
+        Command::Watch(mut arg) => {
             log::info!("Starting to watch");
-            arg.execute(build_command)?;
+            arg.command = build_command;
+            arg.execute()?;
         }
         Command::Serve(arg) => {
             log::info!("Starting to serve");
-            arg.serve_and_watch(build_command)?;
+            arg.start(Some(xtask_wasm::Watch::new(build_command)))?;
         }
     }
 
