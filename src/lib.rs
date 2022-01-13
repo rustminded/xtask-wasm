@@ -81,7 +81,8 @@ impl Build {
         let build_dir_path = self
             .build_dir_path
             .as_deref()
-            .unwrap_or_else(|| default_build_dir(self.release).as_std_path()).to_owned();
+            .unwrap_or_else(|| default_build_dir(self.release).as_std_path())
+            .to_owned();
 
         log::trace!("Initializing build process");
         let mut build_process = self.command;
@@ -171,13 +172,6 @@ pub struct Watch {
 
     #[structopt(skip)]
     pub workspace_exclude_paths: Vec<PathBuf>,
-}
-
-fn default_watch_command() -> process::Command {
-    let mut command = process::Command::new("cargo");
-    command.arg("check");
-
-    command
 }
 
 impl Watch {
