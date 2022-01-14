@@ -48,30 +48,36 @@ pub struct Build {
     pub release: bool,
 
     #[structopt(skip = default_build_command())]
-    pub command: process::Command,
+    command: process::Command,
     #[structopt(skip)]
-    pub build_dir_path: Option<PathBuf>,
+    build_dir_path: Option<PathBuf>,
     #[structopt(skip)]
-    pub static_dir_path: Option<PathBuf>,
+    static_dir_path: Option<PathBuf>,
     #[structopt(skip = true)]
-    pub run_in_workspace: bool,
+    run_in_workspace: bool,
 }
 
 fn default_build_command() -> process::Command {
     let mut command = process::Command::new("cargo");
-
     command.args(["build", "--target", "wasm32-unknown-unknown"]);
-
     command
 }
 
 impl Build {
+    pub fn command(&mut self, command: process::Command) {
+        self.command = command;
+    }
+
     pub fn build_dir_path(&mut self, path: impl Into<PathBuf>) {
         self.build_dir_path = Some(path.into());
     }
 
     pub fn static_dir_path(&mut self, path: impl Into<PathBuf>) {
         self.static_dir_path = Some(path.into());
+    }
+
+    pub fn run_in_workspace(&mut self, res: bool) {
+        self.run_in_workspace = res;
     }
 
     pub fn execute(self, crate_name: &str) -> Result<PathBuf> {
@@ -173,6 +179,16 @@ pub struct Watch {
 }
 
 impl Watch {
+    pub fn watch_path(&mut self, path: impl AsRef<Path>) {
+        self.watch_paths.push(path.as_ref().to_path_buf())
+    }
+
+    pub fn watch_paths(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
+        for path in paths {
+            self.watch_path(path)
+        }
+    }
+
     pub fn exclude_path(&mut self, path: impl AsRef<Path>) {
         self.exclude_paths.push(path.as_ref().to_path_buf())
     }
@@ -184,41 +200,14 @@ impl Watch {
     }
 
     pub fn exclude_workspace_path(&mut self, path: impl AsRef<Path>) {
-        let metadata = metadata();
-
         self.workspace_exclude_paths
-            .push(metadata.workspace_root.as_std_path().join(path))
+            .push(metadata().workspace_root.as_std_path().join(path))
     }
 
     pub fn exclude_workspace_paths(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
         for path in paths {
             self.exclude_workspace_path(path)
         }
-    }
-
-    pub fn watch_path(&mut self, path: impl AsRef<Path>) {
-        self.watch_paths.push(path.as_ref().to_path_buf())
-    }
-
-    pub fn watch_paths(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
-        for path in paths {
-            self.watch_path(path)
-        }
-    }
-
-    fn is_excluded_path(&self, path: &Path) -> bool {
-        self.exclude_paths.iter().any(|x| path.starts_with(x))
-            || self
-                .workspace_exclude_paths
-                .iter()
-                .any(|x| path.starts_with(x))
-    }
-
-    fn is_hidden_path(&self, path: &Path) -> bool {
-        path.file_name()
-            .and_then(|x| x.to_str())
-            .map(|x| x.starts_with('.'))
-            .unwrap_or(false)
     }
 
     pub fn execute(mut self, mut command: process::Command) -> Result<()> {
@@ -290,6 +279,21 @@ impl Watch {
             };
         }
     }
+
+    fn is_excluded_path(&self, path: &Path) -> bool {
+        self.exclude_paths.iter().any(|x| path.starts_with(x))
+            || self
+                .workspace_exclude_paths
+                .iter()
+                .any(|x| path.starts_with(x))
+    }
+
+    fn is_hidden_path(&self, path: &Path) -> bool {
+        path.file_name()
+            .and_then(|x| x.to_str())
+            .map(|x| x.starts_with('.'))
+            .unwrap_or(false)
+    }
 }
 
 #[non_exhaustive]
@@ -300,19 +304,23 @@ pub struct DevServer {
     #[structopt(long, default_value = "8000")]
     pub port: u16,
 
-    #[structopt(skip)]
-    pub served_path: Option<PathBuf>,
-    #[structopt(skip)]
-    pub release: bool,
-    #[structopt(skip)]
-    pub command: Option<process::Command>,
     #[structopt(flatten)]
     pub watch: Watch,
+    #[structopt(skip)]
+    served_path: Option<PathBuf>,
+    #[structopt(skip)]
+    release: bool,
+    #[structopt(skip)]
+    command: Option<process::Command>,
 }
 
 impl DevServer {
     pub fn served_path(&mut self, path: impl AsRef<Path>) {
         self.served_path = Some(path.as_ref().to_path_buf());
+    }
+
+    pub fn release(&mut self, res: bool) {
+        self.release = res;
     }
 
     pub fn command(&mut self, command: process::Command) {
@@ -343,16 +351,14 @@ impl DevServer {
                 Ok(()) => log::trace!("End of the watch"),
                 Err(err) => log::error!("an error occurred on shutdown: {:?}", err),
             }
-
-            Ok(())
         } else {
             match serve(self.ip, self.port, &served_path) {
                 Ok(()) => log::trace!("Starting server"),
                 Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
             }
-
-            Ok(())
         }
+
+        Ok(())
     }
 }
 
@@ -383,7 +389,6 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
         .context("Could not find path in request")?;
 
     let rel_path = Path::new(requested_path.trim_matches('/'));
-
     let mut full_path = build_dir_path.as_ref().join(rel_path);
 
     if full_path.is_dir() {
