@@ -80,9 +80,7 @@ impl Build {
 
         let build_dir_path = self
             .build_dir_path
-            .as_deref()
-            .unwrap_or_else(|| default_build_dir(self.release).as_std_path())
-            .to_owned();
+            .unwrap_or_else(|| default_build_dir(self.release).as_std_path().to_path_buf());
 
         log::trace!("Initializing build process");
         let mut build_process = self.command;
@@ -322,10 +320,9 @@ impl DevServer {
     }
 
     pub fn start(mut self) -> Result<()> {
-        let served_path = match self.served_path {
-            Some(path) => path,
-            None => default_build_dir(self.release).as_std_path().to_path_buf(),
-        };
+        let served_path = self
+            .served_path
+            .unwrap_or_else(|| default_build_dir(self.release).as_std_path().to_path_buf());
 
         if let Some(command) = self.command {
             self.watch.exclude_path(&served_path);
