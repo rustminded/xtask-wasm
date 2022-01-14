@@ -313,6 +313,14 @@ pub struct DevServer {
 }
 
 impl DevServer {
+    pub fn served_path(&mut self, path: impl AsRef<Path>) {
+        self.served_path = Some(path.as_ref().to_path_buf());
+    }
+
+    pub fn command(&mut self, command: process::Command) {
+        self.command = Some(command);
+    }
+
     pub fn start(mut self) -> Result<()> {
         let served_path = match self.served_path {
             Some(path) => path,
