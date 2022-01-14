@@ -306,18 +306,20 @@ pub struct DevServer {
     pub served_path: Option<PathBuf>,
     #[structopt(skip)]
     pub release: bool,
+    #[structopt(skip)]
+    pub command: Option<process::Command>,
     #[structopt(flatten)]
     pub watch: Watch,
 }
 
 impl DevServer {
-    pub fn start(mut self, command: Option<process::Command>) -> Result<()> {
-        if let Some(command) = command {
-            let served_path = self
-                .served_path
-                .as_deref()
-                .unwrap_or_else(|| default_build_dir(self.release).as_std_path())
-                .to_owned();
+    pub fn start(mut self) -> Result<()> {
+        let served_path = match self.served_path {
+            Some(path) => path,
+            None => default_build_dir(self.release).as_std_path().to_path_buf(),
+        };
+
+        if let Some(command) = self.command {
             self.watch.exclude_path(&served_path);
             let handle =
                 std::thread::spawn(move || match serve(self.ip, self.port, &served_path) {
@@ -339,11 +341,7 @@ impl DevServer {
 
             Ok(())
         } else {
-            let served_path = self
-                .served_path
-                .as_deref()
-                .unwrap_or_else(|| default_build_dir(self.release).as_std_path());
-            match serve(self.ip, self.port, served_path) {
+            match serve(self.ip, self.port, &served_path) {
                 Ok(()) => log::trace!("Starting server"),
                 Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
             }
