@@ -332,29 +332,27 @@ impl DevServer {
             .served_path
             .unwrap_or_else(|| default_build_dir(self.release).as_std_path().to_path_buf());
 
-        if let Some(command) = self.command {
+        let watch_process = if let Some(command) = self.command {
             self.watch.exclude_path(&served_path);
-            let handle =
-                std::thread::spawn(move || match serve(self.ip, self.port, &served_path) {
-                    Ok(()) => log::trace!("Starting server"),
-                    Err(err) => {
-                        log::trace!("an error occurred when starting the dev server: {}", err)
-                    }
-                });
-
-            match self.watch.execute(command) {
+            let handle = std::thread::spawn(|| match self.watch.execute(command) {
                 Ok(()) => log::trace!("Starting to watch"),
                 Err(err) => log::error!("an error occurred when starting to watch: {}", err),
-            }
+            });
 
-            match handle.join() {
-                Ok(()) => log::trace!("End of the watch"),
-                Err(err) => log::error!("an error occurred on shutdown: {:?}", err),
-            }
+            Some(handle)
         } else {
-            match serve(self.ip, self.port, &served_path) {
-                Ok(()) => log::trace!("Starting server"),
-                Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
+            None
+        };
+
+        match serve(self.ip, self.port, &served_path) {
+            Ok(()) => log::trace!("Starting to serve"),
+            Err(err) => log::error!("an error occurred when starting to serve: {:?}", err),
+        }
+
+        if let Some(handle) = watch_process {
+            match handle.join() {
+                Ok(()) => log::trace!("Exiting the watch"),
+                Err(err) => log::error!("an error occurred when exiting the watch: {:?}", err),
             }
         }
 
@@ -362,7 +360,7 @@ impl DevServer {
     }
 }
 
-fn serve(ip: IpAddr, port: u16, served_path: &Path) -> Result<()> {
+fn serve(ip: IpAddr, port: u16, served_path: impl AsRef<Path>) -> Result<()> {
     let address = SocketAddr::new(ip, port);
     let listener = TcpListener::bind(&address).context("cannot bind to the given address")?;
 
