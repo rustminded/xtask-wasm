@@ -346,14 +346,11 @@ impl DevServer {
 
         match serve(self.ip, self.port, &served_path) {
             Ok(()) => log::trace!("Starting to serve"),
-            Err(err) => log::error!("an error occurred when starting to serve: {:?}", err),
+            Err(err) => log::error!("an error occurred when starting to serve: {}", err),
         }
 
         if let Some(handle) = watch_process {
-            match handle.join() {
-                Ok(()) => log::trace!("Exiting the watch"),
-                Err(err) => log::error!("an error occurred when exiting the watch: {:?}", err),
-            }
+            handle.join().expect("an error occurred when exiting watch");
         }
 
         Ok(())
