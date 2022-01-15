@@ -4,6 +4,8 @@ use structopt::StructOpt;
 
 #[derive(StructOpt)]
 struct Opt {
+    #[structopt(long = "log", default_value = "Info")]
+    log_level: log::LevelFilter,
     #[structopt(subcommand)]
     cmd: Command,
 }
@@ -16,39 +18,29 @@ enum Command {
 }
 
 fn main() -> Result<()> {
-    env_logger::builder()
-        .filter(Some("xtask"), log::LevelFilter::Trace)
-        .init();
+    let opt = Opt::from_args();
 
-    if let Some(package) = xtask_wasm::package("demo-webapp") {
-        log::debug!("{:?}", package);
-    } else {
-        log::debug!("Nope");
-    }
+    env_logger::builder()
+        .filter(Some("xtask"), opt.log_level)
+        .init();
 
     let mut build_command = process::Command::new("cargo");
     build_command.args(["xtask", "build"]);
 
-    let crate_name = "demo-webapp";
-    let static_dir = "demo-webapp/static";
-    let build_dir = "build";
-
-    let opt = Opt::from_args();
-
     match opt.cmd {
-        Command::Build(arg) => {
-            log::trace!("Building into {}", build_dir);
-            arg.execute(crate_name, static_dir, build_dir)?;
-            log::trace!("Builded");
+        Command::Build(mut arg) => {
+            log::info!("Starting to build");
+            arg.static_dir_path("demo-webapp/static");
+            arg.execute("demo-webapp")?;
         }
-        Command::Watch(mut arg) => {
-            log::trace!("Starting to watch");
-            arg.exclude_workspace_path(build_dir);
+        Command::Watch(arg) => {
+            log::info!("Starting to watch");
             arg.execute(build_command)?;
         }
-        Command::Serve(arg) => {
-            log::trace!("Starting to serve");
-            arg.serve_and_watch(build_dir, build_command)?;
+        Command::Serve(mut arg) => {
+            log::info!("Starting to serve");
+            arg.command(build_command);
+            arg.start()?;
         }
     }
 

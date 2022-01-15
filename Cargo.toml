@@ -9,17 +9,17 @@ repository = "https://github.com/rustminded/xtask-wasm"
 documentation = "https://docs.rs/xtask-wasm"
 
 [dependencies]
-anyhow = "1.0"
-cargo_metadata = "0.14"
-fs_extra = "1.2"
-lazy_static = "1.4"
-log = "0.4"
-notify = "4.0"
-structopt = "0.3"
-walkdir = "2.3"
+anyhow = "1.0.52"
+cargo_metadata = "0.14.1"
+fs_extra = "1.2.0"
+lazy_static = "1.4.0"
+log = "0.4.14"
+notify = "4.0.17"
+structopt = "0.3.25"
+walkdir = "2.3.2"
 wasm-bindgen-cli-support = "0.2.68"
 
 [target.'cfg(unix)'.dependencies]
-libc = "0.2"
+libc = "0.2.112"
 
 [workspace]

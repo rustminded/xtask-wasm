@@ -10,6 +10,8 @@ use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use structopt::StructOpt;
 use wasm_bindgen_cli_support::Bindgen;
 
+pub use cargo_metadata::camino;
+
 pub fn metadata() -> &'static cargo_metadata::Metadata {
     lazy_static! {
         static ref METADATA: cargo_metadata::Metadata = cargo_metadata::MetadataCommand::new()
@@ -24,6 +26,22 @@ pub fn package(name: &str) -> Option<&cargo_metadata::Package> {
     metadata().packages.iter().find(|x| x.name == name)
 }
 
+pub fn default_build_dir(release: bool) -> &'static camino::Utf8Path {
+    lazy_static! {
+        static ref DEFAULT_RELEASE_PATH: camino::Utf8PathBuf =
+            metadata().target_directory.join("release").join("dist");
+        static ref DEFAULT_DEBUG_PATH: camino::Utf8PathBuf =
+            metadata().target_directory.join("debug").join("dist");
+    }
+
+    if release {
+        &DEFAULT_RELEASE_PATH
+    } else {
+        &DEFAULT_DEBUG_PATH
+    }
+}
+
+#[non_exhaustive]
 #[derive(Debug, StructOpt)]
 pub struct Build {
     #[structopt(long)]
@@ -31,29 +49,46 @@ pub struct Build {
 
     #[structopt(skip = default_build_command())]
     command: process::Command,
+    #[structopt(skip)]
+    build_dir_path: Option<PathBuf>,
+    #[structopt(skip)]
+    static_dir_path: Option<PathBuf>,
     #[structopt(skip = true)]
     run_in_workspace: bool,
 }
 
 fn default_build_command() -> process::Command {
     let mut command = process::Command::new("cargo");
-
     command.args(["build", "--target", "wasm32-unknown-unknown"]);
-
     command
 }
 
 impl Build {
-    pub fn execute(
-        self,
-        crate_name: &str,
-        static_dir_path: impl AsRef<Path>,
-        build_dir_path: impl AsRef<Path>,
-    ) -> Result<()> {
-        log::trace!("Build: get package's metadata");
+    pub fn command(&mut self, command: process::Command) {
+        self.command = command;
+    }
+
+    pub fn build_dir_path(&mut self, path: impl Into<PathBuf>) {
+        self.build_dir_path = Some(path.into());
+    }
+
+    pub fn static_dir_path(&mut self, path: impl Into<PathBuf>) {
+        self.static_dir_path = Some(path.into());
+    }
+
+    pub fn run_in_workspace(&mut self, res: bool) {
+        self.run_in_workspace = res;
+    }
+
+    pub fn execute(self, crate_name: &str) -> Result<PathBuf> {
+        log::trace!("Getting package's metadata");
         let metadata = metadata();
 
-        log::trace!("Build: Initialize build process");
+        let build_dir_path = self
+            .build_dir_path
+            .unwrap_or_else(|| default_build_dir(self.release).as_std_path().to_path_buf());
+
+        log::trace!("Initializing build process");
         let mut build_process = self.command;
 
         if self.run_in_workspace {
@@ -74,11 +109,11 @@ impl Build {
             .with_extension("wasm");
 
         if input_path.exists() {
-            log::trace!("Build: Removing existing target directory");
+            log::trace!("Removing existing target directory");
             fs::remove_file(&input_path).context("cannot remove existing target")?;
         }
 
-        log::trace!("Build: Spawning build process");
+        log::trace!("Spawning build process");
         ensure!(
             build_process
                 .status()
@@ -87,7 +122,7 @@ impl Build {
             "cargo command failed"
         );
 
-        log::trace!("Build: Generating wasm output");
+        log::trace!("Generating wasm output");
         let mut output = Bindgen::new()
             .input_path(input_path)
             .out_name("app")
@@ -100,8 +135,6 @@ impl Build {
         let wasm_js = output.js().to_owned();
         let wasm_bin = output.wasm_mut().emit_wasm();
 
-        let build_dir_path = build_dir_path.as_ref();
-
         let wasm_js_path = build_dir_path.join("app.js");
         let wasm_bin_path = build_dir_path.join("app_bg.wasm");
 
@@ -110,10 +143,10 @@ impl Build {
             fs::remove_dir_all(&build_dir_path)?;
         }
 
-        log::trace!("Build: Creating new build directory");
-        fs::create_dir(&build_dir_path).context("cannot create build directory")?;
+        log::trace!("Creating new build directory");
+        fs::create_dir_all(&build_dir_path).context("cannot create build directory")?;
 
-        log::trace!("Build: Writing files into build directory");
+        log::trace!("Writing files into build directory");
         fs::write(wasm_js_path, wasm_js).with_context(|| "cannot write js file")?;
         fs::write(wasm_bin_path, wasm_bin).with_context(|| "cannot write WASM file")?;
 
@@ -121,26 +154,41 @@ impl Build {
         copy_options.overwrite = true;
         copy_options.content_only = true;
 
-        log::trace!("Build: Copying static directory into build directory");
-        fs_extra::dir::copy(static_dir_path, build_dir_path, &copy_options)
-            .context("cannot copy static directory")?;
+        if let Some(static_dir) = self.static_dir_path {
+            log::trace!("Copying static directory into build directory");
+            fs_extra::dir::copy(static_dir, &build_dir_path, &copy_options)
+                .context("cannot copy static directory")?;
+        }
 
-        Ok(())
+        log::info!("Builded successfully at {}", build_dir_path.display());
+
+        Ok(build_dir_path)
     }
 }
 
-#[derive(Debug, Clone, StructOpt)]
+#[non_exhaustive]
+#[derive(Debug, StructOpt)]
 pub struct Watch {
     #[structopt(long = "watch", short = "w")]
-    watch_paths: Vec<PathBuf>,
+    pub watch_paths: Vec<PathBuf>,
     #[structopt(long = "ignore", short = "i")]
-    exclude_paths: Vec<PathBuf>,
+    pub exclude_paths: Vec<PathBuf>,
 
     #[structopt(skip)]
-    workspace_exclude_paths: Vec<PathBuf>,
+    pub workspace_exclude_paths: Vec<PathBuf>,
 }
 
 impl Watch {
+    pub fn watch_path(&mut self, path: impl AsRef<Path>) {
+        self.watch_paths.push(path.as_ref().to_path_buf())
+    }
+
+    pub fn watch_paths(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
+        for path in paths {
+            self.watch_path(path)
+        }
+    }
+
     pub fn exclude_path(&mut self, path: impl AsRef<Path>) {
         self.exclude_paths.push(path.as_ref().to_path_buf())
     }
@@ -152,10 +200,8 @@ impl Watch {
     }
 
     pub fn exclude_workspace_path(&mut self, path: impl AsRef<Path>) {
-        let metadata = metadata();
-
         self.workspace_exclude_paths
-            .push(metadata.workspace_root.as_std_path().join(path))
+            .push(metadata().workspace_root.as_std_path().join(path))
     }
 
     pub fn exclude_workspace_paths(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
@@ -164,32 +210,7 @@ impl Watch {
         }
     }
 
-    pub fn watch_path(&mut self, path: impl AsRef<Path>) {
-        self.watch_paths.push(path.as_ref().to_path_buf())
-    }
-
-    pub fn watch_paths(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
-        for path in paths {
-            self.watch_path(path)
-        }
-    }
-
-    fn is_excluded_path(&mut self, path: &Path) -> bool {
-        self.exclude_paths.iter().any(|x| path.starts_with(x))
-            || self
-                .workspace_exclude_paths
-                .iter()
-                .any(|x| path.starts_with(x))
-    }
-
-    fn is_hidden_path(&mut self, path: &Path) -> bool {
-        path.file_name()
-            .and_then(|x| x.to_str())
-            .map(|x| x.starts_with('.'))
-            .unwrap_or(false)
-    }
-
-    pub fn execute(&mut self, mut command: process::Command) -> Result<()> {
+    pub fn execute(mut self, mut command: process::Command) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
             notify::Watcher::new(tx, std::time::Duration::from_secs(2))
@@ -197,7 +218,7 @@ impl Watch {
 
         let metadata = metadata();
 
-        self.exclude_path(metadata.target_directory.as_std_path());
+        self.exclude_path(&metadata.target_directory);
 
         if self.watch_paths.is_empty() {
             log::trace!("Watching {}", &metadata.workspace_root);
@@ -258,63 +279,98 @@ impl Watch {
             };
         }
     }
+
+    fn is_excluded_path(&self, path: &Path) -> bool {
+        self.exclude_paths.iter().any(|x| path.starts_with(x))
+            || self
+                .workspace_exclude_paths
+                .iter()
+                .any(|x| path.starts_with(x))
+    }
+
+    fn is_hidden_path(&self, path: &Path) -> bool {
+        path.file_name()
+            .and_then(|x| x.to_str())
+            .map(|x| x.starts_with('.'))
+            .unwrap_or(false)
+    }
 }
 
+#[non_exhaustive]
 #[derive(Debug, StructOpt)]
 pub struct DevServer {
     #[structopt(long, default_value = "127.0.0.1")]
-    ip: IpAddr,
+    pub ip: IpAddr,
     #[structopt(long, default_value = "8000")]
-    port: u16,
+    pub port: u16,
 
     #[structopt(flatten)]
-    watch: Watch,
+    pub watch: Watch,
+    #[structopt(skip)]
+    served_path: Option<PathBuf>,
+    #[structopt(skip)]
+    release: bool,
+    #[structopt(skip)]
+    command: Option<process::Command>,
 }
 
 impl DevServer {
-    pub fn serve(&self, build_dir_path: impl AsRef<Path>) -> Result<()> {
-        let address = SocketAddr::new(self.ip, self.port);
-        let listener = TcpListener::bind(&address).context("cannot bind to the given address")?;
+    pub fn served_path(&mut self, path: impl AsRef<Path>) {
+        self.served_path = Some(path.as_ref().to_path_buf());
+    }
 
-        log::info!("Development server at: http://{}", &address);
+    pub fn release(&mut self, res: bool) {
+        self.release = res;
+    }
 
-        for mut stream in listener.incoming().filter_map(|x| x.ok()) {
-            respond_to_request(&mut stream, &build_dir_path).unwrap_or_else(|e| {
-                let _ = stream.write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes());
-                log::error!("an error occurred: {}", e);
+    pub fn command(&mut self, command: process::Command) {
+        self.command = Some(command);
+    }
+
+    pub fn start(mut self) -> Result<()> {
+        let served_path = self
+            .served_path
+            .unwrap_or_else(|| default_build_dir(self.release).as_std_path().to_path_buf());
+
+        let watch_process = if let Some(command) = self.command {
+            self.watch.exclude_path(&served_path);
+            let handle = std::thread::spawn(|| match self.watch.execute(command) {
+                Ok(()) => log::trace!("Starting to watch"),
+                Err(err) => log::error!("an error occurred when starting to watch: {}", err),
             });
+
+            Some(handle)
+        } else {
+            None
+        };
+
+        match serve(self.ip, self.port, &served_path) {
+            Ok(()) => log::trace!("Starting to serve"),
+            Err(err) => log::error!("an error occurred when starting to serve: {}", err),
+        }
+
+        if let Some(handle) = watch_process {
+            handle.join().expect("an error occurred when exiting watch");
         }
 
         Ok(())
     }
+}
 
-    pub fn serve_and_watch(
-        self,
-        build_dir_path: impl AsRef<Path>,
-        command: process::Command,
-    ) -> Result<()> {
-        let build_dir_pathbuf = build_dir_path.as_ref().to_owned();
-        let mut watch = self.watch.clone();
+fn serve(ip: IpAddr, port: u16, served_path: impl AsRef<Path>) -> Result<()> {
+    let address = SocketAddr::new(ip, port);
+    let listener = TcpListener::bind(&address).context("cannot bind to the given address")?;
 
-        let handle = std::thread::spawn(move || match self.serve(build_dir_pathbuf) {
-            Ok(()) => log::trace!("starting server"),
-            Err(err) => log::error!("an error occurred when starting the dev server: {}", err),
+    log::info!("Development server running at: http://{}", &address);
+
+    for mut stream in listener.incoming().filter_map(|x| x.ok()) {
+        respond_to_request(&mut stream, &served_path).unwrap_or_else(|e| {
+            let _ = stream.write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes());
+            log::error!("an error occurred: {}", e);
         });
-
-        watch.exclude_workspace_path(build_dir_path);
-
-        match watch.execute(command) {
-            Ok(()) => log::trace!("starting watch"),
-            Err(err) => log::error!("an error occurred when starting to watch: {}", err),
-        }
-
-        match handle.join() {
-            Ok(()) => log::trace!("Ending watch"),
-            Err(err) => log::error!("problem waiting end of the watch: {:?}", err),
-        }
-
-        Ok(())
     }
+
+    Ok(())
 }
 
 fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) -> Result<()> {
@@ -328,7 +384,6 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
         .context("Could not find path in request")?;
 
     let rel_path = Path::new(requested_path.trim_matches('/'));
-
     let mut full_path = build_dir_path.as_ref().join(rel_path);
 
     if full_path.is_dir() {
@@ -344,7 +399,7 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
     let stream = reader.get_mut();
 
     if full_path.is_file() {
-        let full_path_extension = cargo_metadata::camino::Utf8Path::from_path(&full_path)
+        let full_path_extension = camino::Utf8Path::from_path(&full_path)
             .context("request path contains non-utf8 characters")?
             .extension();
 
