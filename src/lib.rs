@@ -46,15 +46,22 @@ pub fn default_build_dir(release: bool) -> &'static camino::Utf8Path {
 pub struct Build {
     #[structopt(long)]
     pub release: bool,
+    #[structopt(long)]
+    pub features: Vec<String>,
+    #[structopt(long)]
+    pub no_default_features: bool,
+    #[structopt(long)]
+    pub all_features: bool,
+
 
     #[structopt(skip = default_build_command())]
-    command: process::Command,
+    pub command: process::Command,
     #[structopt(skip)]
-    build_dir_path: Option<PathBuf>,
+    pub build_dir_path: Option<PathBuf>,
     #[structopt(skip)]
-    static_dir_path: Option<PathBuf>,
+    pub static_dir_path: Option<PathBuf>,
     #[structopt(skip = true)]
-    run_in_workspace: bool,
+    pub run_in_workspace: bool,
 }
 
 fn default_build_command() -> process::Command {
@@ -303,15 +310,21 @@ pub struct DevServer {
     pub ip: IpAddr,
     #[structopt(long, default_value = "8000")]
     pub port: u16,
+    #[structopt(long)]
+    pub features: Vec<String>,
+    #[structopt(long)]
+    pub no_default_features: bool,
+    #[structopt(long)]
+    pub all_features: bool,
 
     #[structopt(flatten)]
     pub watch: Watch,
     #[structopt(skip)]
-    served_path: Option<PathBuf>,
+    pub served_path: Option<PathBuf>,
     #[structopt(skip)]
-    release: bool,
+    pub release: bool,
     #[structopt(skip)]
-    command: Option<process::Command>,
+    pub command: Option<process::Command>,
 }
 
 impl DevServer {
