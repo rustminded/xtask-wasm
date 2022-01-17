@@ -106,7 +106,7 @@ impl Build {
         }
 
         for feature in &self.features {
-            build_process.args(["--features", &feature]);
+            build_process.args(["--features", feature]);
         }
 
         if self.all_features {
@@ -335,7 +335,7 @@ impl DevServer {
 
     pub fn start(mut self, served_path: impl AsRef<Path>) -> Result<()> {
         let watch_process = if let Some(command) = self.command {
-            self.watch.exclude_path(served_path.as_ref());
+            self.watch.exclude_path(&served_path);
             let handle = std::thread::spawn(|| match self.watch.execute(command) {
                 Ok(()) => log::trace!("Starting to watch"),
                 Err(err) => log::error!("an error occurred when starting to watch: {}", err),
@@ -346,7 +346,7 @@ impl DevServer {
             None
         };
 
-        match serve(self.ip, self.port, &served_path) {
+        match serve(self.ip, self.port, served_path) {
             Ok(()) => log::trace!("Starting to serve"),
             Err(err) => log::error!("an error occurred when starting to serve: {}", err),
         }
