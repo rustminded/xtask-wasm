@@ -53,7 +53,6 @@ pub struct Build {
     #[structopt(long)]
     pub no_default_features: bool,
 
-
     #[structopt(skip = default_build_command())]
     pub command: process::Command,
     #[structopt(skip)]
