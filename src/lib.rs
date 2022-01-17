@@ -41,9 +41,31 @@ pub fn default_build_dir(release: bool) -> &'static camino::Utf8Path {
     }
 }
 
+#[derive(Debug)]
+pub enum Color {
+    Auto,
+    Always,
+    Never,
+}
+
+fn parse_color(arg: &str) -> Result<Color> {
+    match arg {
+        "auto" | "Auto" => Ok(Color::Auto),
+        "always" | "Always" => Ok(Color::Always),
+        "never" | "Never" => Ok(Color::Never),
+        _ => bail!("cannot parse color argument"),
+    }
+}
+
 #[non_exhaustive]
 #[derive(Debug, StructOpt)]
 pub struct Build {
+    #[structopt(short, long)]
+    pub quiet: bool,
+    #[structopt(short, long)]
+    pub jobs: u32,
+    #[structopt(long)]
+    pub profile: String,
     #[structopt(long)]
     pub release: bool,
     #[structopt(long)]
@@ -52,6 +74,16 @@ pub struct Build {
     pub all_features: bool,
     #[structopt(long)]
     pub no_default_features: bool,
+    #[structopt(short, long)]
+    pub verbose: bool,
+    #[structopt(long, parse(try_from_str = parse_color))]
+    pub color: Color,
+    #[structopt(long)]
+    pub frozen: bool,
+    #[structopt(long)]
+    pub locked: bool,
+    #[structopt(long)]
+    pub ignore_rust_version: bool,
 
     #[structopt(skip = default_build_command())]
     pub command: process::Command,
