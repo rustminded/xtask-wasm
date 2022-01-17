@@ -49,9 +49,9 @@ pub struct Build {
     #[structopt(long)]
     pub features: Vec<String>,
     #[structopt(long)]
-    pub no_default_features: bool,
-    #[structopt(long)]
     pub all_features: bool,
+    #[structopt(long)]
+    pub no_default_features: bool,
 
 
     #[structopt(skip = default_build_command())]
@@ -104,6 +104,23 @@ impl Build {
 
         if self.release {
             build_process.arg("--release");
+        }
+
+        if !self.features.is_empty() {
+            let mut arg = String::from("--features");
+            for feature in self.features {
+                arg.push(' ');
+                arg.push_str(&feature)
+            }
+            build_process.arg(&arg);
+        }
+
+        if self.all_features {
+            build_process.arg("--all-features");
+        }
+
+        if self.no_default_features {
+            build_process.arg("--no-default-features");
         }
 
         build_process.args(["--package", crate_name]);
