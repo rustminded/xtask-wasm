@@ -63,9 +63,9 @@ pub struct Build {
     #[structopt(short, long)]
     pub quiet: bool,
     #[structopt(short, long)]
-    pub jobs: u32,
+    pub jobs: Option<u32>,
     #[structopt(long)]
-    pub profile: String,
+    pub profile: Option<String>,
     #[structopt(long)]
     pub release: bool,
     #[structopt(long)]
@@ -77,11 +77,13 @@ pub struct Build {
     #[structopt(short, long)]
     pub verbose: bool,
     #[structopt(long, parse(try_from_str = parse_color))]
-    pub color: Color,
+    pub color: Option<Color>,
     #[structopt(long)]
     pub frozen: bool,
     #[structopt(long)]
     pub locked: bool,
+    #[structopt(long)]
+    pub offline: bool,
     #[structopt(long)]
     pub ignore_rust_version: bool,
 
@@ -133,6 +135,18 @@ impl Build {
             build_process.current_dir(&metadata.workspace_root);
         }
 
+        if self.quiet {
+            build_process.arg("--quiet");
+        }
+
+        if let Some(number) = self.jobs {
+            build_process.arg(&format!("--jobs {}", number));
+        }
+
+        if let Some(profile) = self.profile {
+            build_process.args(["--profile", &profile]);
+        }
+
         if self.release {
             build_process.arg("--release");
         }
@@ -147,6 +161,35 @@ impl Build {
 
         if self.no_default_features {
             build_process.arg("--no-default-features");
+        }
+
+        if self.verbose {
+            build_process.arg("--verbose");
+        }
+
+        if let Some(color) = self.color {
+            build_process.arg("--color");
+            match color {
+                Color::Auto => build_process.arg("auto"),
+                Color::Always => build_process.arg("always"),
+                Color::Never => build_process.arg("never"),
+            };
+        }
+
+        if self.frozen {
+            build_process.arg("--frozen");
+        }
+
+        if self.locked {
+            build_process.arg("--locked");
+        }
+
+        if self.offline {
+            build_process.arg("--offline");
+        }
+
+        if self.ignore_rust_version {
+            build_process.arg("--ignore-rust-version");
         }
 
         build_process.args(["--package", crate_name]);
