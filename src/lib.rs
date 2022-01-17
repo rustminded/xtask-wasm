@@ -321,43 +321,21 @@ pub struct DevServer {
     pub ip: IpAddr,
     #[structopt(long, default_value = "8000")]
     pub port: u16,
-    #[structopt(long)]
-    pub features: Vec<String>,
-    #[structopt(long)]
-    pub no_default_features: bool,
-    #[structopt(long)]
-    pub all_features: bool,
 
     #[structopt(flatten)]
     pub watch: Watch,
-    #[structopt(skip)]
-    pub served_path: Option<PathBuf>,
-    #[structopt(skip)]
-    pub release: bool,
     #[structopt(skip)]
     pub command: Option<process::Command>,
 }
 
 impl DevServer {
-    pub fn served_path(&mut self, path: impl AsRef<Path>) {
-        self.served_path = Some(path.as_ref().to_path_buf());
-    }
-
-    pub fn release(&mut self, res: bool) {
-        self.release = res;
-    }
-
     pub fn command(&mut self, command: process::Command) {
         self.command = Some(command);
     }
 
-    pub fn start(mut self) -> Result<()> {
-        let served_path = self
-            .served_path
-            .unwrap_or_else(|| default_build_dir(self.release).as_std_path().to_path_buf());
-
+    pub fn start(mut self, served_path: impl AsRef<Path>) -> Result<()> {
         let watch_process = if let Some(command) = self.command {
-            self.watch.exclude_path(&served_path);
+            self.watch.exclude_path(served_path.as_ref());
             let handle = std::thread::spawn(|| match self.watch.execute(command) {
                 Ok(()) => log::trace!("Starting to watch"),
                 Err(err) => log::error!("an error occurred when starting to watch: {}", err),
