@@ -105,13 +105,8 @@ impl Build {
             build_process.arg("--release");
         }
 
-        if !self.features.is_empty() {
-            let mut arg = String::from("--features");
-            for feature in self.features {
-                arg.push(' ');
-                arg.push_str(&feature)
-            }
-            build_process.arg(&arg);
+        for feature in &self.features {
+            build_process.args(["--features", &feature]);
         }
 
         if self.all_features {
