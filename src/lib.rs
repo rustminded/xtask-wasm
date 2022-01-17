@@ -46,15 +46,21 @@ pub fn default_build_dir(release: bool) -> &'static camino::Utf8Path {
 pub struct Build {
     #[structopt(long)]
     pub release: bool,
+    #[structopt(long)]
+    pub features: Vec<String>,
+    #[structopt(long)]
+    pub all_features: bool,
+    #[structopt(long)]
+    pub no_default_features: bool,
 
     #[structopt(skip = default_build_command())]
-    command: process::Command,
+    pub command: process::Command,
     #[structopt(skip)]
-    build_dir_path: Option<PathBuf>,
+    pub build_dir_path: Option<PathBuf>,
     #[structopt(skip)]
-    static_dir_path: Option<PathBuf>,
+    pub static_dir_path: Option<PathBuf>,
     #[structopt(skip = true)]
-    run_in_workspace: bool,
+    pub run_in_workspace: bool,
 }
 
 fn default_build_command() -> process::Command {
@@ -97,6 +103,18 @@ impl Build {
 
         if self.release {
             build_process.arg("--release");
+        }
+
+        for feature in &self.features {
+            build_process.args(["--features", feature]);
+        }
+
+        if self.all_features {
+            build_process.arg("--all-features");
+        }
+
+        if self.no_default_features {
+            build_process.arg("--no-default-features");
         }
 
         build_process.args(["--package", crate_name]);
@@ -307,31 +325,15 @@ pub struct DevServer {
     #[structopt(flatten)]
     pub watch: Watch,
     #[structopt(skip)]
-    served_path: Option<PathBuf>,
-    #[structopt(skip)]
-    release: bool,
-    #[structopt(skip)]
-    command: Option<process::Command>,
+    pub command: Option<process::Command>,
 }
 
 impl DevServer {
-    pub fn served_path(&mut self, path: impl AsRef<Path>) {
-        self.served_path = Some(path.as_ref().to_path_buf());
-    }
-
-    pub fn release(&mut self, res: bool) {
-        self.release = res;
-    }
-
     pub fn command(&mut self, command: process::Command) {
         self.command = Some(command);
     }
 
-    pub fn start(mut self) -> Result<()> {
-        let served_path = self
-            .served_path
-            .unwrap_or_else(|| default_build_dir(self.release).as_std_path().to_path_buf());
-
+    pub fn start(mut self, served_path: impl AsRef<Path>) -> Result<()> {
         let watch_process = if let Some(command) = self.command {
             self.watch.exclude_path(&served_path);
             let handle = std::thread::spawn(|| match self.watch.execute(command) {
@@ -344,7 +346,7 @@ impl DevServer {
             None
         };
 
-        match serve(self.ip, self.port, &served_path) {
+        match serve(self.ip, self.port, served_path) {
             Ok(()) => log::trace!("Starting to serve"),
             Err(err) => log::error!("an error occurred when starting to serve: {}", err),
         }

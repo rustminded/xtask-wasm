@@ -40,7 +40,7 @@ fn main() -> Result<()> {
         Command::Serve(mut arg) => {
             log::info!("Starting to serve");
             arg.command(build_command);
-            arg.start()?;
+            arg.start(xtask_wasm::default_build_dir(false))?;
         }
     }
 
