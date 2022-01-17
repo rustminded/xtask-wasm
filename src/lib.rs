@@ -44,6 +44,12 @@ pub fn default_build_dir(release: bool) -> &'static camino::Utf8Path {
 #[non_exhaustive]
 #[derive(Debug, StructOpt)]
 pub struct Build {
+    #[structopt(short, long)]
+    pub quiet: bool,
+    #[structopt(short, long)]
+    pub jobs: Option<String>,
+    #[structopt(long)]
+    pub profile: Option<String>,
     #[structopt(long)]
     pub release: bool,
     #[structopt(long)]
@@ -52,6 +58,18 @@ pub struct Build {
     pub all_features: bool,
     #[structopt(long)]
     pub no_default_features: bool,
+    #[structopt(short, long)]
+    pub verbose: bool,
+    #[structopt(long)]
+    pub color: Option<String>,
+    #[structopt(long)]
+    pub frozen: bool,
+    #[structopt(long)]
+    pub locked: bool,
+    #[structopt(long)]
+    pub offline: bool,
+    #[structopt(long)]
+    pub ignore_rust_version: bool,
 
     #[structopt(skip = default_build_command())]
     pub command: process::Command,
@@ -101,6 +119,18 @@ impl Build {
             build_process.current_dir(&metadata.workspace_root);
         }
 
+        if self.quiet {
+            build_process.arg("--quiet");
+        }
+
+        if let Some(number) = self.jobs {
+            build_process.args(["--jobs", &number]);
+        }
+
+        if let Some(profile) = self.profile {
+            build_process.args(["--profile", &profile]);
+        }
+
         if self.release {
             build_process.arg("--release");
         }
@@ -115,6 +145,30 @@ impl Build {
 
         if self.no_default_features {
             build_process.arg("--no-default-features");
+        }
+
+        if self.verbose {
+            build_process.arg("--verbose");
+        }
+
+        if let Some(color) = self.color {
+            build_process.args(["--color", &color]);
+        }
+
+        if self.frozen {
+            build_process.arg("--frozen");
+        }
+
+        if self.locked {
+            build_process.arg("--locked");
+        }
+
+        if self.offline {
+            build_process.arg("--offline");
+        }
+
+        if self.ignore_rust_version {
+            build_process.arg("--ignore-rust-version");
         }
 
         build_process.args(["--package", crate_name]);
