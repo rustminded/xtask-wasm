@@ -41,29 +41,13 @@ pub fn default_build_dir(release: bool) -> &'static camino::Utf8Path {
     }
 }
 
-#[derive(Debug)]
-pub enum Color {
-    Auto,
-    Always,
-    Never,
-}
-
-fn parse_color(arg: &str) -> Result<Color> {
-    match arg {
-        "auto" | "Auto" => Ok(Color::Auto),
-        "always" | "Always" => Ok(Color::Always),
-        "never" | "Never" => Ok(Color::Never),
-        _ => bail!("cannot parse color argument"),
-    }
-}
-
 #[non_exhaustive]
 #[derive(Debug, StructOpt)]
 pub struct Build {
     #[structopt(short, long)]
     pub quiet: bool,
     #[structopt(short, long)]
-    pub jobs: Option<u32>,
+    pub jobs: Option<String>,
     #[structopt(long)]
     pub profile: Option<String>,
     #[structopt(long)]
@@ -76,8 +60,8 @@ pub struct Build {
     pub no_default_features: bool,
     #[structopt(short, long)]
     pub verbose: bool,
-    #[structopt(long, parse(try_from_str = parse_color))]
-    pub color: Option<Color>,
+    #[structopt(long)]
+    pub color: Option<String>,
     #[structopt(long)]
     pub frozen: bool,
     #[structopt(long)]
@@ -140,7 +124,7 @@ impl Build {
         }
 
         if let Some(number) = self.jobs {
-            build_process.arg(&format!("--jobs {}", number));
+            build_process.args(["--jobs", &number]);
         }
 
         if let Some(profile) = self.profile {
@@ -168,12 +152,7 @@ impl Build {
         }
 
         if let Some(color) = self.color {
-            build_process.arg("--color");
-            match color {
-                Color::Auto => build_process.arg("auto"),
-                Color::Always => build_process.arg("always"),
-                Color::Never => build_process.arg("never"),
-            };
+            build_process.args(["--color", &color]);
         }
 
         if self.frozen {
