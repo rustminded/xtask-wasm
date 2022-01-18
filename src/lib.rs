@@ -43,6 +43,13 @@ pub fn default_build_dir(release: bool) -> &'static camino::Utf8Path {
     }
 }
 
+fn is_hidden_path(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|x| x.to_str())
+        .map(|x| x.starts_with('.'))
+        .unwrap_or(false)
+}
+
 fn default_build_command() -> process::Command {
     let mut command = process::Command::new("cargo");
     command.args(["build", "--target", "wasm32-unknown-unknown"]);
@@ -290,13 +297,6 @@ impl Watch {
                 .workspace_exclude_paths
                 .iter()
                 .any(|x| path.starts_with(x))
-    }
-
-    fn is_hidden_path(&self, path: &Path) -> bool {
-        path.file_name()
-            .and_then(|x| x.to_str())
-            .map(|x| x.starts_with('.'))
-            .unwrap_or(false)
     }
 
     pub fn run(mut self, mut command: process::Command) -> Result<()> {
