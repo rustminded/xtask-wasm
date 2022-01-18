@@ -31,11 +31,11 @@ fn main() -> Result<()> {
         Command::Build(mut arg) => {
             log::info!("Starting to build");
             arg.static_dir_path("demo-webapp/static");
-            arg.execute("demo-webapp")?;
+            arg.run("demo-webapp")?;
         }
         Command::Watch(arg) => {
             log::info!("Starting to watch");
-            arg.execute(build_command)?;
+            arg.run(build_command)?;
         }
         Command::Serve(mut arg) => {
             log::info!("Starting to serve");

@@ -10,6 +10,8 @@ use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use structopt::StructOpt;
 use wasm_bindgen_cli_support::Bindgen;
 
+pub use anyhow;
+pub use cargo_metadata;
 pub use cargo_metadata::camino;
 
 pub fn metadata() -> &'static cargo_metadata::Metadata {
@@ -39,6 +41,19 @@ pub fn default_build_dir(release: bool) -> &'static camino::Utf8Path {
     } else {
         &DEFAULT_DEBUG_PATH
     }
+}
+
+fn is_hidden_path(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|x| x.to_str())
+        .map(|x| x.starts_with('.'))
+        .unwrap_or(false)
+}
+
+fn default_build_command() -> process::Command {
+    let mut command = process::Command::new("cargo");
+    command.args(["build", "--target", "wasm32-unknown-unknown"]);
+    command
 }
 
 #[non_exhaustive]
@@ -81,12 +96,6 @@ pub struct Build {
     pub run_in_workspace: bool,
 }
 
-fn default_build_command() -> process::Command {
-    let mut command = process::Command::new("cargo");
-    command.args(["build", "--target", "wasm32-unknown-unknown"]);
-    command
-}
-
 impl Build {
     pub fn command(&mut self, command: process::Command) {
         self.command = command;
@@ -104,7 +113,7 @@ impl Build {
         self.run_in_workspace = res;
     }
 
-    pub fn execute(self, crate_name: &str) -> Result<PathBuf> {
+    pub fn run(self, crate_name: &str) -> Result<PathBuf> {
         log::trace!("Getting package's metadata");
         let metadata = metadata();
 
@@ -232,7 +241,7 @@ impl Build {
                 .context("cannot copy static directory")?;
         }
 
-        log::info!("Builded successfully at {}", build_dir_path.display());
+        log::info!("Successfully built in {}", build_dir_path.display());
 
         Ok(build_dir_path)
     }
@@ -282,7 +291,15 @@ impl Watch {
         }
     }
 
-    pub fn execute(mut self, mut command: process::Command) -> Result<()> {
+    fn is_excluded_path(&self, path: &Path) -> bool {
+        self.exclude_paths.iter().any(|x| path.starts_with(x))
+            || self
+                .workspace_exclude_paths
+                .iter()
+                .any(|x| path.starts_with(x))
+    }
+
+    pub fn run(mut self, mut command: process::Command) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
             notify::Watcher::new(tx, std::time::Duration::from_secs(2))
@@ -315,13 +332,15 @@ impl Watch {
 
             match &message {
                 Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
-                    if !self.is_excluded_path(path) && !self.is_hidden_path(path) =>
+                    if !self.is_excluded_path(path) && !is_hidden_path(path) =>
                 {
+                    log::trace!("Changes detected in {}", path.display());
                     #[cfg(unix)]
                     {
                         let now = std::time::Instant::now();
 
                         unsafe {
+                            log::trace!("Killing watch's command process");
                             libc::kill(
                                 child.id().try_into().expect("cannot get process id"),
                                 libc::SIGTERM,
@@ -344,27 +363,13 @@ impl Watch {
                         }
                     }
 
+                    log::info!("Changes detected. Re-running command");
                     child = command.spawn().context("cannot spawn command")?;
                 }
                 Ok(_) => {}
                 Err(err) => log::error!("watch error: {}", err),
             };
         }
-    }
-
-    fn is_excluded_path(&self, path: &Path) -> bool {
-        self.exclude_paths.iter().any(|x| path.starts_with(x))
-            || self
-                .workspace_exclude_paths
-                .iter()
-                .any(|x| path.starts_with(x))
-    }
-
-    fn is_hidden_path(&self, path: &Path) -> bool {
-        path.file_name()
-            .and_then(|x| x.to_str())
-            .map(|x| x.starts_with('.'))
-            .unwrap_or(false)
     }
 }
 
@@ -390,7 +395,7 @@ impl DevServer {
     pub fn start(mut self, served_path: impl AsRef<Path>) -> Result<()> {
         let watch_process = if let Some(command) = self.command {
             self.watch.exclude_path(&served_path);
-            let handle = std::thread::spawn(|| match self.watch.execute(command) {
+            let handle = std::thread::spawn(|| match self.watch.run(command) {
                 Ok(()) => log::trace!("Starting to watch"),
                 Err(err) => log::error!("an error occurred when starting to watch: {}", err),
             });
