@@ -232,7 +232,7 @@ impl Build {
                 .context("cannot copy static directory")?;
         }
 
-        log::info!("Builded successfully at {}", build_dir_path.display());
+        log::info!("Successfully built at {}", build_dir_path.display());
 
         Ok(build_dir_path)
     }
