@@ -340,7 +340,7 @@ impl Watch {
                         let now = std::time::Instant::now();
 
                         unsafe {
-                            log::trace!("Killing given command process");
+                            log::trace!("Killing watch's command process");
                             libc::kill(
                                 child.id().try_into().expect("cannot get process id"),
                                 libc::SIGTERM,
@@ -363,7 +363,7 @@ impl Watch {
                         }
                     }
 
-                    log::trace!("Relaunching given command");
+                    log::info!("Changes detected. Re-running command");
                     child = command.spawn().context("cannot spawn command")?;
                 }
                 Ok(_) => {}
