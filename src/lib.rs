@@ -241,7 +241,7 @@ impl Build {
                 .context("cannot copy static directory")?;
         }
 
-        log::info!("Successfully built at {}", build_dir_path.display());
+        log::info!("Successfully built in {}", build_dir_path.display());
 
         Ok(build_dir_path)
     }
@@ -332,13 +332,15 @@ impl Watch {
 
             match &message {
                 Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
-                    if !self.is_excluded_path(path) && !self.is_hidden_path(path) =>
+                    if !self.is_excluded_path(path) && !is_hidden_path(path) =>
                 {
+                    log::trace!("Changes detected in {}", path.display());
                     #[cfg(unix)]
                     {
                         let now = std::time::Instant::now();
 
                         unsafe {
+                            log::trace!("Killing given command process");
                             libc::kill(
                                 child.id().try_into().expect("cannot get process id"),
                                 libc::SIGTERM,
@@ -361,6 +363,7 @@ impl Watch {
                         }
                     }
 
+                    log::trace!("Relaunching given command");
                     child = command.spawn().context("cannot spawn command")?;
                 }
                 Ok(_) => {}
