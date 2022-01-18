@@ -10,6 +10,8 @@ use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use structopt::StructOpt;
 use wasm_bindgen_cli_support::Bindgen;
 
+pub use anyhow;
+pub use cargo_metadata;
 pub use cargo_metadata::camino;
 
 pub fn metadata() -> &'static cargo_metadata::Metadata {
