@@ -41,6 +41,12 @@ pub fn default_build_dir(release: bool) -> &'static camino::Utf8Path {
     }
 }
 
+fn default_build_command() -> process::Command {
+    let mut command = process::Command::new("cargo");
+    command.args(["build", "--target", "wasm32-unknown-unknown"]);
+    command
+}
+
 #[non_exhaustive]
 #[derive(Debug, StructOpt)]
 pub struct Build {
@@ -81,12 +87,6 @@ pub struct Build {
     pub run_in_workspace: bool,
 }
 
-fn default_build_command() -> process::Command {
-    let mut command = process::Command::new("cargo");
-    command.args(["build", "--target", "wasm32-unknown-unknown"]);
-    command
-}
-
 impl Build {
     pub fn command(&mut self, command: process::Command) {
         self.command = command;
@@ -104,7 +104,7 @@ impl Build {
         self.run_in_workspace = res;
     }
 
-    pub fn execute(self, crate_name: &str) -> Result<PathBuf> {
+    pub fn run(self, crate_name: &str) -> Result<PathBuf> {
         log::trace!("Getting package's metadata");
         let metadata = metadata();
 
@@ -282,7 +282,22 @@ impl Watch {
         }
     }
 
-    pub fn execute(mut self, mut command: process::Command) -> Result<()> {
+    fn is_excluded_path(&self, path: &Path) -> bool {
+        self.exclude_paths.iter().any(|x| path.starts_with(x))
+            || self
+                .workspace_exclude_paths
+                .iter()
+                .any(|x| path.starts_with(x))
+    }
+
+    fn is_hidden_path(&self, path: &Path) -> bool {
+        path.file_name()
+            .and_then(|x| x.to_str())
+            .map(|x| x.starts_with('.'))
+            .unwrap_or(false)
+    }
+
+    pub fn run(mut self, mut command: process::Command) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
             notify::Watcher::new(tx, std::time::Duration::from_secs(2))
@@ -351,21 +366,6 @@ impl Watch {
             };
         }
     }
-
-    fn is_excluded_path(&self, path: &Path) -> bool {
-        self.exclude_paths.iter().any(|x| path.starts_with(x))
-            || self
-                .workspace_exclude_paths
-                .iter()
-                .any(|x| path.starts_with(x))
-    }
-
-    fn is_hidden_path(&self, path: &Path) -> bool {
-        path.file_name()
-            .and_then(|x| x.to_str())
-            .map(|x| x.starts_with('.'))
-            .unwrap_or(false)
-    }
 }
 
 #[non_exhaustive]
@@ -390,7 +390,7 @@ impl DevServer {
     pub fn start(mut self, served_path: impl AsRef<Path>) -> Result<()> {
         let watch_process = if let Some(command) = self.command {
             self.watch.exclude_path(&served_path);
-            let handle = std::thread::spawn(|| match self.watch.execute(command) {
+            let handle = std::thread::spawn(|| match self.watch.run(command) {
                 Ok(()) => log::trace!("Starting to watch"),
                 Err(err) => log::error!("an error occurred when starting to watch: {}", err),
             });
