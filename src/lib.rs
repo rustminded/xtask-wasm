@@ -56,6 +56,30 @@ fn default_build_command() -> process::Command {
     command
 }
 
+fn install_wasm_opt(target_path: impl AsRef<Path>) -> Result<PathBuf> {
+    let cache = binary_install::Cache::at(target_path.as_ref());
+    let url = format!(
+        "https://github.com/WebAssembly/binaryen/releases/download/version_{version}/binaryen-version_{version}-{arch}-{os}.tar.gz",
+        version = "105",
+        arch = platforms::TARGET_ARCH,
+        os = platforms::TARGET_OS,
+    );
+
+    #[cfg(target_os = "macos")]
+    let binaries = &["wasm-opt", "libbinaryen"];
+    #[cfg(not(target_os = "macos"))]
+    let binaries = &["wasm-opt"];
+
+    log::info!("Downloading wasm-opt");
+    Ok(cache
+       .download(true, "wasm-opt", binaries, &url)
+       .map_err(|err| err.compat())
+       .with_context(|| format!("could not download binaryen: {}", url))?
+       .expect("cannot install binaryen")
+       .binary("wasm-opt")
+       .map_err(|err| err.compat())?)
+}
+
 #[non_exhaustive]
 #[derive(Debug, StructOpt)]
 pub struct Build {

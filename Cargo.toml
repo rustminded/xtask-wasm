@@ -10,11 +10,13 @@ documentation = "https://docs.rs/xtask-wasm"
 
 [dependencies]
 anyhow = "1.0.52"
+binary-install = "0.0.2"
 cargo_metadata = "0.14.1"
 fs_extra = "1.2.0"
 lazy_static = "1.4.0"
 log = "0.4.14"
 notify = "4.0.17"
+platforms = "2.0.0"
 structopt = "0.3.25"
 walkdir = "2.3.2"
 wasm-bindgen-cli-support = "0.2.68"
