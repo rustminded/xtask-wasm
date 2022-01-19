@@ -72,15 +72,15 @@ fn install_wasm_opt(target_path: impl AsRef<Path>) -> Result<PathBuf> {
 
     log::info!("Downloading wasm-opt");
     Ok(cache
-       .download(true, "wasm-opt", binaries, &url)
-       .map_err(|err| err.compat())
-       .with_context(|| format!("could not download binaryen: {}", url))?
-       .expect("cannot install binaryen")
-       .binary("wasm-opt")
-       .map_err(|err| err.compat())?)
+        .download(true, "wasm-opt", binaries, &url)
+        .map_err(|err| err.compat())
+        .with_context(|| format!("could not download binaryen: {}", url))?
+        .expect("cannot install binaryen")
+        .binary("wasm-opt")
+        .map_err(|err| err.compat())?)
 }
 
-#[allow(unused_variables)]
+#[allow(unused_variables, unreachable_code)]
 pub fn wasm_opt(
     binary: Vec<u8>,
     shrink_level: u32,
@@ -105,9 +105,9 @@ pub fn wasm_opt(
     return {
         let wasm_opt = install_wasm_opt(target_path)?;
 
-        let mut command = process::Command(&wasm_opt);
+        let mut command = process::Command::new(&wasm_opt);
         command
-            .stderr(Stdio::inherit())
+            .stderr(process::Stdio::inherit())
             .args(&["-o", "-", "-O"])
             .args(&["-ol", &optimization_level.to_string()])
             .args(&["-s", &shrink_level.to_string()]);
@@ -133,7 +133,7 @@ pub fn wasm_opt(
 
         #[cfg(unix)]
         {
-            use std::io::{Seek, SeekFrom, Write};
+            use std::io::SeekFrom;
 
             let mut file = tempfile::tempfile()?;
             file.write_all(&binary)?;
