@@ -1,16 +1,16 @@
 use anyhow::Result;
 use std::process;
-use structopt::StructOpt;
+use clap::Parser;
 
-#[derive(StructOpt)]
+#[derive(Parser)]
 struct Opt {
-    #[structopt(long = "log", default_value = "Info")]
+    #[clap(long = "log", default_value = "Info")]
     log_level: log::LevelFilter,
-    #[structopt(subcommand)]
+    #[clap(subcommand)]
     cmd: Command,
 }
 
-#[derive(StructOpt)]
+#[derive(Parser)]
 enum Command {
     Build(xtask_wasm::Build),
     Watch(xtask_wasm::Watch),
@@ -18,7 +18,7 @@ enum Command {
 }
 
 fn main() -> Result<()> {
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
 
     env_logger::builder()
         .filter(Some("xtask"), opt.log_level)
