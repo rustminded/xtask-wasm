@@ -9,9 +9,7 @@ repository = "https://github.com/rustminded/xtask-wasm"
 documentation = "https://docs.rs/xtask-wasm"
 
 [features]
-default = ["wasm-opt"]
-wasm-opt = ["binaryen", "binary-install", "platforms", "tempfile"]
-
+wasm-opt = ["binary-install", "platforms", "tempfile"]
 
 [dependencies]
 anyhow = "1.0.52"
