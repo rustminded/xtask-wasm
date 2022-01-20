@@ -10,6 +10,9 @@ use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use structopt::StructOpt;
 use wasm_bindgen_cli_support::Bindgen;
 
+#[cfg(feature = "wasm-opt")]
+pub mod wasm_opt;
+
 pub use anyhow;
 pub use cargo_metadata;
 pub use cargo_metadata::camino;
@@ -54,103 +57,6 @@ fn default_build_command() -> process::Command {
     let mut command = process::Command::new("cargo");
     command.args(["build", "--target", "wasm32-unknown-unknown"]);
     command
-}
-
-fn install_wasm_opt(target_path: impl AsRef<Path>) -> Result<PathBuf> {
-    let cache = binary_install::Cache::at(target_path.as_ref());
-    let url = format!(
-        "https://github.com/WebAssembly/binaryen/releases/download/version_{version}/binaryen-version_{version}-{arch}-{os}.tar.gz",
-        version = "105",
-        arch = platforms::TARGET_ARCH,
-        os = platforms::TARGET_OS,
-    );
-
-    #[cfg(target_os = "macos")]
-    let binaries = &["wasm-opt", "libbinaryen"];
-    #[cfg(not(target_os = "macos"))]
-    let binaries = &["wasm-opt"];
-
-    log::info!("Downloading wasm-opt");
-    Ok(cache
-        .download(true, "wasm-opt", binaries, &url)
-        .map_err(|err| err.compat())
-        .with_context(|| format!("could not download binaryen: {}", url))?
-        .expect("cannot install binaryen")
-        .binary("wasm-opt")
-        .map_err(|err| err.compat())?)
-}
-
-#[allow(unused_variables, unreachable_code)]
-pub fn wasm_opt(
-    binary: Vec<u8>,
-    shrink_level: u32,
-    optimization_level: u32,
-    debug_info: bool,
-    target_path: impl AsRef<Path>,
-) -> Result<Vec<u8>> {
-    #[cfg(feature = "binaryen")]
-    return match binaryen::Module::read(&binary) {
-        Ok(mut module) => {
-            module.optimize(&binaryen::CodegenConfig {
-                shrink_level,
-                optimization_level,
-                debug_info,
-            });
-            Ok(module.write())
-        }
-        Err(()) => bail!("could not load WASM module"),
-    };
-
-    #[cfg(feature = "wasm-opt")]
-    return {
-        let wasm_opt = install_wasm_opt(target_path)?;
-
-        let mut command = process::Command::new(&wasm_opt);
-        command
-            .stderr(process::Stdio::inherit())
-            .args(&["-o", "-", "-O"])
-            .args(&["-ol", &optimization_level.to_string()])
-            .args(&["-s", &shrink_level.to_string()]);
-
-        if debug_info {
-            command.arg("-g");
-        }
-
-        #[cfg(target_os = "macos")]
-        {
-            command.env("DYLD_LIBRARY_PATH", wasm_opt.parent().unwrap());
-        }
-
-        #[cfg(windows)]
-        let delete_guard = {
-            use std::io::Write;
-
-            let tmp = tempfile::NamedTempFile::new()?;
-            tmp.as_file().write_all(&binary)?;
-            command.arg(tmp.path());
-            tmp
-        };
-
-        #[cfg(unix)]
-        {
-            use std::io::SeekFrom;
-
-            let mut file = tempfile::tempfile()?;
-            file.write_all(&binary)?;
-            file.seek(SeekFrom::Start(0))?;
-            command.stdin(file);
-        }
-
-        let output = command.output()?;
-        if !output.status.success() {
-            bail!("command `wasm-opt` failed.");
-        }
-
-        Ok(output.stdout)
-    };
-
-    log::warn!("No optimization has been done on the WASM");
-    Ok(binary)
 }
 
 #[non_exhaustive]
