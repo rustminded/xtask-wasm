@@ -1,5 +1,5 @@
-use anyhow::{ensure, Result, Context};
-use std::{process, path::PathBuf};
+use anyhow::{ensure, Context, Result};
+use std::{path::PathBuf, process};
 
 #[allow(unreachable_code)]
 pub fn run(
@@ -8,24 +8,24 @@ pub fn run(
     optimization_level: u32,
     debug_info: bool,
 ) -> Result<Vec<u8>> {
-        return {
-            let wasm_opt = download_wasm_opt()?;
+    return {
+        let wasm_opt = download_wasm_opt()?;
 
-            let mut command = process::Command::new(&wasm_opt);
-            command
-                .stderr(process::Stdio::inherit())
-                .args(&["-o", "-", "-O"])
-                .args(&["-ol", &optimization_level.to_string()])
-                .args(&["-s", &shrink_level.to_string()]);
+        let mut command = process::Command::new(&wasm_opt);
+        command
+            .stderr(process::Stdio::inherit())
+            .args(&["-o", "-", "-O"])
+            .args(&["-ol", &optimization_level.to_string()])
+            .args(&["-s", &shrink_level.to_string()]);
 
-            if debug_info {
-                command.arg("-g");
-            }
+        if debug_info {
+            command.arg("-g");
+        }
 
-            #[cfg(target_os = "macos")]
-            {
-                command.env("DYLD_LIBRARY_PATH", wasm_opt.parent().unwrap());
-            }
+        #[cfg(target_os = "macos")]
+        {
+            command.env("DYLD_LIBRARY_PATH", wasm_opt.parent().unwrap());
+        }
 
         #[cfg(windows)]
         let delete_guard = {
@@ -39,7 +39,7 @@ pub fn run(
 
         #[cfg(unix)]
         {
-            use std::io::{Seek, Write, SeekFrom};
+            use std::io::{Seek, SeekFrom, Write};
 
             let mut file = tempfile::tempfile()?;
             file.write_all(&binary)?;
@@ -48,10 +48,7 @@ pub fn run(
         }
 
         let output = command.output()?;
-        ensure!(
-            output.status.success(),
-            "command `wasm-opt` failed"
-        );
+        ensure!(output.status.success(), "command `wasm-opt` failed");
 
         Ok(output.stdout)
     };
