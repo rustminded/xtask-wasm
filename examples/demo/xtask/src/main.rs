@@ -42,7 +42,9 @@ fn main() -> Result<()> {
             arg.base.static_dir_path("demo-webapp/static");
             let build_dir = arg.base.run("demo-webapp")?;
             if arg.optimize {
-                xtask_wasm::wasm_opt(build_dir.join("app_bg.wasm"), 0, 0, true)?;
+                xtask_wasm::WasmOpt::new(1)
+                    .shrink(2)
+                    .optimize(build_dir.join("app_bg.wasm"))?;
             }
         }
         Command::Watch(arg) => {
