@@ -2,8 +2,6 @@ use anyhow::Result;
 use std::process;
 use structopt::StructOpt;
 
-use xtask_wasm::{metadata, wasm_opt};
-
 #[derive(StructOpt)]
 struct Opt {
     #[structopt(long = "log", default_value = "Info")]
@@ -14,10 +12,18 @@ struct Opt {
 
 #[derive(StructOpt)]
 enum Command {
-    Build(xtask_wasm::Build),
-    OptimizedBuild(xtask_wasm::Build),
+    Build(Build),
     Watch(xtask_wasm::Watch),
     Serve(xtask_wasm::DevServer),
+}
+
+#[derive(StructOpt)]
+struct Build {
+    #[structopt(long)]
+    optimize: bool,
+
+    #[structopt(flatten)]
+    base: xtask_wasm::Build,
 }
 
 fn main() -> Result<()> {
@@ -33,24 +39,16 @@ fn main() -> Result<()> {
     match opt.cmd {
         Command::Build(mut arg) => {
             log::info!("Starting to build");
-            arg.static_dir_path("demo-webapp/static");
-            arg.run("demo-webapp")?;
-        }
-        Command::OptimizedBuild(mut arg) => {
-            log::info!("starting an optimized build");
-            arg.static_dir_path("demo-webapp/static");
-            arg.release = true;
-            arg.run("demo-webapp")?;
-            wasm_opt(
-                metadata()
-                    .target_directory
-                    .join("release")
-                    .join("dist")
-                    .join("app_bg.wasm"),
-                0,
-                0,
-                true,
-            )?;
+            arg.base.static_dir_path("demo-webapp/static");
+            let build_dir = arg.base.run("demo-webapp")?;
+            if arg.optimize {
+                xtask_wasm::wasm_opt(
+                    build_dir.join("app_bg.wasm"),
+                    0,
+                    0,
+                    true,
+                )?;
+            }
         }
         Command::Watch(arg) => {
             log::info!("Starting to watch");
