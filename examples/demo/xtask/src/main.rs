@@ -1,6 +1,6 @@
 use anyhow::Result;
-use std::process;
 use clap::Parser;
+use std::process;
 
 #[derive(Parser)]
 struct Opt {
