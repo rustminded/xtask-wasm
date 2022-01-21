@@ -55,7 +55,7 @@ pub struct WasmOpt {
 }
 
 impl WasmOpt {
-    pub fn new(optimization_level: u32) -> Self {
+    pub fn level(optimization_level: u32) -> Self {
         Self {
             optimization_level,
             shrink_level: 0,
@@ -73,7 +73,7 @@ impl WasmOpt {
         self
     }
 
-    pub fn optimize(&self, binary_path: impl AsRef<Path>) -> Result<()> {
+    pub fn optimize(self, binary_path: impl AsRef<Path>) -> Result<Self> {
         let input_path = binary_path.as_ref();
         let output_path = input_path.with_extension("opt");
         let wasm_opt = download_wasm_opt()?;
@@ -109,6 +109,6 @@ impl WasmOpt {
         fs::rename(&output_path, &input_path)?;
 
         log::info!("WASM optimized");
-        Ok(())
+        Ok(self)
     }
 }

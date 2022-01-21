@@ -42,7 +42,7 @@ fn main() -> Result<()> {
             arg.base.static_dir_path("demo-webapp/static");
             let build_dir = arg.base.run("demo-webapp")?;
             if arg.optimize {
-                xtask_wasm::WasmOpt::new(1)
+                xtask_wasm::WasmOpt::level(1)
                     .shrink(2)
                     .optimize(build_dir.join("app_bg.wasm"))?;
             }
