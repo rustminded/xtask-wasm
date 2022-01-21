@@ -9,10 +9,11 @@ use lazy_static::lazy_static;
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use structopt::StructOpt;
 use wasm_bindgen_cli_support::Bindgen;
+#[cfg(feature = "wasm-opt")]
+mod wasm_opt;
 
 #[cfg(feature = "wasm-opt")]
-pub mod wasm_opt;
-
+pub use crate::wasm_opt::run as wasm_opt;
 pub use anyhow;
 pub use cargo_metadata;
 pub use cargo_metadata::camino;

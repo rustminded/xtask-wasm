@@ -1,16 +1,16 @@
-use anyhow::{ensure, Context, Result, anyhow};
-use std::{
-    path::{Path, PathBuf},
-    process
-};
+use anyhow::{anyhow, ensure, Context, Result};
 use lazy_static::lazy_static;
-
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process,
+};
 
 fn wasm_opt_url() -> &'static str {
     lazy_static! {
         static ref WASM_OPT_URL: String = {
             format!(
-                "https://github.com/WebAssembly/binaryen/releases/download/version_{version}/bynaryen-version_{version}-{arch}-{os}.tar.gz",
+                "https://github.com/WebAssembly/binaryen/releases/download/version_{version}/binaryen-version_{version}-{arch}-{os}.tar.gz",
                 version = "105",
                 arch = platforms::TARGET_ARCH,
                 os = platforms::TARGET_OS,
@@ -22,17 +22,23 @@ fn wasm_opt_url() -> &'static str {
 }
 
 pub fn run(
-    binary: Vec<u8>,
+    binary_path: impl AsRef<Path>,
     shrink_level: u32,
     optimization_level: u32,
     debug_info: bool,
 ) -> Result<()> {
     let wasm_opt = download_wasm_opt()?;
+    let output_path = binary_path.as_ref().with_extension("opt");
 
     let mut command = process::Command::new(&wasm_opt);
     command
         .stderr(process::Stdio::inherit())
-        .args(&["-o", "-", "-O"])
+        .arg(binary_path.as_ref())
+        .args(&[
+            "-o",
+            &output_path.to_str().expect("cannot parse output path"),
+            "-O",
+        ])
         .args(&["-ol", &optimization_level.to_string()])
         .args(&["-s", &shrink_level.to_string()]);
 
@@ -45,31 +51,16 @@ pub fn run(
         command.env("DYLD_LIBRARY_PATH", wasm_opt.parent().unwrap());
     }
 
-    #[cfg(windows)]
-    let delete_guard = {
-        use std::io::Write;
-
-        let tmp = tempfile::NamedTempFile::new()?;
-        tmp.as_file().write_all(&binary)?;
-        command.arg(tmp.path());
-        tmp
-    };
-
-    #[cfg(unix)]
-    {
-        use std::io::{Seek, SeekFrom, Write};
-
-        let mut file = tempfile::tempfile()?;
-        file.write_all(&binary)?;
-        file.seek(SeekFrom::Start(0))?;
-        command.stdin(file);
-    }
-
+    log::info!("Optimizing WASM");
     ensure!(
         command.output()?.status.success(),
         "command `wasm-opt` failed"
     );
 
+    fs::remove_file(binary_path.as_ref())?;
+    fs::rename(&output_path, output_path.with_extension("wasm"))?;
+
+    log::info!("WASM optimized");
     Ok(())
 }
 
@@ -77,7 +68,8 @@ fn download_wasm_opt() -> Result<&'static Path> {
     lazy_static! {
         static ref WASM_OPT_PATH: Result<PathBuf> = {
             fn downloaded_binary_path() -> Result<PathBuf> {
-                let cache = binary_install::Cache::at(crate::metadata().target_directory.as_std_path());
+                let cache =
+                    binary_install::Cache::at(crate::metadata().target_directory.as_std_path());
                 let url = wasm_opt_url();
 
                 #[cfg(target_os = "macos")]
@@ -86,16 +78,13 @@ fn download_wasm_opt() -> Result<&'static Path> {
                 let binaries = &["wasm-opt"];
 
                 log::info!("Downloading wasm-opt");
-                Ok(
-                    cache
-                        .download(true, "wasm-opt", binaries, &url)
-                        .map_err(|err| err.compat())
-                        .with_context(|| format!("could not download wasm-opt: {}", url))?
-                        .expect("install_permitted is always true; qed")
-                        .binary("wasm-opt")
-                        .map_err(|err| err.compat())?
-                )
-
+                Ok(cache
+                    .download(true, "wasm-opt", binaries, &url)
+                    .map_err(|err| err.compat())
+                    .with_context(|| format!("could not download wasm-opt: {}", url))?
+                    .expect("install_permitted is always true; qed")
+                    .binary("wasm-opt")
+                    .map_err(|err| err.compat())?)
             }
 
             downloaded_binary_path()

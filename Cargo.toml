@@ -9,7 +9,7 @@ repository = "https://github.com/rustminded/xtask-wasm"
 documentation = "https://docs.rs/xtask-wasm"
 
 [features]
-wasm-opt = ["binary-install", "platforms", "tempfile"]
+wasm-opt = ["binary-install", "platforms"]
 
 [dependencies]
 anyhow = "1.0.52"
@@ -21,7 +21,6 @@ log = "0.4.14"
 notify = "4.0.17"
 platforms = { version = "2.0.0", optional = true }
 structopt = "0.3.25"
-tempfile = { version = "3.2.0", optional = true }
 walkdir = "2.3.2"
 wasm-bindgen-cli-support = "0.2.68"
 
