@@ -73,7 +73,7 @@ impl WasmOpt {
         self
     }
 
-    pub fn optimize(self, binary_path: impl AsRef<Path>) -> Result<()> {
+    pub fn optimize(&self, binary_path: impl AsRef<Path>) -> Result<()> {
         let input_path = binary_path.as_ref();
         let output_path = input_path.with_extension("opt");
         let wasm_opt = download_wasm_opt()?;
