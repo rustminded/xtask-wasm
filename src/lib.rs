@@ -1,13 +1,16 @@
-use std::io::{prelude::*, BufReader};
-use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
-use std::path::{Path, PathBuf};
-use std::sync::mpsc;
-use std::{fs, process};
+use std::{
+    fs,
+    io::{prelude::*, BufReader},
+    net::{IpAddr, SocketAddr, TcpListener, TcpStream},
+    path::{Path, PathBuf},
+    process,
+    sync::mpsc,
+};
 
 use anyhow::{bail, ensure, Context, Result};
+use clap::Parser;
 use lazy_static::lazy_static;
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
-use structopt::StructOpt;
 use wasm_bindgen_cli_support::Bindgen;
 #[cfg(feature = "wasm-opt")]
 mod wasm_opt;
@@ -61,42 +64,42 @@ fn default_build_command() -> process::Command {
 }
 
 #[non_exhaustive]
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub struct Build {
-    #[structopt(short, long)]
+    #[clap(short, long)]
     pub quiet: bool,
-    #[structopt(short, long)]
+    #[clap(short, long)]
     pub jobs: Option<String>,
-    #[structopt(long)]
+    #[clap(long)]
     pub profile: Option<String>,
-    #[structopt(long)]
+    #[clap(long)]
     pub release: bool,
-    #[structopt(long)]
+    #[clap(long)]
     pub features: Vec<String>,
-    #[structopt(long)]
+    #[clap(long)]
     pub all_features: bool,
-    #[structopt(long)]
+    #[clap(long)]
     pub no_default_features: bool,
-    #[structopt(short, long)]
+    #[clap(short, long)]
     pub verbose: bool,
-    #[structopt(long)]
+    #[clap(long)]
     pub color: Option<String>,
-    #[structopt(long)]
+    #[clap(long)]
     pub frozen: bool,
-    #[structopt(long)]
+    #[clap(long)]
     pub locked: bool,
-    #[structopt(long)]
+    #[clap(long)]
     pub offline: bool,
-    #[structopt(long)]
+    #[clap(long)]
     pub ignore_rust_version: bool,
 
-    #[structopt(skip = default_build_command())]
+    #[clap(skip = default_build_command())]
     pub command: process::Command,
-    #[structopt(skip)]
+    #[clap(skip)]
     pub build_dir_path: Option<PathBuf>,
-    #[structopt(skip)]
+    #[clap(skip)]
     pub static_dir_path: Option<PathBuf>,
-    #[structopt(skip = true)]
+    #[clap(skip = true)]
     pub run_in_workspace: bool,
 }
 
@@ -252,14 +255,14 @@ impl Build {
 }
 
 #[non_exhaustive]
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub struct Watch {
-    #[structopt(long = "watch", short = "w")]
+    #[clap(long = "watch", short = 'w')]
     pub watch_paths: Vec<PathBuf>,
-    #[structopt(long = "ignore", short = "i")]
+    #[clap(long = "ignore", short = 'i')]
     pub exclude_paths: Vec<PathBuf>,
 
-    #[structopt(skip)]
+    #[clap(skip)]
     pub workspace_exclude_paths: Vec<PathBuf>,
 }
 
@@ -378,16 +381,16 @@ impl Watch {
 }
 
 #[non_exhaustive]
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub struct DevServer {
-    #[structopt(long, default_value = "127.0.0.1")]
+    #[clap(long, default_value = "127.0.0.1")]
     pub ip: IpAddr,
-    #[structopt(long, default_value = "8000")]
+    #[clap(long, default_value = "8000")]
     pub port: u16,
 
-    #[structopt(flatten)]
+    #[clap(flatten)]
     pub watch: Watch,
-    #[structopt(skip)]
+    #[clap(skip)]
     pub command: Option<process::Command>,
 }
 
