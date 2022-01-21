@@ -17,50 +17,6 @@ lazy_static! {
     };
 }
 
-pub fn run(
-    binary_path: impl AsRef<Path>,
-    shrink_level: u32,
-    optimization_level: u32,
-    debug_info: bool,
-) -> Result<()> {
-    let input_path = binary_path.as_ref();
-    let output_path = input_path.with_extension("opt");
-    let wasm_opt = download_wasm_opt()?;
-
-    let mut command = process::Command::new(&wasm_opt);
-    command
-        .stderr(process::Stdio::inherit())
-        .arg(input_path)
-        .arg("-o")
-        .arg(&output_path)
-        .arg("-O")
-        .arg("-ol")
-        .arg(optimization_level.to_string())
-        .arg("-s")
-        .arg(shrink_level.to_string());
-
-    if debug_info {
-        command.arg("-g");
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        command.env("DYLD_LIBRARY_PATH", wasm_opt.parent().unwrap());
-    }
-
-    log::info!("Optimizing WASM");
-    ensure!(
-        command.output()?.status.success(),
-        "command `wasm-opt` failed"
-    );
-
-    fs::remove_file(&input_path)?;
-    fs::rename(&output_path, &input_path)?;
-
-    log::info!("WASM optimized");
-    Ok(())
-}
-
 fn download_wasm_opt() -> Result<&'static Path> {
     lazy_static! {
         static ref WASM_OPT_PATH: Result<PathBuf> = {
@@ -90,4 +46,69 @@ fn download_wasm_opt() -> Result<&'static Path> {
     }
 
     WASM_OPT_PATH.as_deref().map_err(|err| anyhow!("{}", err))
+}
+
+pub struct WasmOpt {
+    optimization_level: u32,
+    shrink_level: u32,
+    debug_info: bool,
+}
+
+impl WasmOpt {
+    pub fn level(optimization_level: u32) -> Self {
+        Self {
+            optimization_level,
+            shrink_level: 0,
+            debug_info: false,
+        }
+    }
+
+    pub fn shrink(mut self, shrink_level: u32) -> Self {
+        self.shrink_level = shrink_level;
+        self
+    }
+
+    pub fn debug(mut self) -> Self {
+        self.debug_info = true;
+        self
+    }
+
+    pub fn optimize(self, binary_path: impl AsRef<Path>) -> Result<Self> {
+        let input_path = binary_path.as_ref();
+        let output_path = input_path.with_extension("opt");
+        let wasm_opt = download_wasm_opt()?;
+
+        let mut command = process::Command::new(&wasm_opt);
+        command
+            .stderr(process::Stdio::inherit())
+            .arg(input_path)
+            .arg("-o")
+            .arg(&output_path)
+            .arg("-O")
+            .arg("-ol")
+            .arg(self.optimization_level.to_string())
+            .arg("-s")
+            .arg(self.shrink_level.to_string());
+
+        if self.debug_info {
+            command.arg("-g");
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            command.env("DYLD_LIBRARY_PATH", wasm_opt.parent().unwrap());
+        }
+
+        log::info!("Optimizing WASM");
+        ensure!(
+            command.output()?.status.success(),
+            "command `wasm-opt` failed"
+        );
+
+        fs::remove_file(&input_path)?;
+        fs::rename(&output_path, &input_path)?;
+
+        log::info!("WASM optimized");
+        Ok(self)
+    }
 }
