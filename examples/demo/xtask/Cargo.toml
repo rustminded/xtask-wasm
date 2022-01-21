@@ -10,4 +10,4 @@ anyhow = "1.0"
 env_logger = "0.9"
 log = "0.4"
 clap = { version = "3.0", features = ["derive"] }
-xtask-wasm = { path = "../../../", version = "0.0.0" }
+xtask-wasm = { path = "../../../", version = "0.0.0", features = ["wasm-opt"]}

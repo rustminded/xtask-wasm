@@ -12,9 +12,18 @@ struct Opt {
 
 #[derive(Parser)]
 enum Command {
-    Build(xtask_wasm::Build),
+    Build(Build),
     Watch(xtask_wasm::Watch),
     Serve(xtask_wasm::DevServer),
+}
+
+#[derive(Parser)]
+struct Build {
+    #[clap(long)]
+    optimize: bool,
+
+    #[clap(flatten)]
+    base: xtask_wasm::Build,
 }
 
 fn main() -> Result<()> {
@@ -30,8 +39,11 @@ fn main() -> Result<()> {
     match opt.cmd {
         Command::Build(mut arg) => {
             log::info!("Starting to build");
-            arg.static_dir_path("demo-webapp/static");
-            arg.run("demo-webapp")?;
+            arg.base.static_dir_path("demo-webapp/static");
+            let build_dir = arg.base.run("demo-webapp")?;
+            if arg.optimize {
+                xtask_wasm::wasm_opt(build_dir.join("app_bg.wasm"), 0, 0, true)?;
+            }
         }
         Command::Watch(arg) => {
             log::info!("Starting to watch");
