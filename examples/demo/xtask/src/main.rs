@@ -37,10 +37,12 @@ fn main() -> Result<()> {
     build_command.args(["xtask", "build"]);
 
     match opt.cmd {
-        Command::Build(mut arg) => {
+        Command::Build(arg) => {
             log::info!("Starting to build");
-            arg.base.static_dir_path("demo-webapp/static");
-            let build_dir = arg.base.run("demo-webapp")?;
+            let build_dir = arg
+                .base
+                .static_dir_path("demo-webapp/static")
+                .run("demo-webapp")?;
             if arg.optimize {
                 xtask_wasm::WasmOpt::level(1)
                     .shrink(2)
@@ -51,10 +53,10 @@ fn main() -> Result<()> {
             log::info!("Starting to watch");
             arg.run(build_command)?;
         }
-        Command::Serve(mut arg) => {
+        Command::Serve(arg) => {
             log::info!("Starting to serve");
-            arg.command(build_command);
-            arg.start(xtask_wasm::default_build_dir(false))?;
+            arg.command(build_command)
+                .start(xtask_wasm::default_build_dir(false))?;
         }
     }
 

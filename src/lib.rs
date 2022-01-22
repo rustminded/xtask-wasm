@@ -106,20 +106,24 @@ pub struct Build {
 }
 
 impl Build {
-    pub fn command(&mut self, command: process::Command) {
+    pub fn command(mut self, command: process::Command) -> Self {
         self.command = command;
+        self
     }
 
-    pub fn build_dir_path(&mut self, path: impl Into<PathBuf>) {
+    pub fn build_dir_path(mut self, path: impl Into<PathBuf>) -> Self {
         self.build_dir_path = Some(path.into());
+        self
     }
 
-    pub fn static_dir_path(&mut self, path: impl Into<PathBuf>) {
+    pub fn static_dir_path(mut self, path: impl Into<PathBuf>) -> Self {
         self.static_dir_path = Some(path.into());
+        self
     }
 
-    pub fn run_in_workspace(&mut self, res: bool) {
+    pub fn run_in_workspace(mut self, res: bool) -> Self {
         self.run_in_workspace = res;
+        self
     }
 
     pub fn run(self, crate_name: &str) -> Result<PathBuf> {
@@ -269,35 +273,47 @@ pub struct Watch {
 }
 
 impl Watch {
-    pub fn watch_path(&mut self, path: impl AsRef<Path>) {
-        self.watch_paths.push(path.as_ref().to_path_buf())
+    pub fn watch_path(&mut self, path: impl AsRef<Path>) -> &mut Self {
+        self.watch_paths.push(path.as_ref().to_path_buf());
+        self
     }
 
-    pub fn watch_paths(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
+    pub fn watch_paths(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) -> &mut Self {
         for path in paths {
-            self.watch_path(path)
+            self.watch_path(path);
         }
+        self
     }
 
-    pub fn exclude_path(&mut self, path: impl AsRef<Path>) {
-        self.exclude_paths.push(path.as_ref().to_path_buf())
+    pub fn exclude_path(&mut self, path: impl AsRef<Path>) -> &mut Self {
+        self.exclude_paths.push(path.as_ref().to_path_buf());
+        self
     }
 
-    pub fn exclude_paths(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
+    pub fn exclude_paths(
+        &mut self,
+        paths: impl IntoIterator<Item = impl AsRef<Path>>,
+    ) -> &mut Self {
         for path in paths {
-            self.exclude_path(path)
+            self.exclude_path(path);
         }
+        self
     }
 
-    pub fn exclude_workspace_path(&mut self, path: impl AsRef<Path>) {
+    pub fn exclude_workspace_path(&mut self, path: impl AsRef<Path>) -> &mut Self {
         self.workspace_exclude_paths
-            .push(metadata().workspace_root.as_std_path().join(path))
+            .push(metadata().workspace_root.as_std_path().join(path));
+        self
     }
 
-    pub fn exclude_workspace_paths(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
+    pub fn exclude_workspace_paths(
+        &mut self,
+        paths: impl IntoIterator<Item = impl AsRef<Path>>,
+    ) -> &mut Self {
         for path in paths {
-            self.exclude_workspace_path(path)
+            self.exclude_workspace_path(path);
         }
+        self
     }
 
     fn is_excluded_path(&self, path: &Path) -> bool {
@@ -397,8 +413,9 @@ pub struct DevServer {
 }
 
 impl DevServer {
-    pub fn command(&mut self, command: process::Command) {
+    pub fn command(mut self, command: process::Command) -> Self {
         self.command = Some(command);
+        self
     }
 
     pub fn start(mut self, served_path: impl AsRef<Path>) -> Result<()> {
