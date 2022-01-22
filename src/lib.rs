@@ -302,7 +302,7 @@ impl Watch {
 
     pub fn exclude_workspace_path(&mut self, path: impl AsRef<Path>) -> &mut Self {
         self.workspace_exclude_paths
-            .push(metadata().workspace_root.as_std_path().join(path));
+            .push(path.as_ref().to_path_buf());
         self
     }
 
@@ -321,7 +321,7 @@ impl Watch {
             || self
                 .workspace_exclude_paths
                 .iter()
-                .any(|x| path.starts_with(x))
+                .any(|x| path.starts_with(metadata().workspace_root.as_std_path().join(x)))
     }
 
     pub fn run(mut self, mut command: process::Command) -> Result<()> {
