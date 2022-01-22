@@ -223,7 +223,7 @@ impl Build {
             "cargo command failed"
         );
 
-        let app_name = self.app_name.unwrap_or("app".to_string());
+        let app_name = self.app_name.unwrap_or_else(|| "app".to_string());
 
         log::trace!("Generating wasm output");
         let mut output = Bindgen::new()
