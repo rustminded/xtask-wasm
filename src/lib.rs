@@ -101,6 +101,8 @@ pub struct Build {
     pub build_dir_path: Option<PathBuf>,
     #[clap(skip)]
     pub static_dir_path: Option<PathBuf>,
+    #[clap(skip)]
+    pub app_name: Option<String>,
     #[clap(skip = true)]
     pub run_in_workspace: bool,
 }
@@ -118,6 +120,11 @@ impl Build {
 
     pub fn static_dir_path(mut self, path: impl Into<PathBuf>) -> Self {
         self.static_dir_path = Some(path.into());
+        self
+    }
+
+    pub fn app_name(mut self, app_name: impl Into<String>) -> Self {
+        self.app_name = Some(app_name.into());
         self
     }
 
@@ -216,10 +223,12 @@ impl Build {
             "cargo command failed"
         );
 
+        let app_name = self.app_name.unwrap_or("app".to_string());
+
         log::trace!("Generating wasm output");
         let mut output = Bindgen::new()
             .input_path(input_path)
-            .out_name("app")
+            .out_name(&app_name)
             .web(true)
             .expect("web have panic")
             .debug(!self.release)
@@ -229,8 +238,10 @@ impl Build {
         let wasm_js = output.js().to_owned();
         let wasm_bin = output.wasm_mut().emit_wasm();
 
-        let wasm_js_path = build_dir_path.join("app.js");
-        let wasm_bin_path = build_dir_path.join("app_bg.wasm");
+        let wasm_js_path = build_dir_path.join(&app_name).with_extension("js");
+        let wasm_bin_path = build_dir_path
+            .join(format!("{}_bg", &app_name))
+            .with_extension("wasm");
 
         if build_dir_path.exists() {
             log::trace!("Removing already existing build directory");
