@@ -239,9 +239,7 @@ impl Build {
         let wasm_bin = output.wasm_mut().emit_wasm();
 
         let wasm_js_path = build_dir_path.join(&app_name).with_extension("js");
-        let wasm_bin_path = build_dir_path
-            .join(format!("{}_bg", &app_name))
-            .with_extension("wasm");
+        let wasm_bin_path = build_dir_path.join(&app_name).with_extension("wasm");
 
         if build_dir_path.exists() {
             log::trace!("Removing already existing build directory");
@@ -301,10 +299,7 @@ impl Watch {
         self
     }
 
-    pub fn exclude_paths(
-        mut self,
-        paths: impl IntoIterator<Item = impl AsRef<Path>>,
-    ) -> Self {
+    pub fn exclude_paths(mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) -> Self {
         for path in paths {
             self.exclude_paths.push(path.as_ref().to_path_buf());
         }
@@ -322,7 +317,8 @@ impl Watch {
         paths: impl IntoIterator<Item = impl AsRef<Path>>,
     ) -> Self {
         for path in paths {
-            self.workspace_exclude_paths.push(path.as_ref().to_path_buf());
+            self.workspace_exclude_paths
+                .push(path.as_ref().to_path_buf());
         }
         self
     }

@@ -42,11 +42,12 @@ fn main() -> Result<()> {
             let build_dir = arg
                 .base
                 .static_dir_path("demo-webapp/static")
+                .app_name("hello_world")
                 .run("demo-webapp")?;
             if arg.optimize {
                 xtask_wasm::WasmOpt::level(1)
                     .shrink(2)
-                    .optimize(build_dir.join("app_bg.wasm"))?;
+                    .optimize(build_dir.join("hello_world.wasm"))?;
             }
         }
         Command::Watch(arg) => {
@@ -55,6 +56,7 @@ fn main() -> Result<()> {
         }
         Command::Serve(arg) => {
             log::info!("Starting to serve");
+            build_command.arg("--optimize");
             arg.command(build_command)
                 .start(xtask_wasm::default_build_dir(false))?;
         }
