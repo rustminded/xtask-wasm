@@ -284,45 +284,45 @@ pub struct Watch {
 }
 
 impl Watch {
-    pub fn watch_path(&mut self, path: impl AsRef<Path>) -> &mut Self {
+    pub fn watch_path(mut self, path: impl AsRef<Path>) -> Self {
         self.watch_paths.push(path.as_ref().to_path_buf());
         self
     }
 
-    pub fn watch_paths(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) -> &mut Self {
+    pub fn watch_paths(mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) -> Self {
         for path in paths {
-            self.watch_path(path);
+            self.watch_paths.push(path.as_ref().to_path_buf())
         }
         self
     }
 
-    pub fn exclude_path(&mut self, path: impl AsRef<Path>) -> &mut Self {
+    pub fn exclude_path(mut self, path: impl AsRef<Path>) -> Self {
         self.exclude_paths.push(path.as_ref().to_path_buf());
         self
     }
 
     pub fn exclude_paths(
-        &mut self,
+        mut self,
         paths: impl IntoIterator<Item = impl AsRef<Path>>,
-    ) -> &mut Self {
+    ) -> Self {
         for path in paths {
-            self.exclude_path(path);
+            self.exclude_paths.push(path.as_ref().to_path_buf());
         }
         self
     }
 
-    pub fn exclude_workspace_path(&mut self, path: impl AsRef<Path>) -> &mut Self {
+    pub fn exclude_workspace_path(mut self, path: impl AsRef<Path>) -> Self {
         self.workspace_exclude_paths
             .push(path.as_ref().to_path_buf());
         self
     }
 
     pub fn exclude_workspace_paths(
-        &mut self,
+        mut self,
         paths: impl IntoIterator<Item = impl AsRef<Path>>,
-    ) -> &mut Self {
+    ) -> Self {
         for path in paths {
-            self.exclude_workspace_path(path);
+            self.workspace_exclude_paths.push(path.as_ref().to_path_buf());
         }
         self
     }
@@ -335,7 +335,7 @@ impl Watch {
                 .any(|x| path.starts_with(metadata().workspace_root.as_std_path().join(x)))
     }
 
-    pub fn run(mut self, mut command: process::Command) -> Result<()> {
+    pub fn run(self, mut command: process::Command) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
             notify::Watcher::new(tx, std::time::Duration::from_secs(2))
@@ -343,15 +343,15 @@ impl Watch {
 
         let metadata = metadata();
 
-        self.exclude_path(&metadata.target_directory);
+        let watch = self.exclude_path(&metadata.target_directory);
 
-        if self.watch_paths.is_empty() {
+        if watch.watch_paths.is_empty() {
             log::trace!("Watching {}", &metadata.workspace_root);
             watcher
                 .watch(&metadata.workspace_root, RecursiveMode::Recursive)
                 .context("cannot watch this crate")?;
         } else {
-            for path in &self.watch_paths {
+            for path in &watch.watch_paths {
                 match watcher.watch(&path, RecursiveMode::Recursive) {
                     Ok(()) => log::trace!("Watching {}", path.display()),
                     Err(err) => log::error!("cannot watch {}: {}", path.display(), err),
@@ -368,7 +368,7 @@ impl Watch {
 
             match &message {
                 Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
-                    if !self.is_excluded_path(path) && !is_hidden_path(path) =>
+                    if !watch.is_excluded_path(path) && !is_hidden_path(path) =>
                 {
                     log::trace!("Changes detected in {}", path.display());
                     #[cfg(unix)]
@@ -429,10 +429,10 @@ impl DevServer {
         self
     }
 
-    pub fn start(mut self, served_path: impl AsRef<Path>) -> Result<()> {
+    pub fn start(self, served_path: impl AsRef<Path>) -> Result<()> {
         let watch_process = if let Some(command) = self.command {
-            self.watch.exclude_path(&served_path);
-            let handle = std::thread::spawn(|| match self.watch.run(command) {
+            let watch = self.watch.exclude_path(&served_path);
+            let handle = std::thread::spawn(|| match watch.run(command) {
                 Ok(()) => log::trace!("Starting to watch"),
                 Err(err) => log::error!("an error occurred when starting to watch: {}", err),
             });
