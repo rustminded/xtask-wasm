@@ -324,11 +324,15 @@ impl Watch {
     }
 
     fn is_excluded_path(&self, path: &Path) -> bool {
-        self.exclude_paths.iter().any(|x| path.starts_with(x))
-            || self
-                .workspace_exclude_paths
+        if path.starts_with(metadata().workspace_root.as_std_path()) {
+            path.strip_prefix(metadata().workspace_root.as_std_path())
+                .expect("path starts with workspace root; qed");
+            self.workspace_exclude_paths
                 .iter()
-                .any(|x| path.starts_with(metadata().workspace_root.as_std_path().join(x)))
+                .any(|x| path.starts_with(x))
+        } else {
+            self.exclude_paths.iter().any(|x| path.starts_with(x))
+        }
     }
 
     pub fn run(self, mut command: process::Command) -> Result<()> {
@@ -339,7 +343,7 @@ impl Watch {
 
         let metadata = metadata();
 
-        let watch = self.exclude_path(&metadata.target_directory);
+        let watch = self.exclude_workspace_path(&metadata.target_directory);
 
         if watch.watch_paths.is_empty() {
             log::trace!("Watching {}", &metadata.workspace_root);
