@@ -101,25 +101,36 @@ pub struct Build {
     pub build_dir_path: Option<PathBuf>,
     #[clap(skip)]
     pub static_dir_path: Option<PathBuf>,
+    #[clap(skip)]
+    pub app_name: Option<String>,
     #[clap(skip = true)]
     pub run_in_workspace: bool,
 }
 
 impl Build {
-    pub fn command(&mut self, command: process::Command) {
+    pub fn command(mut self, command: process::Command) -> Self {
         self.command = command;
+        self
     }
 
-    pub fn build_dir_path(&mut self, path: impl Into<PathBuf>) {
+    pub fn build_dir_path(mut self, path: impl Into<PathBuf>) -> Self {
         self.build_dir_path = Some(path.into());
+        self
     }
 
-    pub fn static_dir_path(&mut self, path: impl Into<PathBuf>) {
+    pub fn static_dir_path(mut self, path: impl Into<PathBuf>) -> Self {
         self.static_dir_path = Some(path.into());
+        self
     }
 
-    pub fn run_in_workspace(&mut self, res: bool) {
+    pub fn app_name(mut self, app_name: impl Into<String>) -> Self {
+        self.app_name = Some(app_name.into());
+        self
+    }
+
+    pub fn run_in_workspace(mut self, res: bool) -> Self {
         self.run_in_workspace = res;
+        self
     }
 
     pub fn run(self, crate_name: &str) -> Result<PathBuf> {
@@ -212,10 +223,12 @@ impl Build {
             "cargo command failed"
         );
 
+        let app_name = self.app_name.unwrap_or_else(|| "app".to_string());
+
         log::trace!("Generating wasm output");
         let mut output = Bindgen::new()
             .input_path(input_path)
-            .out_name("app")
+            .out_name(&app_name)
             .web(true)
             .expect("web have panic")
             .debug(!self.release)
@@ -225,8 +238,8 @@ impl Build {
         let wasm_js = output.js().to_owned();
         let wasm_bin = output.wasm_mut().emit_wasm();
 
-        let wasm_js_path = build_dir_path.join("app.js");
-        let wasm_bin_path = build_dir_path.join("app_bg.wasm");
+        let wasm_js_path = build_dir_path.join(&app_name).with_extension("js");
+        let wasm_bin_path = build_dir_path.join(&app_name).with_extension("wasm");
 
         if build_dir_path.exists() {
             log::trace!("Removing already existing build directory");
@@ -269,46 +282,60 @@ pub struct Watch {
 }
 
 impl Watch {
-    pub fn watch_path(&mut self, path: impl AsRef<Path>) {
-        self.watch_paths.push(path.as_ref().to_path_buf())
+    pub fn watch_path(mut self, path: impl AsRef<Path>) -> Self {
+        self.watch_paths.push(path.as_ref().to_path_buf());
+        self
     }
 
-    pub fn watch_paths(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
+    pub fn watch_paths(mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) -> Self {
         for path in paths {
-            self.watch_path(path)
+            self.watch_paths.push(path.as_ref().to_path_buf())
         }
+        self
     }
 
-    pub fn exclude_path(&mut self, path: impl AsRef<Path>) {
-        self.exclude_paths.push(path.as_ref().to_path_buf())
+    pub fn exclude_path(mut self, path: impl AsRef<Path>) -> Self {
+        self.exclude_paths.push(path.as_ref().to_path_buf());
+        self
     }
 
-    pub fn exclude_paths(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
+    pub fn exclude_paths(mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) -> Self {
         for path in paths {
-            self.exclude_path(path)
+            self.exclude_paths.push(path.as_ref().to_path_buf());
         }
+        self
     }
 
-    pub fn exclude_workspace_path(&mut self, path: impl AsRef<Path>) {
+    pub fn exclude_workspace_path(mut self, path: impl AsRef<Path>) -> Self {
         self.workspace_exclude_paths
-            .push(metadata().workspace_root.as_std_path().join(path))
+            .push(path.as_ref().to_path_buf());
+        self
     }
 
-    pub fn exclude_workspace_paths(&mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) {
+    pub fn exclude_workspace_paths(
+        mut self,
+        paths: impl IntoIterator<Item = impl AsRef<Path>>,
+    ) -> Self {
         for path in paths {
-            self.exclude_workspace_path(path)
+            self.workspace_exclude_paths
+                .push(path.as_ref().to_path_buf());
         }
+        self
     }
 
     fn is_excluded_path(&self, path: &Path) -> bool {
-        self.exclude_paths.iter().any(|x| path.starts_with(x))
-            || self
-                .workspace_exclude_paths
+        if path.starts_with(metadata().workspace_root.as_std_path()) {
+            path.strip_prefix(metadata().workspace_root.as_std_path())
+                .expect("path starts with workspace root; qed");
+            self.workspace_exclude_paths
                 .iter()
                 .any(|x| path.starts_with(x))
+        } else {
+            self.exclude_paths.iter().any(|x| path.starts_with(x))
+        }
     }
 
-    pub fn run(mut self, mut command: process::Command) -> Result<()> {
+    pub fn run(self, mut command: process::Command) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
             notify::Watcher::new(tx, std::time::Duration::from_secs(2))
@@ -316,15 +343,15 @@ impl Watch {
 
         let metadata = metadata();
 
-        self.exclude_path(&metadata.target_directory);
+        let watch = self.exclude_workspace_path(&metadata.target_directory);
 
-        if self.watch_paths.is_empty() {
+        if watch.watch_paths.is_empty() {
             log::trace!("Watching {}", &metadata.workspace_root);
             watcher
                 .watch(&metadata.workspace_root, RecursiveMode::Recursive)
                 .context("cannot watch this crate")?;
         } else {
-            for path in &self.watch_paths {
+            for path in &watch.watch_paths {
                 match watcher.watch(&path, RecursiveMode::Recursive) {
                     Ok(()) => log::trace!("Watching {}", path.display()),
                     Err(err) => log::error!("cannot watch {}: {}", path.display(), err),
@@ -341,7 +368,7 @@ impl Watch {
 
             match &message {
                 Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
-                    if !self.is_excluded_path(path) && !is_hidden_path(path) =>
+                    if !watch.is_excluded_path(path) && !is_hidden_path(path) =>
                 {
                     log::trace!("Changes detected in {}", path.display());
                     #[cfg(unix)]
@@ -397,14 +424,15 @@ pub struct DevServer {
 }
 
 impl DevServer {
-    pub fn command(&mut self, command: process::Command) {
+    pub fn command(mut self, command: process::Command) -> Self {
         self.command = Some(command);
+        self
     }
 
-    pub fn start(mut self, served_path: impl AsRef<Path>) -> Result<()> {
+    pub fn start(self, served_path: impl AsRef<Path>) -> Result<()> {
         let watch_process = if let Some(command) = self.command {
-            self.watch.exclude_path(&served_path);
-            let handle = std::thread::spawn(|| match self.watch.run(command) {
+            let watch = self.watch.exclude_path(&served_path);
+            let handle = std::thread::spawn(|| match watch.run(command) {
                 Ok(()) => log::trace!("Starting to watch"),
                 Err(err) => log::error!("an error occurred when starting to watch: {}", err),
             });
