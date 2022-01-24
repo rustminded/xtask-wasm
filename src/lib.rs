@@ -133,7 +133,7 @@ impl Build {
         self
     }
 
-    pub fn run(self, crate_name: &str) -> Result<PathBuf> {
+    pub fn run(self, crate_name: &str) -> Result<BuildResult> {
         log::trace!("Getting package's metadata");
         let metadata = metadata();
 
@@ -250,8 +250,8 @@ impl Build {
         fs::create_dir_all(&build_dir_path).context("cannot create build directory")?;
 
         log::trace!("Writing files into build directory");
-        fs::write(wasm_js_path, wasm_js).with_context(|| "cannot write js file")?;
-        fs::write(wasm_bin_path, wasm_bin).with_context(|| "cannot write WASM file")?;
+        fs::write(&wasm_js_path, wasm_js).with_context(|| "cannot write js file")?;
+        fs::write(&wasm_bin_path, wasm_bin).with_context(|| "cannot write WASM file")?;
 
         let mut copy_options = fs_extra::dir::CopyOptions::new();
         copy_options.overwrite = true;
@@ -265,8 +265,18 @@ impl Build {
 
         log::info!("Successfully built in {}", build_dir_path.display());
 
-        Ok(build_dir_path)
+        Ok(BuildResult {
+            build_dir: build_dir_path,
+            js: wasm_js_path,
+            wasm: wasm_bin_path,
+        })
     }
+}
+
+pub struct BuildResult {
+    pub build_dir: PathBuf,
+    pub js: PathBuf,
+    pub wasm: PathBuf,
 }
 
 #[non_exhaustive]
