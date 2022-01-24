@@ -265,32 +265,18 @@ impl Build {
 
         log::info!("Successfully built in {}", build_dir_path.display());
 
-        Ok(BuildResult::new(
-            build_dir_path,
-            wasm_js_path,
-            wasm_bin_path,
-        ))
+        Ok(BuildResult {
+            build_dir: build_dir_path,
+            js: wasm_js_path,
+            wasm: wasm_bin_path,
+        })
     }
 }
 
 pub struct BuildResult {
-    pub build_dir_path: PathBuf,
-    pub js_path: PathBuf,
-    pub wasm_path: PathBuf,
-}
-
-impl BuildResult {
-    fn new(
-        build_dir_path: impl AsRef<Path>,
-        js_path: impl AsRef<Path>,
-        wasm_path: impl AsRef<Path>,
-    ) -> Self {
-        Self {
-            build_dir_path: build_dir_path.as_ref().to_path_buf(),
-            js_path: js_path.as_ref().to_path_buf(),
-            wasm_path: wasm_path.as_ref().to_path_buf(),
-        }
-    }
+    pub build_dir: PathBuf,
+    pub js: PathBuf,
+    pub wasm: PathBuf,
 }
 
 #[non_exhaustive]
