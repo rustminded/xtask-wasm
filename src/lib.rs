@@ -327,7 +327,7 @@ impl Watch {
     }
 
     fn is_excluded_path(&self, path: &Path) -> bool {
-        if path.starts_with(metadata().workspace_root.as_std_path()) {
+        let res = if path.starts_with(metadata().workspace_root.as_std_path()) {
             path.strip_prefix(metadata().workspace_root.as_std_path())
                 .expect("path starts with workspace root; qed");
             self.workspace_exclude_paths
@@ -335,11 +335,19 @@ impl Watch {
                 .any(|x| path.starts_with(x))
         } else {
             self.exclude_paths.iter().any(|x| path.starts_with(x))
+        };
+
+        if res {
+            log::trace!("{} is an excluded path", path.display());
+        } else {
+            log::trace!("{} is not an excluded path", path.display());
         }
+
+        res
     }
 
     fn is_hidden_path(&self, path: &Path) -> bool {
-        if self.watch_paths.is_empty() {
+        let res = if self.watch_paths.is_empty() {
             path.strip_prefix(&metadata().workspace_root)
                 .iter()
                 .any(|x| x.starts_with("."))
@@ -347,7 +355,15 @@ impl Watch {
             self.watch_paths
                 .iter()
                 .any(|x| path.strip_prefix(x).iter().any(|x| x.starts_with(".")))
+        };
+
+        if res {
+            log::trace!("{} is an hidden path", path.display());
+        } else {
+            log::trace!("{} is not an hidden path", path.display());
         }
+
+        res
     }
 
     pub fn run(self, mut command: process::Command) -> Result<()> {
