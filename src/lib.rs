@@ -52,13 +52,6 @@ pub fn default_build_dir(release: bool) -> &'static camino::Utf8Path {
     }
 }
 
-fn is_hidden_path(path: &Path) -> bool {
-    path.file_name()
-        .and_then(|x| x.to_str())
-        .map(|x| x.starts_with('.'))
-        .unwrap_or(false)
-}
-
 fn default_build_command() -> process::Command {
     let mut command = process::Command::new("cargo");
     command.args(["build", "--target", "wasm32-unknown-unknown"]);
@@ -345,6 +338,18 @@ impl Watch {
         }
     }
 
+    fn is_hidden_path(&self, path: &Path) -> bool {
+        if self.watch_paths.is_empty() {
+            path.strip_prefix(&metadata().workspace_root)
+                .iter()
+                .any(|x| x.starts_with("."))
+        } else {
+            self.watch_paths
+                .iter()
+                .any(|x| path.strip_prefix(x).iter().any(|x| x.starts_with(".")))
+        }
+    }
+
     pub fn run(self, mut command: process::Command) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
@@ -378,7 +383,7 @@ impl Watch {
 
             match &message {
                 Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
-                    if !watch.is_excluded_path(path) && !is_hidden_path(path) =>
+                    if !watch.is_excluded_path(path) && !watch.is_hidden_path(path) =>
                 {
                     log::trace!("Changes detected in {}", path.display());
                     #[cfg(unix)]
