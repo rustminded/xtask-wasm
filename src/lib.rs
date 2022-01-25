@@ -52,13 +52,6 @@ pub fn default_build_dir(release: bool) -> &'static camino::Utf8Path {
     }
 }
 
-fn is_hidden_path(path: &Path) -> bool {
-    path.file_name()
-        .and_then(|x| x.to_str())
-        .map(|x| x.starts_with('.'))
-        .unwrap_or(false)
-}
-
 fn default_build_command() -> process::Command {
     let mut command = process::Command::new("cargo");
     command.args(["build", "--target", "wasm32-unknown-unknown"]);
@@ -345,15 +338,37 @@ impl Watch {
         }
     }
 
+    fn is_hidden_path(&self, path: &Path) -> bool {
+        if self.watch_paths.is_empty() {
+            path.strip_prefix(&metadata().workspace_root)
+                .expect("cannot strip prefix")
+                .iter()
+                .any(|x| {
+                    x.to_str()
+                        .expect("path contains non Utf-8 characters")
+                        .starts_with('.')
+                })
+        } else {
+            self.watch_paths.iter().any(|x| {
+                path.strip_prefix(x)
+                    .expect("cannot strip prefix")
+                    .iter()
+                    .any(|x| {
+                        x.to_str()
+                            .expect("path contains non Utf-8 characters")
+                            .starts_with('.')
+                    })
+            })
+        }
+    }
+
     pub fn run(self, mut command: process::Command) -> Result<()> {
+        let metadata = metadata();
+        let watch = self.exclude_workspace_path(&metadata.target_directory);
+
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
-            notify::Watcher::new(tx, std::time::Duration::from_secs(2))
-                .context("could not initialize watcher")?;
-
-        let metadata = metadata();
-
-        let watch = self.exclude_workspace_path(&metadata.target_directory);
+            notify::Watcher::new_raw(tx).context("could not initialize watcher")?;
 
         if watch.watch_paths.is_empty() {
             log::trace!("Watching {}", &metadata.workspace_root);
@@ -370,51 +385,53 @@ impl Watch {
         }
 
         let mut child = command.spawn().context("cannot spawn command")?;
+        let mut command_start = std::time::Instant::now();
 
         loop {
-            use notify::DebouncedEvent::*;
+            match rx.recv() {
+                Ok(notify::RawEvent {
+                    path: Some(path), ..
+                }) if !watch.is_excluded_path(&path) && !watch.is_hidden_path(&path) => {
+                    if command_start.elapsed().as_secs() >= 2 {
+                        log::trace!("Detected changes at {}", path.display());
+                        #[cfg(unix)]
+                        {
+                            let now = std::time::Instant::now();
 
-            let message = rx.recv();
+                            unsafe {
+                                log::trace!("Killing watch's command process");
+                                libc::kill(
+                                    child.id().try_into().expect("cannot get process id"),
+                                    libc::SIGTERM,
+                                );
+                            }
 
-            match &message {
-                Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
-                    if !watch.is_excluded_path(path) && !is_hidden_path(path) =>
-                {
-                    log::trace!("Changes detected in {}", path.display());
-                    #[cfg(unix)]
-                    {
-                        let now = std::time::Instant::now();
-
-                        unsafe {
-                            log::trace!("Killing watch's command process");
-                            libc::kill(
-                                child.id().try_into().expect("cannot get process id"),
-                                libc::SIGTERM,
-                            );
-                        }
-
-                        while now.elapsed().as_secs() < 2 {
-                            std::thread::sleep(std::time::Duration::from_millis(200));
-                            if let Ok(Some(_)) = child.try_wait() {
-                                break;
+                            while now.elapsed().as_secs() < 2 {
+                                std::thread::sleep(std::time::Duration::from_millis(200));
+                                if let Ok(Some(_)) = child.try_wait() {
+                                    break;
+                                }
                             }
                         }
-                    }
 
-                    match child.try_wait() {
-                        Ok(Some(_)) => {}
-                        _ => {
-                            let _ = child.kill();
-                            let _ = child.wait();
+                        match child.try_wait() {
+                            Ok(Some(_)) => {}
+                            _ => {
+                                let _ = child.kill();
+                                let _ = child.wait();
+                            }
                         }
-                    }
 
-                    log::info!("Changes detected. Re-running command");
-                    child = command.spawn().context("cannot spawn command")?;
+                        log::info!("Re-running command");
+                        child = command.spawn().context("cannot spawn command")?;
+                        command_start = std::time::Instant::now();
+                    } else {
+                        log::trace!("Ignoring changes at {}", path.display());
+                    }
                 }
                 Ok(_) => {}
                 Err(err) => log::error!("watch error: {}", err),
-            };
+            }
         }
     }
 }

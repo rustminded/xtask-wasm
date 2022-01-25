@@ -39,7 +39,7 @@ fn main() -> Result<()> {
     match opt.cmd {
         Command::Build(arg) => {
             log::info!("Starting to build");
-            let build_dir = arg
+            let build_result = arg
                 .base
                 .static_dir_path("demo-webapp/static")
                 .app_name("hello_world")
@@ -47,7 +47,7 @@ fn main() -> Result<()> {
             if arg.optimize {
                 xtask_wasm::WasmOpt::level(1)
                     .shrink(2)
-                    .optimize(build_dir.join("hello_world.wasm"))?;
+                    .optimize(build_result.wasm)?;
             }
         }
         Command::Watch(arg) => {
