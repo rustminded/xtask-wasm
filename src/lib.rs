@@ -385,21 +385,15 @@ impl Watch {
         }
 
         let mut child = command.spawn().context("cannot spawn command")?;
+        let mut command_start = std::time::Instant::now();
 
         loop {
-            let message = rx.recv();
-
-            match &message {
+            match rx.recv() {
                 Ok(notify::RawEvent {
-                    path: Some(path),
-                    op: Ok(op),
-                    cookie: _cookie,
-                }) if !watch.is_excluded_path(path) && !watch.is_hidden_path(path) => match *op {
-                    notify::Op::CREATE
-                    | notify::Op::WRITE
-                    | notify::Op::REMOVE
-                    | notify::Op::RENAME => {
-                        log::trace!("Changes detected in {}", path.display());
+                    path: Some(path), ..
+                }) if !watch.is_excluded_path(&path) && !watch.is_hidden_path(&path) => {
+                    log::info!("Changes detected in {}", path.display());
+                    if command_start.elapsed().as_secs() >= 2 {
                         #[cfg(unix)]
                         {
                             let now = std::time::Instant::now();
@@ -428,14 +422,16 @@ impl Watch {
                             }
                         }
 
-                        log::info!("Changes detected. Re-running command");
+                        log::trace!("Re-running command");
                         child = command.spawn().context("cannot spawn command")?;
+                        command_start = std::time::Instant::now();
+                    } else {
+                        log::trace!("Ignoring changes");
                     }
-                    _ => {}
-                },
+                }
                 Ok(_) => {}
                 Err(err) => log::error!("watch error: {}", err),
-            };
+            }
         }
     }
 }
