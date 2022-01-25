@@ -392,8 +392,8 @@ impl Watch {
                 Ok(notify::RawEvent {
                     path: Some(path), ..
                 }) if !watch.is_excluded_path(&path) && !watch.is_hidden_path(&path) => {
-                    log::trace!("Changes detected in {}", path.display());
                     if command_start.elapsed().as_secs() >= 2 {
+                        log::trace!("Detected changes at {}", path.display());
                         #[cfg(unix)]
                         {
                             let now = std::time::Instant::now();
@@ -426,7 +426,7 @@ impl Watch {
                         child = command.spawn().context("cannot spawn command")?;
                         command_start = std::time::Instant::now();
                     } else {
-                        log::trace!("Ignoring changes");
+                        log::trace!("Ignoring changes at {}", path.display());
                     }
                 }
                 Ok(_) => {}
