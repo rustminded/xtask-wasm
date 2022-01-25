@@ -363,14 +363,12 @@ impl Watch {
     }
 
     pub fn run(self, mut command: process::Command) -> Result<()> {
+        let metadata = metadata();
+        let watch = self.exclude_workspace_path(&metadata.target_directory);
+
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
-            notify::Watcher::new(tx, std::time::Duration::from_secs(2))
-                .context("could not initialize watcher")?;
-
-        let metadata = metadata();
-
-        let watch = self.exclude_workspace_path(&metadata.target_directory);
+            notify::Watcher::new_raw(tx).context("could not initialize watcher")?;
 
         if watch.watch_paths.is_empty() {
             log::trace!("Watching {}", &metadata.workspace_root);
@@ -389,46 +387,52 @@ impl Watch {
         let mut child = command.spawn().context("cannot spawn command")?;
 
         loop {
-            use notify::DebouncedEvent::*;
-
             let message = rx.recv();
 
             match &message {
-                Ok(Create(path)) | Ok(Write(path)) | Ok(Remove(path)) | Ok(Rename(_, path))
-                    if !watch.is_excluded_path(path) && !watch.is_hidden_path(path) =>
-                {
-                    log::trace!("Changes detected in {}", path.display());
-                    #[cfg(unix)]
-                    {
-                        let now = std::time::Instant::now();
+                Ok(notify::RawEvent {
+                    path: Some(path),
+                    op: Ok(op),
+                    cookie: _cookie,
+                }) if !watch.is_excluded_path(path) && !watch.is_hidden_path(path) => match *op {
+                    notify::Op::CREATE
+                    | notify::Op::WRITE
+                    | notify::Op::REMOVE
+                    | notify::Op::RENAME => {
+                        log::trace!("Changes detected in {}", path.display());
+                        #[cfg(unix)]
+                        {
+                            let now = std::time::Instant::now();
 
-                        unsafe {
-                            log::trace!("Killing watch's command process");
-                            libc::kill(
-                                child.id().try_into().expect("cannot get process id"),
-                                libc::SIGTERM,
-                            );
-                        }
+                            unsafe {
+                                log::trace!("Killing watch's command process");
+                                libc::kill(
+                                    child.id().try_into().expect("cannot get process id"),
+                                    libc::SIGTERM,
+                                );
+                            }
 
-                        while now.elapsed().as_secs() < 2 {
-                            std::thread::sleep(std::time::Duration::from_millis(200));
-                            if let Ok(Some(_)) = child.try_wait() {
-                                break;
+                            while now.elapsed().as_secs() < 2 {
+                                std::thread::sleep(std::time::Duration::from_millis(200));
+                                if let Ok(Some(_)) = child.try_wait() {
+                                    break;
+                                }
                             }
                         }
-                    }
 
-                    match child.try_wait() {
-                        Ok(Some(_)) => {}
-                        _ => {
-                            let _ = child.kill();
-                            let _ = child.wait();
+                        match child.try_wait() {
+                            Ok(Some(_)) => {}
+                            _ => {
+                                let _ = child.kill();
+                                let _ = child.wait();
+                            }
                         }
-                    }
 
-                    log::info!("Changes detected. Re-running command");
-                    child = command.spawn().context("cannot spawn command")?;
-                }
+                        log::info!("Changes detected. Re-running command");
+                        child = command.spawn().context("cannot spawn command")?;
+                    }
+                    _ => {}
+                },
                 Ok(_) => {}
                 Err(err) => log::error!("watch error: {}", err),
             };
