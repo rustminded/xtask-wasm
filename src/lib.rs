@@ -1,6 +1,10 @@
 use lazy_static::lazy_static;
 use std::process;
 
+pub use anyhow;
+pub use cargo_metadata;
+pub use cargo_metadata::camino;
+
 mod build;
 mod dev_server;
 #[cfg(feature = "wasm-opt")]
@@ -12,10 +16,6 @@ pub use dev_server::*;
 #[cfg(feature = "wasm-opt")]
 pub use wasm_opt::WasmOpt;
 pub use watch::*;
-
-pub use anyhow;
-pub use cargo_metadata;
-pub use cargo_metadata::camino;
 
 pub fn metadata() -> &'static cargo_metadata::Metadata {
     lazy_static! {
