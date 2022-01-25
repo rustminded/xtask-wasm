@@ -47,7 +47,7 @@ fn main() -> Result<()> {
             if arg.optimize {
                 xtask_wasm::WasmOpt::level(1)
                     .shrink(2)
-                    .optimize(build_result.js)?;
+                    .optimize(build_result.wasm)?;
             }
         }
         Command::Watch(arg) => {
