@@ -49,9 +49,12 @@ fn download_wasm_opt() -> Result<&'static Path> {
 }
 
 pub struct WasmOpt {
-    optimization_level: u32,
-    shrink_level: u32,
-    debug_info: bool,
+    /// How much to focus on optimizing code
+    pub optimization_level: u32,
+    /// How much to focus on shrinking code size
+    pub shrink_level: u32,
+    /// Emit names section in wasm binary
+    pub debug_info: bool,
 }
 
 impl WasmOpt {
