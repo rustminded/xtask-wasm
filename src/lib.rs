@@ -92,7 +92,6 @@ use std::process;
 pub use anyhow;
 pub use cargo_metadata;
 pub use cargo_metadata::camino;
-pub use clap;
 
 mod build;
 mod dev_server;
