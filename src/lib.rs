@@ -14,7 +14,7 @@ mod watch;
 pub use build::*;
 pub use dev_server::*;
 #[cfg(feature = "wasm-opt")]
-pub use wasm_opt::WasmOpt;
+pub use wasm_opt::*;
 pub use watch::*;
 
 pub fn metadata() -> &'static cargo_metadata::Metadata {
