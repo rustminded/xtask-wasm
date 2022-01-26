@@ -13,22 +13,20 @@
 //! project expect the `.git` directory into a new directory named after
 //! the package name at the root of the project.
 //!
-//! Create a new package for the xtasks using the following:
-//!
-//! ```console
-//! cargo new --bin xtask
-//! ```
-//!
-//! Create a new Cargo.toml at the root of the project and add the following:
-//!
-//! ```toml
-//! [workspace]
-//! members = [
-//!     # Replace `project` by the name of the project package
-//!     "project",
-//!     "xtask",
-//! ]
-//! ```
+//! * Create a new package for the xtasks using the following:
+//!     ```console
+//!     cargo new --bin xtask
+//!     ```
+//! * Create a new Cargo.toml at the root of the project and add the following:
+//!     ```toml
+//!     [workspace]
+//!     members = [
+//!         # Replace `project` by the name of the project package
+//!         "project",
+//!         "xtask",
+//!     ]
+//!     ```
+//!     Replace `project` by the name of the project package
 //!
 //! ## Project with a workspace
 //!
@@ -85,8 +83,44 @@
 //! [dependencies]
 //! xtask-wasm = { version = "0.1.0", features = ["wasm-opt"] }
 //! ```
+//!
+//! # Usage
+//!
+//! This library give you 3 types for your project:
+//!
+//! * `Build`<todo intra-link> - Build your project,
+//! * `Watch`<todo intra-link> - Watches over your project's,
+//! * `DevServer`<todo intra-link> - Serve your project.
+//!
+//! They all implement `clap::Parser` allowing the user of the library to add
+//! them easily to an existing CLI system. They come ready out of the box but
+//! can be customized in different ways.
+//!
+//! You can find further for each type at their level documentation.
+//!
+//! # Examples
+//!
+//! examples/demo<todo link> provides an basic implementation of xtask-wasm to
+//! build the `webapp` package, an `hello world` app using Yew<todo link>.
+//! This example demonstrate a simple directory layout and a customized build
+//! process that use the `wasm-opt`<todo intra link> feature.
+//!
+//! The available subcommands are:
+//!
+//! * `cargo xtask build`
+//! * `cargo xtask watch`
+//! * `cargo xtask serve`
+//!
+//! Additional flags can be found using `cargo xtask <subcommand> --help`
+//!
+//! # Features
+//!
+//! ## wasm-opt
+//!
+//! Enable `WasmOpt`<todo (intra?) link> that download the `wasm-opt`<todo link>
+//! binary and abstract its use via a builder pattern to optimize the WASM.
 
-#![deny(missing_docs)]
+// #![deny(missing_docs)]
 
 use lazy_static::lazy_static;
 use std::process;
