@@ -1,5 +1,5 @@
-use xtask_wasm::{anyhow::Result, clap::Parser};
 use std::process;
+use xtask_wasm::{anyhow::Result, clap::Parser};
 
 #[derive(Parser)]
 struct Opt {
