@@ -1,6 +1,6 @@
-use anyhow::Result;
 use clap::Parser;
 use std::process;
+use xtask_wasm::anyhow::Result;
 
 #[derive(Parser)]
 struct Opt {
@@ -41,9 +41,9 @@ fn main() -> Result<()> {
             log::info!("Starting to build");
             let build_result = arg
                 .base
-                .static_dir_path("demo-webapp/static")
+                .static_dir_path("webapp/static")
                 .app_name("hello_world")
-                .run("demo-webapp")?;
+                .run("webapp")?;
             if arg.optimize {
                 xtask_wasm::WasmOpt::level(1)
                     .shrink(2)
