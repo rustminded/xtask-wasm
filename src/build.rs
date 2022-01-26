@@ -230,10 +230,13 @@ impl Build {
     }
 }
 
-/// `BuildResult` is used to easily get the path of generated artifacts from a
+/// Provides paths of the generated artifacts from a
 /// build process.
 pub struct BuildResult {
+    /// Directory containing the artifacts
     pub build_dir: PathBuf,
+    /// js output generated from wasm_bindgen
     pub js: PathBuf,
+    /// wasm output generated from wasm_bindgen
     pub wasm: PathBuf,
 }
