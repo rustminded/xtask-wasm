@@ -1,8 +1,7 @@
-use clap::Parser;
 use std::process;
-use xtask_wasm::anyhow::Result;
+use xtask_wasm::{anyhow::Result, clap};
 
-#[derive(Parser)]
+#[derive(clap::Parser)]
 struct Opt {
     #[clap(long = "log", default_value = "Info")]
     log_level: log::LevelFilter,
@@ -10,14 +9,14 @@ struct Opt {
     cmd: Command,
 }
 
-#[derive(Parser)]
+#[derive(clap::Parser)]
 enum Command {
     Build(Build),
     Watch(xtask_wasm::Watch),
     Serve(xtask_wasm::DevServer),
 }
 
-#[derive(Parser)]
+#[derive(clap::Parser)]
 struct Build {
     #[clap(long)]
     optimize: bool,
@@ -27,7 +26,7 @@ struct Build {
 }
 
 fn main() -> Result<()> {
-    let opt = Opt::parse();
+    let opt: Opt = clap::Parser::parse();
 
     env_logger::builder()
         .filter(Some("xtask"), opt.log_level)
@@ -42,7 +41,7 @@ fn main() -> Result<()> {
             let build_result = arg
                 .base
                 .static_dir_path("webapp/static")
-                .app_name("hello_world")
+                .app_name("web_app")
                 .run("webapp")?;
             if arg.optimize {
                 xtask_wasm::WasmOpt::level(1)
