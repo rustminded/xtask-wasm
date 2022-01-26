@@ -12,15 +12,19 @@ use std::{
 #[non_exhaustive]
 #[derive(Debug, Parser)]
 pub struct DevServer {
+    /// Ip address to bind. Default to 127.0.0.1
     #[clap(long, default_value = "127.0.0.1")]
     pub ip: IpAddr,
+    /// Port number. Default to 8000
     #[clap(long, default_value = "8000")]
     pub port: u16,
 
-    #[clap(flatten)]
-    pub watch: Watch,
+    /// Watched command running along the server
     #[clap(skip)]
     pub command: Option<process::Command>,
+    /// Watching process of the server
+    #[clap(flatten)]
+    pub watch: Watch,
 }
 
 impl DevServer {
