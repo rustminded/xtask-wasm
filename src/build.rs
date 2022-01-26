@@ -7,41 +7,59 @@ use wasm_bindgen_cli_support::Bindgen;
 #[non_exhaustive]
 #[derive(Debug, Parser)]
 pub struct Build {
+    /// No output printed to stdout
     #[clap(short, long)]
     pub quiet: bool,
+    /// Number of parallel jobs, defaults to # of CPUs
     #[clap(short, long)]
     pub jobs: Option<String>,
+    /// Build artifacts with the specified profile
     #[clap(long)]
     pub profile: Option<String>,
+    /// Build artifacts in release mode, with optimizations
     #[clap(long)]
     pub release: bool,
+    /// Space or comma separated list of features to activate
     #[clap(long)]
     pub features: Vec<String>,
+    /// Activate all available features
     #[clap(long)]
     pub all_features: bool,
+    /// Do not activate the `default` features
     #[clap(long)]
     pub no_default_features: bool,
+    /// Use verbose output
     #[clap(short, long)]
     pub verbose: bool,
+    /// Coloring: auto, always, never
     #[clap(long)]
     pub color: Option<String>,
+    /// Require Cargo.lock and cache are up to date
     #[clap(long)]
     pub frozen: bool,
+    /// Require Cargo.lock is up to date
     #[clap(long)]
     pub locked: bool,
+    /// Run without accessing the network
     #[clap(long)]
     pub offline: bool,
+    /// Ignore `rust-version` specification in packages
     #[clap(long)]
     pub ignore_rust_version: bool,
 
+    /// Command passed to the build process
     #[clap(skip = default_build_command())]
     pub command: process::Command,
+    /// Directory of all generated artifacts
     #[clap(skip)]
     pub build_dir_path: Option<PathBuf>,
+    /// Directory of all static artifacts
     #[clap(skip)]
     pub static_dir_path: Option<PathBuf>,
+    /// Set the resulting app name, default to "app"
     #[clap(skip)]
     pub app_name: Option<String>,
+    /// Set the command's current directory as the workspace root
     #[clap(skip = true)]
     pub run_in_workspace: bool,
 }
@@ -212,6 +230,8 @@ impl Build {
     }
 }
 
+/// `BuildResult` is used to easily get the path of generated artifacts from a
+/// build process.
 pub struct BuildResult {
     pub build_dir: PathBuf,
     pub js: PathBuf,
