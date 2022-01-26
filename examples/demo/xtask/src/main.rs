@@ -1,5 +1,4 @@
-use anyhow::Result;
-use clap::Parser;
+use xtask_wasm::{anyhow::Result, clap::Parser};
 use std::process;
 
 #[derive(Parser)]
