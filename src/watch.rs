@@ -14,11 +14,10 @@ pub struct Watch {
     /// Watch specific file(s) or folder(s). Default to workspace root
     #[clap(long = "watch", short = 'w')]
     pub watch_paths: Vec<PathBuf>,
-    /// Paths that will not be monitored for changes. Note that the target directory or hidden
-    /// folders, like `.git`, are ignored by default
+    /// Paths that will be excluded
     #[clap(long = "ignore", short = 'i')]
     pub exclude_paths: Vec<PathBuf>,
-    /// Similar to `exclude_paths` but relative to the workspace root
+    /// Paths relative to the workspace root that will be excluded
     #[clap(skip)]
     pub workspace_exclude_paths: Vec<PathBuf>,
 }

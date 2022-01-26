@@ -86,6 +86,8 @@
 //! xtask-wasm = { version = "0.1.0", features = ["wasm-opt"] }
 //! ```
 
+#![deny(missing_docs)]
+
 use lazy_static::lazy_static;
 use std::process;
 
@@ -106,7 +108,7 @@ pub use dev_server::*;
 pub use wasm_opt::*;
 pub use watch::*;
 
-/// Allows you to fetch the metadata of the crate
+/// Fetch the metadata of the crate.
 pub fn metadata() -> &'static cargo_metadata::Metadata {
     lazy_static! {
         static ref METADATA: cargo_metadata::Metadata = cargo_metadata::MetadataCommand::new()
@@ -117,14 +119,15 @@ pub fn metadata() -> &'static cargo_metadata::Metadata {
     &METADATA
 }
 
-/// Allows you to fetch informations of a package in the current crate
+/// Fetch information of a package in the current crate.
 pub fn package(name: &str) -> Option<&cargo_metadata::Package> {
     metadata().packages.iter().find(|x| x.name == name)
 }
 
-/// Lazily return the default build directory.
+/// Get the default build directory.
 ///
-/// Default for `target/debug/dist` in debug mode and `target/release/dist` in release mode
+/// The default for debug build is `target/debug/dist` and `target/release/dist`
+/// for the release build.
 pub fn default_build_dir(release: bool) -> &'static camino::Utf8Path {
     lazy_static! {
         static ref DEFAULT_RELEASE_PATH: camino::Utf8PathBuf =
@@ -140,9 +143,9 @@ pub fn default_build_dir(release: bool) -> &'static camino::Utf8Path {
     }
 }
 
-/// Lazily return the default command of the build process.
+/// Get the default command for the build process.
 ///
-/// Equivalent to `cargo build --target wasm32-unknown-unknown`
+/// This is `cargo build --target wasm32-unknown-unknown`.
 pub fn default_build_command() -> process::Command {
     let mut command = process::Command::new("cargo");
     command.args(["build", "--target", "wasm32-unknown-unknown"]);
