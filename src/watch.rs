@@ -110,7 +110,7 @@ impl Watch {
         }
     }
 
-    /// Run a given command, monitoring the watched paths and relaunch the
+    /// Run the given `command`, monitoring the watched paths and relaunch the
     /// command when changes are detected.
     ///
     /// Workspace's `target` directory and hidden paths are excluded by default.

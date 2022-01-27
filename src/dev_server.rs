@@ -13,7 +13,7 @@ use std::{
 ///
 /// Get the files at `watch_path` and serve them at a given IP address
 /// (127.0.0.1:8000 by default). An optional command can be run along the
-/// server, relaunched if changes are detected in your project via a watch.
+/// server, relaunched if changes are detected in your project via a [`Watch`].
 #[non_exhaustive]
 #[derive(Debug, Parser)]
 pub struct DevServer {
@@ -39,7 +39,7 @@ impl DevServer {
         self
     }
 
-    /// Start the dev server, serving the files at `served_path`.
+    /// Start the [`DevServer`], serving the files at `served_path`.
     pub fn start(self, served_path: impl AsRef<Path>) -> Result<()> {
         let watch_process = if let Some(command) = self.command {
             let watch = self.watch.exclude_path(&served_path);

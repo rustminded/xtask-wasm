@@ -1,11 +1,12 @@
 //! This crate aims to provide an easy and customizable way to help you build
-//! Wasm projects by extending them with custom subcommands, based on the xtask<todo link>
-//! concept, instead of using external tooling like `wasm-pack`<todo link>.
+//! Wasm projects by extending them with custom subcommands, based on the
+//! [`xtask` concept](https://github.com/matklad/cargo-xtask/), instead of using
+//!  external tooling like [`wasm-pack`](https://github.com/rustwasm/wasm-pack).
 //!
 //! # Setup
 //!
-//! The best way to add xtask-wasm to your project is to create a workspace with
-//! two packages: your project's package and the xtask package.
+//! The best way to add [`xtask-wasm`] to your project is to create a workspace
+//! with two packages: your project's package and the xtask package.
 //!
 //! ## Project with a single package
 //!
@@ -73,7 +74,8 @@
 //!         └── main.rs
 //! ```
 //!
-//! You can find more informations about the xtask concept here<todo link>.
+//! You can find more informations about xtask
+//! [here](https://github.com/matklad/cargo-xtask/).
 //!
 //! ## Use xtask-wasm as a dependency
 //!
@@ -88,11 +90,11 @@
 //!
 //! This library give you 3 types:
 //!
-//! * `Dist`<todo intra-link> - Build your project's package for Wasm
-//! * `Watch`<todo intra-link> - Re-run a command when changes are detected
-//! * `DevServer`<todo intra-link> - Serve your project.
+//! * [`Dist`] - Generate a distributed package for Wasm
+//! * [`Watch`] - Re-run a given command when changes are detected
+//! * [`DevServer`] - Serve your project at a given IP address.
 //!
-//! They all implement `clap::Parser`<todo link> allowing to add them easily to
+//! They all implement [`clap::Parser`] allowing to add them easily to
 //! an existing CLI implementation and are flexible enough to be customized for
 //! most use-cases.
 //!
@@ -100,10 +102,11 @@
 //!
 //! # Examples
 //!
-//! examples/demo<todo link> provides an basic implementation of xtask-wasm to
-//! build the `webapp` package, an `hello world` app using Yew<todo link>.
+//! [`examples/demo`](https://github.com/rustminded/xtask-wasm/tree/main/examples/demo)
+//! provides an basic implementation of xtask-wasm to
+//! build the `webapp` package, an `hello world` app using [Yew](https://yew.rs/).
 //! This example demonstrate a simple directory layout and a customized build
-//! process that use the `wasm-opt`<todo intra link> feature.
+//! process that use the [`wasm-opt`] feature.
 //!
 //! The available subcommands are:
 //!
@@ -134,7 +137,7 @@
 //!
 //! ## wasm-opt
 //!
-//! Enable `WasmOpt`<todo (intra?) link> that download the `wasm-opt`<todo link>
+//! Enable `WasmOpt` that download the [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools)
 //! binary and abstract its use to optimize the WASM.
 //!
 //! This feature can be enabled using the following in the xtask package's
