@@ -48,6 +48,7 @@ fn download_wasm_opt() -> Result<&'static Path> {
     WASM_OPT_PATH.as_deref().map_err(|err| anyhow!("{}", err))
 }
 
+/// Abstraction over the `wasm-opt` binary from `Binaryen`<todo link>.
 pub struct WasmOpt {
     /// How much to focus on optimizing code
     pub optimization_level: u32,
@@ -58,6 +59,7 @@ pub struct WasmOpt {
 }
 
 impl WasmOpt {
+    /// Set the level of code optimization.
     pub fn level(optimization_level: u32) -> Self {
         Self {
             optimization_level,
@@ -66,16 +68,20 @@ impl WasmOpt {
         }
     }
 
+    /// Set the level of size shrinking
     pub fn shrink(mut self, shrink_level: u32) -> Self {
         self.shrink_level = shrink_level;
         self
     }
 
+    /// Preserve debug info
     pub fn debug(mut self) -> Self {
         self.debug_info = true;
         self
     }
 
+    /// Execute `wasm-opt` over the give wasm binary, downloading it if necessary
+    /// into the `target` directory.
     pub fn optimize(self, binary_path: impl AsRef<Path>) -> Result<Self> {
         let input_path = binary_path.as_ref();
         let output_path = input_path.with_extension("opt");

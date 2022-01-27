@@ -4,6 +4,10 @@ use clap::Parser;
 use std::{fs, path::PathBuf, process};
 use wasm_bindgen_cli_support::Bindgen;
 
+/// Abstraction over the `cargo build` command
+///
+/// This struct allows to build a package to wasm without losing all the
+/// possibility of the `cargo build` command.
 #[non_exhaustive]
 #[derive(Debug, Parser)]
 pub struct Build {
@@ -65,32 +69,46 @@ pub struct Build {
 }
 
 impl Build {
+    /// Set the command used by the build process.
+    ///
+    /// The default command is `cargo build --target wasm32-unknown-unknown`.
     pub fn command(mut self, command: process::Command) -> Self {
         self.command = command;
         self
     }
 
+    /// Set the directory for the generated artifacts.
+    ///
+    /// The default for debug build is `target/debug/dist` and
+    /// `target/release/dist` for the release build.
     pub fn build_dir_path(mut self, path: impl Into<PathBuf>) -> Self {
         self.build_dir_path = Some(path.into());
         self
     }
 
+    /// Set the directory for the static artifacts (like `index.html`).
     pub fn static_dir_path(mut self, path: impl Into<PathBuf>) -> Self {
         self.static_dir_path = Some(path.into());
         self
     }
 
+    /// Set the resulting package name
+    ///
+    /// The default is `app`.
     pub fn app_name(mut self, app_name: impl Into<String>) -> Self {
         self.app_name = Some(app_name.into());
         self
     }
 
+    /// Set the build process current directory as the workspace root.
     pub fn run_in_workspace(mut self, res: bool) -> Self {
         self.run_in_workspace = res;
         self
     }
 
-    pub fn run(self, crate_name: &str) -> Result<BuildResult> {
+    /// Build the given package for wasm, generating JS bindings via
+    /// `wasm-bindgen` and return the paths of the generated artifacts
+    pub fn run(self, package_name: &str) -> Result<BuildResult> {
         log::trace!("Getting package's metadata");
         let metadata = metadata();
 
@@ -157,13 +175,13 @@ impl Build {
             build_process.arg("--ignore-rust-version");
         }
 
-        build_process.args(["--package", crate_name]);
+        build_process.args(["--package", package_name]);
 
         let input_path = metadata
             .target_directory
             .join("wasm32-unknown-unknown")
             .join(if self.release { "release" } else { "debug" })
-            .join(&crate_name.replace("-", "_"))
+            .join(&package_name.replace("-", "_"))
             .with_extension("wasm");
 
         if input_path.exists() {

@@ -8,6 +8,8 @@ use std::{
     sync::mpsc,
 };
 
+/// Watches over your project's source code, relaunching the given command when
+/// changes are detected.
 #[non_exhaustive]
 #[derive(Debug, Parser)]
 pub struct Watch {
@@ -23,11 +25,13 @@ pub struct Watch {
 }
 
 impl Watch {
+    /// Adds a path that will be monitored by the watch process.
     pub fn watch_path(mut self, path: impl AsRef<Path>) -> Self {
         self.watch_paths.push(path.as_ref().to_path_buf());
         self
     }
 
+    /// Adds multiple paths that will be monitored by the watch process.
     pub fn watch_paths(mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) -> Self {
         for path in paths {
             self.watch_paths.push(path.as_ref().to_path_buf())
@@ -35,11 +39,13 @@ impl Watch {
         self
     }
 
+    /// Adds a path that will not be monitored by the watch process.
     pub fn exclude_path(mut self, path: impl AsRef<Path>) -> Self {
         self.exclude_paths.push(path.as_ref().to_path_buf());
         self
     }
 
+    /// Adds multiple paths that will not be monitored by the watch process.
     pub fn exclude_paths(mut self, paths: impl IntoIterator<Item = impl AsRef<Path>>) -> Self {
         for path in paths {
             self.exclude_paths.push(path.as_ref().to_path_buf());
@@ -47,12 +53,16 @@ impl Watch {
         self
     }
 
+    /// Adds a path, relative to the workspace, that will not be monitored by
+    /// the watch process
     pub fn exclude_workspace_path(mut self, path: impl AsRef<Path>) -> Self {
         self.workspace_exclude_paths
             .push(path.as_ref().to_path_buf());
         self
     }
 
+    /// Adds multiple paths, relative to the workspace, that will not be
+    /// monitored by the watch process.
     pub fn exclude_workspace_paths(
         mut self,
         paths: impl IntoIterator<Item = impl AsRef<Path>>,
@@ -100,6 +110,10 @@ impl Watch {
         }
     }
 
+    /// Run a given command, monitoring the watched paths and relaunch the
+    /// command when changes are detected.
+    ///
+    /// Workspace's `target` directory and hidden paths are excluded by default.
     pub fn run(self, mut command: process::Command) -> Result<()> {
         let metadata = metadata();
         let watch = self.exclude_workspace_path(&metadata.target_directory);

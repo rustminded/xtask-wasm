@@ -9,6 +9,11 @@ use std::{
     process,
 };
 
+/// A simple HTTP server that can watch a given command.
+///
+/// Get the files at `watch_path` and serve them at a given IP address
+/// (127.0.0.1:8000 by default). An optional command can be run along the
+/// server, relaunched if changes are detected in your project via a watch.
 #[non_exhaustive]
 #[derive(Debug, Parser)]
 pub struct DevServer {
@@ -28,11 +33,13 @@ pub struct DevServer {
 }
 
 impl DevServer {
+    /// Give a command to run when starting the server.
     pub fn command(mut self, command: process::Command) -> Self {
         self.command = Some(command);
         self
     }
 
+    /// Start the dev server, serving the files at `served_path`.
     pub fn start(self, served_path: impl AsRef<Path>) -> Result<()> {
         let watch_process = if let Some(command) = self.command {
             let watch = self.watch.exclude_path(&served_path);
