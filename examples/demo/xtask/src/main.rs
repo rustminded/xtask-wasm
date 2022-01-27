@@ -22,7 +22,7 @@ struct Build {
     optimize: bool,
 
     #[clap(flatten)]
-    base: xtask_wasm::Build,
+    base: xtask_wasm::Dist,
 }
 
 fn main() -> Result<()> {
@@ -57,7 +57,7 @@ fn main() -> Result<()> {
             log::info!("Starting to serve");
             build_command.arg("--optimize");
             arg.command(build_command)
-                .start(xtask_wasm::default_build_dir(false))?;
+                .start(xtask_wasm::default_dist_dir(false))?;
         }
     }
 

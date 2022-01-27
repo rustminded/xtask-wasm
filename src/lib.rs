@@ -88,7 +88,7 @@
 //!
 //! This library give you 3 types:
 //!
-//! * `Build`<todo intra-link> - Build your project's package for Wasm
+//! * `Dist`<todo intra-link> - Build your project's package for Wasm
 //! * `Watch`<todo intra-link> - Re-run a command when changes are detected
 //! * `DevServer`<todo intra-link> - Serve your project.
 //!
@@ -122,7 +122,7 @@
 //!     cargo xtask watch
 //!     ```
 //!
-//! * Serve an optimized `webapp` build on `127.0.0.1:8000` and watch for
+//! * Serve an optimized `webapp` dist on `127.0.0.1:8000` and watch for
 //!     changes in the workspace root.
 //!     ```console
 //!     cargo xtask serve
@@ -155,14 +155,14 @@ pub use cargo_metadata;
 pub use cargo_metadata::camino;
 pub use clap;
 
-mod build;
 mod dev_server;
+mod dist;
 #[cfg(feature = "wasm-opt")]
 mod wasm_opt;
 mod watch;
 
-pub use build::*;
 pub use dev_server::*;
+pub use dist::*;
 #[cfg(feature = "wasm-opt")]
 pub use wasm_opt::*;
 pub use watch::*;
@@ -183,11 +183,11 @@ pub fn package(name: &str) -> Option<&cargo_metadata::Package> {
     metadata().packages.iter().find(|x| x.name == name)
 }
 
-/// Get the default build directory.
+/// Get the default dist directory.
 ///
 /// The default for debug build is `target/debug/dist` and `target/release/dist`
 /// for the release build.
-pub fn default_build_dir(release: bool) -> &'static camino::Utf8Path {
+pub fn default_dist_dir(release: bool) -> &'static camino::Utf8Path {
     lazy_static! {
         static ref DEFAULT_RELEASE_PATH: camino::Utf8PathBuf =
             metadata().target_directory.join("release").join("dist");
@@ -202,7 +202,7 @@ pub fn default_build_dir(release: bool) -> &'static camino::Utf8Path {
     }
 }
 
-/// Get the default command for the build process.
+/// Get the default command for the build in the dist process.
 ///
 /// This is `cargo build --target wasm32-unknown-unknown`.
 pub fn default_build_command() -> process::Command {

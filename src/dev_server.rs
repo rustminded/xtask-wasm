@@ -82,7 +82,7 @@ fn serve(ip: IpAddr, port: u16, served_path: impl AsRef<Path>) -> Result<()> {
     Ok(())
 }
 
-fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) -> Result<()> {
+fn respond_to_request(stream: &mut TcpStream, dist_dir_path: impl AsRef<Path>) -> Result<()> {
     let mut reader = BufReader::new(stream);
     let mut request = String::new();
     reader.read_line(&mut request)?;
@@ -93,7 +93,7 @@ fn respond_to_request(stream: &mut TcpStream, build_dir_path: impl AsRef<Path>) 
         .context("Could not find path in request")?;
 
     let rel_path = Path::new(requested_path.trim_matches('/'));
-    let mut full_path = build_dir_path.as_ref().join(rel_path);
+    let mut full_path = dist_dir_path.as_ref().join(rel_path);
 
     if full_path.is_dir() {
         if full_path.join("index.html").exists() {

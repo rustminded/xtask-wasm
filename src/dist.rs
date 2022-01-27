@@ -1,4 +1,4 @@
-use crate::{default_build_command, default_build_dir, metadata};
+use crate::{default_build_command, default_dist_dir, metadata};
 use anyhow::{ensure, Context, Result};
 use clap::Parser;
 use std::{fs, path::PathBuf, process};
@@ -10,7 +10,7 @@ use wasm_bindgen_cli_support::Bindgen;
 /// possibility of the `cargo build` command.
 #[non_exhaustive]
 #[derive(Debug, Parser)]
-pub struct Build {
+pub struct Dist {
     /// No output printed to stdout
     #[clap(short, long)]
     pub quiet: bool,
@@ -53,10 +53,10 @@ pub struct Build {
 
     /// Command passed to the build process
     #[clap(skip = default_build_command())]
-    pub command: process::Command,
+    pub build_command: process::Command,
     /// Directory of all generated artifacts
     #[clap(skip)]
-    pub build_dir_path: Option<PathBuf>,
+    pub dist_dir_path: Option<PathBuf>,
     /// Directory of all static artifacts
     #[clap(skip)]
     pub static_dir_path: Option<PathBuf>,
@@ -68,12 +68,12 @@ pub struct Build {
     pub run_in_workspace: bool,
 }
 
-impl Build {
+impl Dist {
     /// Set the command used by the build process.
     ///
     /// The default command is `cargo build --target wasm32-unknown-unknown`.
-    pub fn command(mut self, command: process::Command) -> Self {
-        self.command = command;
+    pub fn build_command(mut self, command: process::Command) -> Self {
+        self.build_command = command;
         self
     }
 
@@ -81,8 +81,8 @@ impl Build {
     ///
     /// The default for debug build is `target/debug/dist` and
     /// `target/release/dist` for the release build.
-    pub fn build_dir_path(mut self, path: impl Into<PathBuf>) -> Self {
-        self.build_dir_path = Some(path.into());
+    pub fn dist_dir_path(mut self, path: impl Into<PathBuf>) -> Self {
+        self.dist_dir_path = Some(path.into());
         self
     }
 
@@ -92,7 +92,7 @@ impl Build {
         self
     }
 
-    /// Set the resulting package name
+    /// Set the resulting package name.
     ///
     /// The default is `app`.
     pub fn app_name(mut self, app_name: impl Into<String>) -> Self {
@@ -100,24 +100,25 @@ impl Build {
         self
     }
 
-    /// Set the build process current directory as the workspace root.
+    /// Set the dist process current directory as the workspace root.
     pub fn run_in_workspace(mut self, res: bool) -> Self {
         self.run_in_workspace = res;
         self
     }
 
     /// Build the given package for wasm, generating JS bindings via
-    /// `wasm-bindgen` and return the paths of the generated artifacts
-    pub fn run(self, package_name: &str) -> Result<BuildResult> {
+    /// [`wasm-bindgen`](https://docs.rs/wasm-bindgen/latest/wasm_bindgen/)
+    /// and return the paths of the generated artifacts.
+    pub fn run(self, package_name: &str) -> Result<DistResult> {
         log::trace!("Getting package's metadata");
         let metadata = metadata();
 
-        let build_dir_path = self
-            .build_dir_path
-            .unwrap_or_else(|| default_build_dir(self.release).as_std_path().to_path_buf());
+        let dist_dir_path = self
+            .dist_dir_path
+            .unwrap_or_else(|| default_dist_dir(self.release).as_std_path().to_path_buf());
 
-        log::trace!("Initializing build process");
-        let mut build_process = self.command;
+        log::trace!("Initializing dist process");
+        let mut build_process = self.build_command;
 
         if self.run_in_workspace {
             build_process.current_dir(&metadata.workspace_root);
@@ -213,18 +214,18 @@ impl Build {
         let wasm_js = output.js().to_owned();
         let wasm_bin = output.wasm_mut().emit_wasm();
 
-        let wasm_js_path = build_dir_path.join(&app_name).with_extension("js");
-        let wasm_bin_path = build_dir_path.join(&app_name).with_extension("wasm");
+        let wasm_js_path = dist_dir_path.join(&app_name).with_extension("js");
+        let wasm_bin_path = dist_dir_path.join(&app_name).with_extension("wasm");
 
-        if build_dir_path.exists() {
-            log::trace!("Removing already existing build directory");
-            fs::remove_dir_all(&build_dir_path)?;
+        if dist_dir_path.exists() {
+            log::trace!("Removing already existing dist directory");
+            fs::remove_dir_all(&dist_dir_path)?;
         }
 
-        log::trace!("Creating new build directory");
-        fs::create_dir_all(&build_dir_path).context("cannot create build directory")?;
+        log::trace!("Creating new dist directory");
+        fs::create_dir_all(&dist_dir_path).context("cannot create build directory")?;
 
-        log::trace!("Writing files into build directory");
+        log::trace!("Writing files into dist directory");
         fs::write(&wasm_js_path, wasm_js).with_context(|| "cannot write js file")?;
         fs::write(&wasm_bin_path, wasm_bin).with_context(|| "cannot write WASM file")?;
 
@@ -233,28 +234,27 @@ impl Build {
         copy_options.content_only = true;
 
         if let Some(static_dir) = self.static_dir_path {
-            log::trace!("Copying static directory into build directory");
-            fs_extra::dir::copy(static_dir, &build_dir_path, &copy_options)
+            log::trace!("Copying static directory into dist directory");
+            fs_extra::dir::copy(static_dir, &dist_dir_path, &copy_options)
                 .context("cannot copy static directory")?;
         }
 
-        log::info!("Successfully built in {}", build_dir_path.display());
+        log::info!("Successfully built in {}", dist_dir_path.display());
 
-        Ok(BuildResult {
-            build_dir: build_dir_path,
+        Ok(DistResult {
+            dist_dir: dist_dir_path,
             js: wasm_js_path,
             wasm: wasm_bin_path,
         })
     }
 }
 
-/// Provides paths of the generated artifacts from a
-/// build process.
-pub struct BuildResult {
-    /// Directory containing the artifacts
-    pub build_dir: PathBuf,
-    /// js output generated from wasm_bindgen
+/// Provides paths of the generated dist artifacts.
+pub struct DistResult {
+    /// Directory containing the generated artifacts
+    pub dist_dir: PathBuf,
+    /// js output generated by wasm_bindgen
     pub js: PathBuf,
-    /// wasm output generated from wasm_bindgen
+    /// wasm output generated by wasm_bindgen
     pub wasm: PathBuf,
 }
