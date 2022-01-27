@@ -80,8 +80,10 @@ impl WasmOpt {
         self
     }
 
-    /// Execute `wasm-opt` over the give wasm binary, downloading it if necessary
-    /// into the `target` directory.
+    /// Optimize the Wasm binary provided by `binary_path`.
+    ///
+    /// This function will execute `wasm-opt` over the given Wasm binary,
+    /// downloading it if necessary (cached into the `target` directory).
     pub fn optimize(self, binary_path: impl AsRef<Path>) -> Result<Self> {
         let input_path = binary_path.as_ref();
         let output_path = input_path.with_extension("opt");

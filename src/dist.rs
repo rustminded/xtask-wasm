@@ -71,7 +71,7 @@ pub struct Dist {
 impl Dist {
     /// Set the command used by the build process.
     ///
-    /// The default command is `cargo build --target wasm32-unknown-unknown`.
+    /// The default command is the result of the [`default_build_command`]
     pub fn build_command(mut self, command: process::Command) -> Self {
         self.build_command = command;
         self
