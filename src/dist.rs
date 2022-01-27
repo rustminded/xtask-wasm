@@ -4,10 +4,10 @@ use clap::Parser;
 use std::{fs, path::PathBuf, process};
 use wasm_bindgen_cli_support::Bindgen;
 
-/// Abstraction over the `cargo build` command
+/// An helper to generate the distributed package
 ///
-/// This struct allows to build a package to wasm without losing all the
-/// possibility of the `cargo build` command.
+/// This structs provide a customizable way to assemble and generate a package
+/// for Wasm.
 #[non_exhaustive]
 #[derive(Debug, Parser)]
 pub struct Dist {
@@ -107,8 +107,9 @@ impl Dist {
     }
 
     /// Build the given package for wasm, generating JS bindings via
-    /// [`wasm-bindgen`](https://docs.rs/wasm-bindgen/latest/wasm_bindgen/)
-    /// and return the paths of the generated artifacts.
+    /// [`wasm-bindgen`](https://docs.rs/wasm-bindgen/latest/wasm_bindgen/) and
+    /// copy files from a given static directory if any to finally return the
+    /// paths of the generated artifacts via [`DistResult`].
     pub fn run(self, package_name: &str) -> Result<DistResult> {
         log::trace!("Getting package's metadata");
         let metadata = metadata();
