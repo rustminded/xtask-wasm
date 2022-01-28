@@ -49,7 +49,8 @@ fn download_wasm_opt() -> Result<&'static Path> {
 }
 
 /// Abstraction over the `wasm-opt` binary from
-/// [binaryen](https://github.com/WebAssembly/binaryen).
+/// [binaryen](https://github.com/WebAssembly/binaryen) for optimizing your Wasm
+/// binary.
 pub struct WasmOpt {
     /// How much to focus on optimizing code
     pub optimization_level: u32,

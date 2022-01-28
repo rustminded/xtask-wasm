@@ -10,6 +10,29 @@ use std::{
 
 /// Watches over your project's source code, relaunching the given command when
 /// changes are detected.
+///
+/// # Usage
+///
+/// ```rust
+/// use xtask-wasm::Watch;
+/// use std::process::command;
+///
+/// let root = metadata().workspace_root;
+/// let command = Command::new("cargo");
+/// command.args(["run -- --complete"]);
+/// let frontend = root.join("frontend");
+/// let backend = root.join("backend");
+///
+/// Watch::new()
+///     .watch_paths([backend, frontend])
+///     .exclude_paths([backend.join("target"), frontend.join("target")])
+///     .run()?;
+/// ```
+///
+/// This will launch the `cargo run -- --complete` command, watching for changes
+/// in both `backend` and `frontend` directory (except for their target
+/// directories that are excluded), re-running the `cargo run -- --complete`
+/// command if needed.
 #[non_exhaustive]
 #[derive(Debug, Parser)]
 pub struct Watch {
@@ -25,6 +48,15 @@ pub struct Watch {
 }
 
 impl Watch {
+    /// Creates a new `Watch`
+    pub fn new() -> Self {
+        Self {
+            watch_paths: Vec::new(),
+            exclude_paths: Vec::new(),
+            workspace_exclude_paths: Vec::new(),
+        }
+    }
+
     /// Adds a path that will be monitored by the watch process.
     pub fn watch_path(mut self, path: impl AsRef<Path>) -> Self {
         self.watch_paths.push(path.as_ref().to_path_buf());
@@ -185,5 +217,11 @@ impl Watch {
                 Err(err) => log::error!("watch error: {}", err),
             }
         }
+    }
+}
+
+impl Default for Watch {
+    fn default() -> Self {
+        Self::new()
     }
 }

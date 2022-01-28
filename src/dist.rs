@@ -8,6 +8,26 @@ use wasm_bindgen_cli_support::Bindgen;
 ///
 /// This structs provide a customizable way to assemble and generate a package
 /// for Wasm.
+///
+/// # Usage
+///
+/// ```rust
+/// use xtask-wasm::Dist;
+///
+/// let root = metadata().workspace_root;
+///
+/// let dist = Dist::new()
+///     .dist_dir_path(root.join("build"))
+///     .static_dir_path(root.join("static"))
+///     .app_name("hello_world")
+///     .run_in_workspace(true)
+///     .run("hello_world_project")?;
+///
+/// println!("Built at {}", dist_dir.display());
+/// ```
+///
+/// This will run the default build command, copy files from `static`,
+/// generating a build of `hello_world_project` for Wasm into `build`.
 #[non_exhaustive]
 #[derive(Debug, Parser)]
 pub struct Dist {
@@ -69,6 +89,30 @@ pub struct Dist {
 }
 
 impl Dist {
+    /// Creates a new `Dist`
+    pub fn new() -> Self {
+        Self {
+            quiet: false,
+            jobs: None,
+            profile: None,
+            release: false,
+            features: Vec::new(),
+            all_features: false,
+            no_default_features: false,
+            verbose: false,
+            color: None,
+            frozen: false,
+            locked: false,
+            offline: false,
+            ignore_rust_version: false,
+            build_command: default_build_command(),
+            dist_dir_path: None,
+            static_dir_path: None,
+            app_name: None,
+            run_in_workspace: false,
+        }
+    }
+
     /// Set the command used by the build process.
     ///
     /// The default command is the result of the [`default_build_command`]
@@ -247,6 +291,12 @@ impl Dist {
             js: wasm_js_path,
             wasm: wasm_bin_path,
         })
+    }
+}
+
+impl Default for Dist {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

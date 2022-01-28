@@ -4,7 +4,7 @@ use clap::Parser;
 use std::{
     fs,
     io::{prelude::*, BufReader},
-    net::{IpAddr, SocketAddr, TcpListener, TcpStream},
+    net::{IpAddr, SocketAddr, TcpListener, TcpStream, Ipv4Addr},
     path::Path,
     process,
 };
@@ -14,13 +14,34 @@ use std::{
 /// Get the files at `watch_path` and serve them at a given IP address
 /// (127.0.0.1:8000 by default). An optional command can be run along the
 /// server, relaunched if changes are detected in your project via a [`Watch`].
+///
+/// # Usage
+///
+/// ```rust
+/// use xtask-wasm::DevServer;
+/// use std::process::Command;
+///
+/// let build_path = metadata().workspace_root.join("build");
+/// let command = Command::new("cargo");
+/// command.arg("run");
+///
+/// DevServer::new()
+/// .command(command)
+/// .watch.watch_path(metadata().workspace_root)
+/// .start(build_path)?;
+/// ```
+///
+/// This starts to serve files in the `build` directory, run the `cargo run`
+/// command. If changes are detected in the workspace root (recursively
+/// expect for target directory or hidden files), the `cargo run` command is
+/// killed and re-launched.
 #[non_exhaustive]
 #[derive(Debug, Parser)]
 pub struct DevServer {
-    /// Ip address to bind. Default to 127.0.0.1
+    /// Ip address to bind. Default to `127.0.0.1`
     #[clap(long, default_value = "127.0.0.1")]
     pub ip: IpAddr,
-    /// Port number. Default to 8000
+    /// Port number. Default to `8000`
     #[clap(long, default_value = "8000")]
     pub port: u16,
 
@@ -33,6 +54,16 @@ pub struct DevServer {
 }
 
 impl DevServer {
+    /// Create a new `DevServer`
+    pub fn new(command: Option<process::Command>) -> Self {
+        Self {
+            ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+            port: 8_000,
+            command,
+            watch: Watch::new(),
+        }
+    }
+
     /// Give a command to run when starting the server.
     pub fn command(mut self, command: process::Command) -> Self {
         self.command = Some(command);
@@ -63,6 +94,12 @@ impl DevServer {
         }
 
         Ok(())
+    }
+}
+
+impl Default for DevServer {
+    fn default() -> Self {
+        Self::new(None)
     }
 }
 

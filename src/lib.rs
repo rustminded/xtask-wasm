@@ -103,10 +103,10 @@
 //! # Examples
 //!
 //! [`examples/demo`](https://github.com/rustminded/xtask-wasm/tree/main/examples/demo)
-//! provides an basic implementation of xtask-wasm to
-//! build the `webapp` package, an `hello world` app using [Yew](https://yew.rs/).
-//! This example demonstrate a simple directory layout and a customized build
-//! process that use the [`wasm-opt`] feature.
+//! provides an implementation of xtask-wasm to build the `webapp` package, an
+//! `hello world` app using [Yew](https://yew.rs/). This example demonstrate a
+//! simple directory layout and a customized build process that use the
+//! [`wasm-opt`] feature.
 //!
 //! The available subcommands are:
 //!
@@ -135,18 +135,16 @@
 //!
 //! # Features
 //!
-//! ## wasm-opt
+//! * wasm-opt - Enable `WasmOpt` that download the
+//!     [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools) binary and
+//!     abstract its use to optimize the WASM.
 //!
-//! Enable `WasmOpt` that download the [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools)
-//! binary and abstract its use to optimize the WASM.
-//!
-//! This feature can be enabled using the following in the xtask package's
-//! Cargo.toml:
-//!
-//! ```toml
-//! [dependencies]
-//! xtask-wasm = { version = "0.1.0", features = ["wasm-opt"] }
-//! ```
+//!     This feature can be enabled using the following in the xtask package's
+//!     Cargo.toml:
+//!     ```toml
+//!     [dependencies]
+//!     xtask-wasm = { version = "0.1.0", features = ["wasm-opt"] }
+//!     ```
 
 #![deny(missing_docs)]
 
