@@ -19,7 +19,7 @@
 //!     cargo new xtask
 //!     touch Cargo.toml
 //!     ```
-//!     Open Cargo.toml and add the following:
+//!     Open the workspace's Cargo.toml and add the following:
 //!     ```toml
 //!     [workspace]
 //!     members = [
