@@ -13,20 +13,21 @@ use std::{
 ///
 /// # Usage
 ///
-/// ```rust
-/// use xtask-wasm::Watch;
-/// use std::process::command;
+/// ```no_run
+/// use xtask_wasm::{metadata, Watch};
+/// use std::process::Command;
 ///
-/// let root = metadata().workspace_root;
-/// let command = Command::new("cargo");
+/// let root = &metadata().workspace_root;
+/// let mut command = Command::new("cargo");
 /// command.args(["run -- --complete"]);
 /// let frontend = root.join("frontend");
 /// let backend = root.join("backend");
 ///
 /// Watch::new()
-///     .watch_paths([backend, frontend])
+///     .watch_paths([&backend, &frontend])
 ///     .exclude_paths([backend.join("target"), frontend.join("target")])
-///     .run()?;
+///     .run(command)
+///     .expect("cannot run watch's process");
 /// ```
 ///
 /// This will launch the `cargo run -- --complete` command, watching for changes

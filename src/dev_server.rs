@@ -4,7 +4,7 @@ use clap::Parser;
 use std::{
     fs,
     io::{prelude::*, BufReader},
-    net::{IpAddr, SocketAddr, TcpListener, TcpStream, Ipv4Addr},
+    net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream},
     path::Path,
     process,
 };
@@ -17,18 +17,18 @@ use std::{
 ///
 /// # Usage
 ///
-/// ```rust
-/// use xtask-wasm::DevServer;
+/// ```no_run
+/// use xtask_wasm::{metadata, DevServer};
 /// use std::process::Command;
 ///
 /// let build_path = metadata().workspace_root.join("build");
-/// let command = Command::new("cargo");
+/// let mut command = Command::new("cargo");
 /// command.arg("run");
 ///
 /// DevServer::new()
 /// .command(command)
-/// .watch.watch_path(metadata().workspace_root)
-/// .start(build_path)?;
+/// .start(build_path)
+/// .expect("cannot run dev server process");
 /// ```
 ///
 /// This starts to serve files in the `build` directory, run the `cargo run`
@@ -55,11 +55,11 @@ pub struct DevServer {
 
 impl DevServer {
     /// Create a new `DevServer`
-    pub fn new(command: Option<process::Command>) -> Self {
+    pub fn new() -> Self {
         Self {
             ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
             port: 8_000,
-            command,
+            command: None,
             watch: Watch::new(),
         }
     }
@@ -99,7 +99,7 @@ impl DevServer {
 
 impl Default for DevServer {
     fn default() -> Self {
-        Self::new(None)
+        Self::new()
     }
 }
 

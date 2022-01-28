@@ -5,20 +5,21 @@
 //!
 //! # Setup
 //!
-//! The best way to add [`xtask-wasm`] to your project is to create a workspace
+//! The best way to add xtask-wasm to your project is to create a workspace
 //! with two packages: your project's package and the xtask package.
 //!
-//! ## Project with a single package
+//! ## Create or update a project using xtask
 //!
-//! If you project contains only one package, move all the content of the
-//! project expect the `.git` directory into a new directory named after
-//! the package name at the root of the project.
-//!
-//! * Create a new package for the xtasks using the following:
+//! * New project:
+//!     You can create a new project using xtask, you can use the following:
 //!     ```console
-//!     cargo new --bin xtask
+//!     mkdir project_name
+//!     cd project_name
+//!     cargo new project
+//!     cargo new xtask
+//!     touch Cargo.toml
 //!     ```
-//! * Create a new Cargo.toml at the root of the project and add the following:
+//!     Open Cargo.toml and add the following:
 //!     ```toml
 //!     [workspace]
 //!     members = [
@@ -26,17 +27,33 @@
 //!         "xtask",
 //!     ]
 //!     ```
-//!     Replace `project` by the name of the project package
 //!
-//! ## Project with a workspace
+//! * Project with a single package
+//!     If you project contains only one package, move all the content of the
+//!     project expect the `.git` directory into a new directory named after
+//!     the package name at the root of the project.
+//!     * Create a new package for the xtasks using the following:
+//!         ```console
+//!         cargo new --bin xtask
+//!         ```
+//!     * Create a new Cargo.toml at the root of the project and add the following:
+//!         ```toml
+//!         [workspace]
+//!         members = [
+//!             "project",
+//!             "xtask",
+//!         ]
+//!         ```
+//!         Replace `project` by the name of the project package
 //!
-//! If your project already use a workspace:
-//! * Create a new package:
-//!     ```console
-//!     cargo new --bin xtask
-//!     ```
-//! * Add the new package to your workspace's Cargo.toml with the workspace
-//!     members field
+//! * Project with a workspace
+//!     If your project already use a workspace:
+//!         * Create a new package:
+//!             ```console
+//!             cargo new --bin xtask
+//!             ```
+//!         * Add the new package to your workspace's Cargo.toml with the
+//!             workspace members field
 //!
 //! ## Add a command alias
 //!

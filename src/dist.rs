@@ -11,19 +11,20 @@ use wasm_bindgen_cli_support::Bindgen;
 ///
 /// # Usage
 ///
-/// ```rust
-/// use xtask-wasm::Dist;
+/// ```no_run
+/// use xtask_wasm::{metadata, Dist};
 ///
-/// let root = metadata().workspace_root;
+/// let root = &metadata().workspace_root;
 ///
 /// let dist = Dist::new()
 ///     .dist_dir_path(root.join("build"))
 ///     .static_dir_path(root.join("static"))
 ///     .app_name("hello_world")
 ///     .run_in_workspace(true)
-///     .run("hello_world_project")?;
+///     .run("hello_world_project")
+///     .expect("cannot run dist's process");
 ///
-/// println!("Built at {}", dist_dir.display());
+/// println!("Built at {}", dist.dist_dir.display());
 /// ```
 ///
 /// This will run the default build command, copy files from `static`,
