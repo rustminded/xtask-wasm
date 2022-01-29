@@ -7,6 +7,9 @@ description = "Extend your project workflow with custom xtask command for WASM"
 homepage = "https://github.com/rustminded/xtask-wasm"
 repository = "https://github.com/rustminded/xtask-wasm"
 documentation = "https://docs.rs/xtask-wasm"
+# Following security advisory (see
+# [cve-2022-21658](https://groups.google.com/g/rustlang-security-announcements/c/R1fZFDhnJVQ))
+# since we use `std::fs::remove_dir_all` in `src/dist.rs`.
 rust-version = "1.58.1"
 readme = "README.md"
 categories = ["development-tools::build_utils"]
