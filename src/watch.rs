@@ -13,27 +13,37 @@ use std::{
 ///
 /// # Usage
 ///
-/// ```no_run
-/// use xtask_wasm::{metadata, Watch};
-/// use std::process::Command;
+/// ```rust,no_run
+/// # use std::process;
+/// # use xtask_wasm::{anyhow::Result, clap};
+/// #
+/// # #[derive(clap::Parser)]
+/// # struct Opt {
+/// #   #[clap(subcommand)]
+/// #   cmd: Command,
+/// # }
+/// #
+/// #[derive(clap::Parser)]
+/// enum Command {
+///     Watch(xtask_wasm::Watch),
+/// }
 ///
-/// let root = &metadata().workspace_root;
-/// let mut command = Command::new("cargo");
-/// command.args(["run -- --complete"]);
-/// let frontend = root.join("frontend");
-/// let backend = root.join("backend");
+/// fn main() -> Result<()> {
+///     let opt: Opt = clap::Parser::parse();
 ///
-/// Watch::new()
-///     .watch_paths([&backend, &frontend])
-///     .exclude_paths([backend.join("target"), frontend.join("target")])
-///     .run(command)
-///     .expect("cannot run watch's process");
+///     match opt.cmd {
+///         Command::Watch(watch) => {
+///             let mut command = process::Command::new("cargo");
+///             command.args(["xtask", "build"]);
+///
+///             println!("Starting to watch");
+///             watch.exclude_workspace_path("dist").run(command)?;
+///         }
+///     }
+///
+///     Ok(())
+/// }
 /// ```
-///
-/// This will launch the `cargo run -- --complete` command, watching for changes
-/// in both `backend` and `frontend` directory (except for their target
-/// directories that are excluded), re-running the `cargo run -- --complete`
-/// command if needed.
 #[non_exhaustive]
 #[derive(Debug, Parser)]
 pub struct Watch {
@@ -49,15 +59,6 @@ pub struct Watch {
 }
 
 impl Watch {
-    /// Creates a new `Watch`.
-    pub fn new() -> Self {
-        Self {
-            watch_paths: Vec::new(),
-            exclude_paths: Vec::new(),
-            workspace_exclude_paths: Vec::new(),
-        }
-    }
-
     /// Adds a path that will be monitored by the watch process.
     pub fn watch_path(mut self, path: impl AsRef<Path>) -> Self {
         self.watch_paths.push(path.as_ref().to_path_buf());
@@ -218,11 +219,5 @@ impl Watch {
                 Err(err) => log::error!("watch error: {}", err),
             }
         }
-    }
-}
-
-impl Default for Watch {
-    fn default() -> Self {
-        Self::new()
     }
 }

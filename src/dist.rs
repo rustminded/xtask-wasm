@@ -11,24 +11,40 @@ use wasm_bindgen_cli_support::Bindgen;
 ///
 /// # Usage
 ///
-/// ```no_run
-/// use xtask_wasm::{metadata, Dist};
+/// ```rust,no_run
+/// # use std::process;
+/// # use xtask_wasm::{anyhow::Result, clap};
+/// #
+/// # #[derive(clap::Parser)]
+/// # struct Opt {
+/// #     #[clap(subcommand)]
+/// #     cmd: Command,
+/// # }
+/// #
+/// #[derive(clap::Parser)]
+/// enum Command {
+///     Dist(xtask_wasm::Dist),
+/// }
 ///
-/// let root = &metadata().workspace_root;
+/// fn main() -> Result<()> {
+///     let opt: Opt = clap::Parser::parse();
 ///
-/// let dist = Dist::new()
-///     .dist_dir_path(root.join("build"))
-///     .static_dir_path(root.join("static"))
-///     .app_name("hello_world")
-///     .run_in_workspace(true)
-///     .run("hello_world_project")
-///     .expect("cannot run dist's process");
+///     match opt.cmd {
+///         Command::Dist(dist) => {
+///             let dist = dist
+///                 .dist_dir_path("dist")
+///                 .static_dir_path("project/static")
+///                 .app_name("project")
+///                 .run_in_workspace(true)
+///                 .run("project")?;
 ///
-/// println!("Built at {}", dist.dist_dir.display());
+///             println!("Built at {}", dist.dist_dir.display());
+///         }
+///     }
+///
+///     Ok(())
+/// }
 /// ```
-///
-/// This will run the default build command, copy files from `static`,
-/// generating a build of `hello_world_project` for Wasm into `build`.
 #[non_exhaustive]
 #[derive(Debug, Parser)]
 pub struct Dist {
@@ -90,30 +106,6 @@ pub struct Dist {
 }
 
 impl Dist {
-    /// Creates a new `Dist`.
-    pub fn new() -> Self {
-        Self {
-            quiet: false,
-            jobs: None,
-            profile: None,
-            release: false,
-            features: Vec::new(),
-            all_features: false,
-            no_default_features: false,
-            verbose: false,
-            color: None,
-            frozen: false,
-            locked: false,
-            offline: false,
-            ignore_rust_version: false,
-            build_command: default_build_command(),
-            dist_dir_path: None,
-            static_dir_path: None,
-            app_name: None,
-            run_in_workspace: false,
-        }
-    }
-
     /// Set the command used by the build process.
     ///
     /// The default command is the result of the [`default_build_command`].
@@ -293,12 +285,6 @@ impl Dist {
             js: wasm_js_path,
             wasm: wasm_bin_path,
         })
-    }
-}
-
-impl Default for Dist {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

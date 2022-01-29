@@ -4,7 +4,7 @@ use clap::Parser;
 use std::{
     fs,
     io::{prelude::*, BufReader},
-    net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream},
+    net::{IpAddr, SocketAddr, TcpListener, TcpStream},
     path::Path,
     process,
 };
@@ -17,24 +17,39 @@ use std::{
 ///
 /// # Usage
 ///
-/// ```no_run
-/// use xtask_wasm::{metadata, DevServer};
-/// use std::process::Command;
+/// ```rust,no_run
+/// # use std::process;
+/// # use xtask_wasm::{anyhow::Result, clap};
+/// #
+/// # #[derive(clap::Parser)]
+/// # struct Opt {
+/// #    #[clap(subcommand)]
+/// #    cmd: Command,
+/// # }
+/// #
+/// #[derive(clap::Parser)]
+/// enum Command {
+///     Serve(xtask_wasm::DevServer),
+/// }
 ///
-/// let build_path = metadata().workspace_root.join("build");
-/// let mut command = Command::new("cargo");
-/// command.arg("run");
+/// fn main() -> Result<()> {
+///     let opt: Opt = clap::Parser::parse();
 ///
-/// DevServer::new()
-/// .command(command)
-/// .start(build_path)
-/// .expect("cannot run dev server process");
+///     match opt.cmd {
+///         Command::Serve(mut dev_server) => {
+///             let mut command = process::Command::new("cargo");
+///             command.args(["xtask", "dist"]);
+///
+///             dev_server.watch = dev_server.watch.exclude_workspace_path("dist");
+///
+///             println!("Starting the dev server");
+///             dev_server.command(command).start("dist")?;
+///         }
+///     }
+///
+///     Ok(())
+/// }
 /// ```
-///
-/// This starts to serve files in the `build` directory, run the `cargo run`
-/// command. If changes are detected in the workspace root (recursively
-/// expect for target directory or hidden files), the `cargo run` command is
-/// killed and re-launched.
 #[non_exhaustive]
 #[derive(Debug, Parser)]
 pub struct DevServer {
@@ -54,16 +69,6 @@ pub struct DevServer {
 }
 
 impl DevServer {
-    /// Create a new `DevServer`.
-    pub fn new() -> Self {
-        Self {
-            ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-            port: 8_000,
-            command: None,
-            watch: Watch::new(),
-        }
-    }
-
     /// Give a command to run when starting the server.
     pub fn command(mut self, command: process::Command) -> Self {
         self.command = Some(command);
@@ -94,12 +99,6 @@ impl DevServer {
         }
 
         Ok(())
-    }
-}
-
-impl Default for DevServer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
