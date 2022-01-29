@@ -37,19 +37,19 @@ use std::{
 #[non_exhaustive]
 #[derive(Debug, Parser)]
 pub struct Watch {
-    /// Watch specific file(s) or folder(s). Default to workspace root
+    /// Watch specific file(s) or folder(s). The default is the workspace root
     #[clap(long = "watch", short = 'w')]
     pub watch_paths: Vec<PathBuf>,
     /// Paths that will be excluded
     #[clap(long = "ignore", short = 'i')]
     pub exclude_paths: Vec<PathBuf>,
-    /// Paths relative to the workspace root that will be excluded
+    /// Paths, relative to the workspace root, that will be excluded
     #[clap(skip)]
     pub workspace_exclude_paths: Vec<PathBuf>,
 }
 
 impl Watch {
-    /// Creates a new `Watch`
+    /// Creates a new `Watch`.
     pub fn new() -> Self {
         Self {
             watch_paths: Vec::new(),
@@ -87,7 +87,7 @@ impl Watch {
     }
 
     /// Adds a path, relative to the workspace, that will not be monitored by
-    /// the watch process
+    /// the watch process.
     pub fn exclude_workspace_path(mut self, path: impl AsRef<Path>) -> Self {
         self.workspace_exclude_paths
             .push(path.as_ref().to_path_buf());

@@ -14,8 +14,8 @@
 //!
 //! ## Create or update a project using xtask
 //!
-//! * New project:
-//!     You can create a new project using xtask, you can use the following:
+//! * New project - You can create a new project using xtask, you can use the
+//!     following:
 //!     ```console
 //!     mkdir project_name
 //!     cd project_name
@@ -32,10 +32,9 @@
 //!     ]
 //!     ```
 //!
-//! * Project with a single package
-//!     If you project contains only one package, move all the content of the
-//!     project expect the `.git` directory into a new directory named after
-//!     the package name at the root of the project.
+//! * Project with a single package - If you project contains only one package,
+//!     move all the content of the project expect the `.git` directory into a
+//!     new directory named after the package name at the root of the project.
 //!     * Create a new package for the xtasks using the following:
 //!         ```console
 //!         cargo new --bin xtask
@@ -50,14 +49,13 @@
 //!         ```
 //!         Replace `project` by the name of the project package
 //!
-//! * Project with a workspace
-//!     If your project already use a workspace:
-//!         * Create a new package:
-//!             ```console
-//!             cargo new --bin xtask
-//!             ```
-//!         * Add the new package to your workspace's Cargo.toml with the
-//!             workspace members field
+//! * Project with a workspace - If your project already use a workspace,
+//!     * Create a new package:
+//!         ```console
+//!         cargo new --bin xtask
+//!         ```
+//!     * Add the new package to your workspace's Cargo.toml with the
+//!         workspace members field
 //!
 //! ## Add a command alias
 //!

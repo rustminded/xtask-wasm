@@ -9,7 +9,7 @@ use std::{
     process,
 };
 
-/// A simple HTTP server that can watch a given command.
+/// A simple HTTP server that can, optionally, watch a given command.
 ///
 /// Get the files at `watch_path` and serve them at a given IP address
 /// (127.0.0.1:8000 by default). An optional command can be run along the
@@ -54,7 +54,7 @@ pub struct DevServer {
 }
 
 impl DevServer {
-    /// Create a new `DevServer`
+    /// Create a new `DevServer`.
     pub fn new() -> Self {
         Self {
             ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
@@ -70,7 +70,7 @@ impl DevServer {
         self
     }
 
-    /// Start the [`DevServer`], serving the files at `served_path`.
+    /// Start the server, serving the files at `served_path`.
     pub fn start(self, served_path: impl AsRef<Path>) -> Result<()> {
         let watch_process = if let Some(command) = self.command {
             let watch = self.watch.exclude_path(&served_path);

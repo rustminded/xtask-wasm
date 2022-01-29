@@ -81,7 +81,7 @@ pub struct Dist {
     /// Directory of all static artifacts
     #[clap(skip)]
     pub static_dir_path: Option<PathBuf>,
-    /// Set the resulting app name, default to "app"
+    /// Set the resulting app name, default to `app`
     #[clap(skip)]
     pub app_name: Option<String>,
     /// Set the command's current directory as the workspace root
@@ -90,7 +90,7 @@ pub struct Dist {
 }
 
 impl Dist {
-    /// Creates a new `Dist`
+    /// Creates a new `Dist`.
     pub fn new() -> Self {
         Self {
             quiet: false,
@@ -116,7 +116,7 @@ impl Dist {
 
     /// Set the command used by the build process.
     ///
-    /// The default command is the result of the [`default_build_command`]
+    /// The default command is the result of the [`default_build_command`].
     pub fn build_command(mut self, command: process::Command) -> Self {
         self.build_command = command;
         self
@@ -151,10 +151,11 @@ impl Dist {
         self
     }
 
-    /// Build the given package for wasm, generating JS bindings via
-    /// [`wasm-bindgen`](https://docs.rs/wasm-bindgen/latest/wasm_bindgen/) and
-    /// copy files from a given static directory if any to finally return the
-    /// paths of the generated artifacts via [`DistResult`].
+    /// Build the given package for Wasm.
+    ///
+    /// This will generate JS bindings via [`wasm-bindgen`](https://docs.rs/wasm-bindgen/latest/wasm_bindgen/)
+    /// and copy files from a given static directory if any to finally return
+    /// the paths of the generated artifacts with [`DistResult`].
     pub fn run(self, package_name: &str) -> Result<DistResult> {
         log::trace!("Getting package's metadata");
         let metadata = metadata();
