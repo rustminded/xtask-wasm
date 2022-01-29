@@ -3,6 +3,10 @@
 //! [`xtask` concept](https://github.com/matklad/cargo-xtask/), instead of using
 //!  external tooling like [`wasm-pack`](https://github.com/rustwasm/wasm-pack).
 //!
+//! # Minimum Supported Rust Version
+//!
+//! This crate requires **Rust 1.58.1** at a minimum.
+//!
 //! # Setup
 //!
 //! The best way to add xtask-wasm to your project is to create a workspace
