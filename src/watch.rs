@@ -34,16 +34,24 @@ use std::{
 ///     match opt.cmd {
 ///         Command::Watch(watch) => {
 ///             let mut command = process::Command::new("cargo");
-///             command.args(["xtask", "build"]);
+///             command.args(["xtask", "dist"]);
 ///
 ///             println!("Starting to watch");
-///             watch.exclude_workspace_path("dist").run(command)?;
+///             watch
+///                 .exclude_workspace_path("dist")
+///                 .run(command)?;
 ///         }
 ///     }
 ///
 ///     Ok(())
 /// }
 /// ```
+///
+/// Add a `watch` subcommand that will run `cargo xtask dist`, monitoring for
+/// changes in the workspace (expect for hidden files, workspace's target
+/// directory and the *dist* directory). If a valid change is detected, the
+/// `cargo xtask dist` command will be relaunched with a debounce of 2 seconds
+/// to avoid relaunching recursively on multiple files for example.
 #[non_exhaustive]
 #[derive(Debug, Parser)]
 pub struct Watch {
@@ -53,6 +61,7 @@ pub struct Watch {
     /// Paths that will be excluded
     #[clap(long = "ignore", short = 'i')]
     pub exclude_paths: Vec<PathBuf>,
+
     /// Paths, relative to the workspace root, that will be excluded
     #[clap(skip)]
     pub workspace_exclude_paths: Vec<PathBuf>,

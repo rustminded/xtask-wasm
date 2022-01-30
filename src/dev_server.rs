@@ -42,7 +42,7 @@ use std::{
 ///
 ///             dev_server.watch = dev_server.watch.exclude_workspace_path("dist");
 ///
-///             println!("Starting the dev server");
+///             println!("Starting to serve at {}:{}", dev_server.ip, dev_server.port);
 ///             dev_server.command(command).start("dist")?;
 ///         }
 ///     }
@@ -50,6 +50,10 @@ use std::{
 ///     Ok(())
 /// }
 /// ```
+///
+/// Add a `serve` subcommand that will run `cargo xtask dist`,
+/// watching for changes in the workspace and serve the files in the `dist`
+/// directory at a given IP address.
 #[non_exhaustive]
 #[derive(Debug, Parser)]
 pub struct DevServer {

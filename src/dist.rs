@@ -45,6 +45,15 @@ use wasm_bindgen_cli_support::Bindgen;
 ///     Ok(())
 /// }
 /// ```
+///
+/// Add a `dist` subcommand to assemble the distributed package for the
+/// `project` crate.
+///
+/// I will run the [`default_build_command`] at the workspace root, generate JS
+/// bindings and output two files: *project.js* and *project.wasm*.
+/// These two files will be write, and the content of the *project/static*
+/// directory will be copied, into the *dist* directory (returned by
+/// [`DistResult`]).
 #[non_exhaustive]
 #[derive(Debug, Parser)]
 pub struct Dist {
