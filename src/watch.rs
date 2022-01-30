@@ -6,6 +6,7 @@ use std::{
     path::{Path, PathBuf},
     process,
     sync::mpsc,
+    time::{Duration, Instant},
 };
 
 /// Watches over your project's source code, relaunching the given command when
@@ -65,6 +66,10 @@ pub struct Watch {
     /// Paths, relative to the workspace root, that will be excluded
     #[clap(skip)]
     pub workspace_exclude_paths: Vec<PathBuf>,
+    /// Set the debounce duration after relaunching a command.
+    /// The default is 2 seconds
+    #[clap(skip)]
+    pub debounce: Option<Duration>,
 }
 
 impl Watch {
@@ -114,6 +119,12 @@ impl Watch {
             self.workspace_exclude_paths
                 .push(path.as_ref().to_path_buf());
         }
+        self
+    }
+
+    /// Set the debounce duration after relaunching the command
+    pub fn debounce(mut self, duration: Duration) -> Self {
+        self.debounce = Some(duration);
         self
     }
 
@@ -180,18 +191,18 @@ impl Watch {
         }
 
         let mut child = command.spawn().context("cannot spawn command")?;
-        let mut command_start = std::time::Instant::now();
+        let mut command_start = Instant::now();
 
         loop {
             match rx.recv() {
                 Ok(notify::RawEvent {
                     path: Some(path), ..
                 }) if !watch.is_excluded_path(&path) && !watch.is_hidden_path(&path) => {
-                    if command_start.elapsed().as_secs() >= 2 {
+                    if command_start.elapsed() >= watch.debounce.unwrap_or_else(|| Duration::from_secs(2)) {
                         log::trace!("Detected changes at {}", path.display());
                         #[cfg(unix)]
                         {
-                            let now = std::time::Instant::now();
+                            let now = Instant::now();
 
                             unsafe {
                                 log::trace!("Killing watch's command process");
@@ -202,7 +213,7 @@ impl Watch {
                             }
 
                             while now.elapsed().as_secs() < 2 {
-                                std::thread::sleep(std::time::Duration::from_millis(200));
+                                std::thread::sleep(Duration::from_millis(200));
                                 if let Ok(Some(_)) = child.try_wait() {
                                     break;
                                 }
@@ -219,7 +230,7 @@ impl Watch {
 
                         log::info!("Re-running command");
                         child = command.spawn().context("cannot spawn command")?;
-                        command_start = std::time::Instant::now();
+                        command_start = Instant::now();
                     } else {
                         log::trace!("Ignoring changes at {}", path.display());
                     }
