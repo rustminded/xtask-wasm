@@ -198,7 +198,9 @@ impl Watch {
                 Ok(notify::RawEvent {
                     path: Some(path), ..
                 }) if !watch.is_excluded_path(&path) && !watch.is_hidden_path(&path) => {
-                    if command_start.elapsed() >= watch.debounce.unwrap_or_else(|| Duration::from_secs(2)) {
+                    if command_start.elapsed()
+                        >= watch.debounce.unwrap_or_else(|| Duration::from_secs(2))
+                    {
                         log::trace!("Detected changes at {}", path.display());
                         #[cfg(unix)]
                         {
