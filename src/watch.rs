@@ -248,6 +248,7 @@ mod test {
     #[test]
     fn exclude_relative_path() {
         let watch = Watch {
+            debounce: None,
             watch_paths: Vec::new(),
             exclude_paths: Vec::new(),
             workspace_exclude_paths: vec![PathBuf::from("src/watch.rs")],
