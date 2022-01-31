@@ -52,11 +52,11 @@ fn download_wasm_opt() -> Result<&'static Path> {
 /// [binaryen](https://github.com/WebAssembly/binaryen) for optimizing your Wasm
 /// binary.
 pub struct WasmOpt {
-    /// How much to focus on optimizing code
+    /// How much to focus on optimizing code.
     pub optimization_level: u32,
-    /// How much to focus on shrinking code size
+    /// How much to focus on shrinking code size.
     pub shrink_level: u32,
-    /// Emit names section in wasm binary
+    /// Emit names section in wasm binary.
     pub debug_info: bool,
 }
 
@@ -70,13 +70,13 @@ impl WasmOpt {
         }
     }
 
-    /// Set the level of size shrinking
+    /// Set the level of size shrinking.
     pub fn shrink(mut self, shrink_level: u32) -> Self {
         self.shrink_level = shrink_level;
         self
     }
 
-    /// Preserve debug info
+    /// Preserve debug info.
     pub fn debug(mut self) -> Self {
         self.debug_info = true;
         self

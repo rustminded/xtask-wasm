@@ -42,20 +42,24 @@ use std::{
 ///     Ok(())
 /// }
 /// ```
+///
+/// Add a `serve` subcommand that will run `cargo xtask dist`, watching for
+/// changes in the workspace and serve the files in the dist directory at a
+/// given IP address.
 #[non_exhaustive]
 #[derive(Debug, Parser)]
 pub struct DevServer {
-    /// Ip address to bind. Default to `127.0.0.1`
+    /// Ip address to bind. Default to `127.0.0.1`.
     #[clap(long, default_value = "127.0.0.1")]
     pub ip: IpAddr,
-    /// Port number. Default to `8000`
+    /// Port number. Default to `8000`.
     #[clap(long, default_value = "8000")]
     pub port: u16,
 
-    /// Watched command running along the server
+    /// Watched command running along the server.
     #[clap(skip)]
     pub command: Option<process::Command>,
-    /// Watching process of the server
+    /// Watching process of the server.
     #[clap(flatten)]
     pub watch: Watch,
 }
