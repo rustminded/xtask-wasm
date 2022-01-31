@@ -178,11 +178,65 @@
 //!
 //! # Examples
 //!
-//! [`examples/demo`](https://github.com/rustminded/xtask-wasm/tree/main/examples/demo)
-//! provides an implementation of xtask-wasm to build the `webapp` package, an
-//! `hello world` app using [Yew](https://yew.rs/). This example demonstrate a
-//! simple directory layout and a customized build process that use the
-//! [`wasm-opt`] feature.
+//! * A basic implementation could look like this:
+//!     ```rust,no_run
+//!     use std::process;
+//!     use xtask_wasm::{anyhow::Result, clap};
+//!
+//!     #[derive(clap::Parser)]
+//!     struct Opt {
+//!         #[clap(subcommand)]
+//!         cmd: Command,
+//!     }
+//!
+//!     #[derive(clap::Parser)]
+//!     enum Command {
+//!         Dist(xtask_wasm::Dist),
+//!         Watch(xtask_wasm::Watch),
+//!         Serve(xtask_wasm::DevServer),
+//!     }
+//!
+//!
+//!     fn main() -> Result<()> {
+//!         let opt: Opt = clap::Parser::parse();
+//!
+//!         match opt.cmd {
+//!             Command::Dist(dist) => {
+//!                 let dist = dist
+//!                     .dist_dir_path("dist")
+//!                     .static_dir_path("project/static")
+//!                     .app_name("project")
+//!                     .run_in_workspace(true)
+//!                     .run("project")?;
+//!
+//!                 log::info!("Built at {}", dist.dist_dir.display());
+//!
+//!             }
+//!             Command::Watch(watch) => {
+//!                 let mut command = process::Command::new("cargo");
+//!                 command.args(["xtask", "dist"]);
+//!
+//!                 log::info!("Starting to watch");
+//!                 watch.exclude_workspace_path("dist").run(command)?;
+//!             }
+//!             Command::Serve(mut dev_server) => {
+//!                 let mut command = process::Command::new("cargo");
+//!                 command.args(["xtask", "dist"]);
+//!
+//!                 log::info!("Starting the dev server");
+//!                 dev_server.command(command).start("dist")?;
+//!             }
+//!         }
+//!
+//!         Ok(())
+//!     }
+//!     ```
+//!
+//! * [`examples/demo`](https://github.com/rustminded/xtask-wasm/tree/main/examples/demo)
+//!     provides an implementation of xtask-wasm to build the `webapp` package, an
+//!     `hello world` app using [Yew](https://yew.rs/). This example demonstrate a
+//!     simple directory layout and a customized build process that use the
+//!     [`wasm-opt`] feature.
 //!
 //! The available subcommands are:
 //!

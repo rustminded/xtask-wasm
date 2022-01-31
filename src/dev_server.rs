@@ -18,31 +18,23 @@ use std::{
 /// # Usage
 ///
 /// ```rust,no_run
-/// # use std::process;
-/// # use xtask_wasm::{anyhow::Result, clap};
-/// #
-/// # #[derive(clap::Parser)]
-/// # struct Opt {
-/// #    #[clap(subcommand)]
-/// #    cmd: Command,
-/// # }
-/// #
+/// use std::process;
+/// use xtask_wasm::{anyhow::Result, clap};
+///
 /// #[derive(clap::Parser)]
-/// enum Command {
+/// enum Opt {
 ///     Serve(xtask_wasm::DevServer),
 /// }
 ///
 /// fn main() -> Result<()> {
 ///     let opt: Opt = clap::Parser::parse();
 ///
-///     match opt.cmd {
-///         Command::Serve(mut dev_server) => {
+///     match opt {
+///         Opt::Serve(mut dev_server) => {
 ///             let mut command = process::Command::new("cargo");
 ///             command.args(["xtask", "dist"]);
 ///
-///             dev_server.watch = dev_server.watch.exclude_workspace_path("dist");
-///
-///             println!("Starting to serve at {}:{}", dev_server.ip, dev_server.port);
+///             log::info!("Starting the dev server");
 ///             dev_server.command(command).start("dist")?;
 ///         }
 ///     }
@@ -51,23 +43,23 @@ use std::{
 /// }
 /// ```
 ///
-/// Add a `serve` subcommand that will run `cargo xtask dist`,
-/// watching for changes in the workspace and serve the files in the `dist`
-/// directory at a given IP address.
+/// Add a `serve` subcommand that will run `cargo xtask dist`, watching for
+/// changes in the workspace and serve the files in the dist directory at a
+/// given IP address.
 #[non_exhaustive]
 #[derive(Debug, Parser)]
 pub struct DevServer {
-    /// Ip address to bind. Default to `127.0.0.1`
+    /// Ip address to bind. Default to `127.0.0.1`.
     #[clap(long, default_value = "127.0.0.1")]
     pub ip: IpAddr,
-    /// Port number. Default to `8000`
+    /// Port number. Default to `8000`.
     #[clap(long, default_value = "8000")]
     pub port: u16,
 
-    /// Watched command running along the server
+    /// Watched command running along the server.
     #[clap(skip)]
     pub command: Option<process::Command>,
-    /// Watching process of the server
+    /// Watching process of the server.
     #[clap(flatten)]
     pub watch: Watch,
 }

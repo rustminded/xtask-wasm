@@ -15,32 +15,24 @@ use std::{
 /// # Usage
 ///
 /// ```rust,no_run
-/// # use std::process;
-/// # use xtask_wasm::{anyhow::Result, clap};
-/// #
-/// # #[derive(clap::Parser)]
-/// # struct Opt {
-/// #   #[clap(subcommand)]
-/// #   cmd: Command,
-/// # }
-/// #
+/// use std::process;
+/// use xtask_wasm::{anyhow::Result, clap};
+///
 /// #[derive(clap::Parser)]
-/// enum Command {
+/// enum Opt {
 ///     Watch(xtask_wasm::Watch),
 /// }
 ///
 /// fn main() -> Result<()> {
 ///     let opt: Opt = clap::Parser::parse();
 ///
-///     match opt.cmd {
-///         Command::Watch(watch) => {
+///     match opt {
+///         Opt::Watch(watch) => {
 ///             let mut command = process::Command::new("cargo");
 ///             command.args(["xtask", "dist"]);
 ///
-///             println!("Starting to watch");
-///             watch
-///                 .exclude_workspace_path("dist")
-///                 .run(command)?;
+///             log::info!("Starting to watch");
+///             watch.exclude_workspace_path("dist").run(command)?;
 ///         }
 ///     }
 ///
@@ -50,20 +42,19 @@ use std::{
 ///
 /// Add a `watch` subcommand that will run `cargo xtask dist`, monitoring for
 /// changes in the workspace (expect for hidden files, workspace's target
-/// directory and the *dist* directory). If a valid change is detected, the
-/// `cargo xtask dist` command will be relaunched with a debounce of 2 seconds
-/// to avoid relaunching recursively on multiple files for example.
+/// directory and the generated dist directory). If a valid change is detected
+/// the `cargo xtask dist` command will be relaunched with a debounce of 2
+/// seconds to avoid relaunching recursively on multiple files for example.
 #[non_exhaustive]
 #[derive(Debug, Parser)]
 pub struct Watch {
-    /// Watch specific file(s) or folder(s). The default is the workspace root
+    /// Watch specific file(s) or folder(s). The default is the workspace root.
     #[clap(long = "watch", short = 'w')]
     pub watch_paths: Vec<PathBuf>,
-    /// Paths that will be excluded
+    /// Paths that will be excluded.
     #[clap(long = "ignore", short = 'i')]
     pub exclude_paths: Vec<PathBuf>,
-
-    /// Paths, relative to the workspace root, that will be excluded
+    /// Paths, relative to the workspace root, that will be excluded.
     #[clap(skip)]
     pub workspace_exclude_paths: Vec<PathBuf>,
     /// Set the debounce duration after relaunching a command.
