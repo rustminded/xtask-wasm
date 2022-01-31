@@ -120,15 +120,21 @@ impl Watch {
     }
 
     fn is_excluded_path(&self, path: &Path) -> bool {
-        if path.starts_with(metadata().workspace_root.as_std_path()) {
-            path.strip_prefix(metadata().workspace_root.as_std_path())
-                .expect("path starts with workspace root; qed");
-            self.workspace_exclude_paths
-                .iter()
-                .any(|x| path.starts_with(x))
-        } else {
-            self.exclude_paths.iter().any(|x| path.starts_with(x))
+        if self.exclude_paths.iter().any(|x| path.starts_with(x)) {
+            return true;
         }
+
+        if let Ok(stripped_path) = path.strip_prefix(metadata().workspace_root.as_std_path()) {
+            if self
+                .workspace_exclude_paths
+                .iter()
+                .any(|x| stripped_path.starts_with(x))
+            {
+                return true;
+            }
+        }
+
+        false
     }
 
     fn is_hidden_path(&self, path: &Path) -> bool {
@@ -161,7 +167,7 @@ impl Watch {
     /// Workspace's `target` directory and hidden paths are excluded by default.
     pub fn run(self, mut command: process::Command) -> Result<()> {
         let metadata = metadata();
-        let watch = self.exclude_workspace_path(&metadata.target_directory);
+        let watch = self.exclude_path(&metadata.target_directory);
 
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
@@ -232,5 +238,28 @@ impl Watch {
                 Err(err) => log::error!("watch error: {}", err),
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn exclude_relative_path() {
+        let watch = Watch {
+            watch_paths: Vec::new(),
+            exclude_paths: Vec::new(),
+            workspace_exclude_paths: vec![PathBuf::from("src/watch.rs")],
+        };
+
+        assert!(watch.is_excluded_path(
+            metadata()
+                .workspace_root
+                .join("src")
+                .join("watch.rs")
+                .as_std_path()
+        ));
+        assert!(!watch.is_excluded_path(metadata().workspace_root.join("src").as_std_path()));
     }
 }
