@@ -14,25 +14,19 @@ use std::{
 /// # Usage
 ///
 /// ```rust,no_run
-/// # use std::process;
-/// # use xtask_wasm::{anyhow::Result, clap};
-/// #
-/// # #[derive(clap::Parser)]
-/// # struct Opt {
-/// #   #[clap(subcommand)]
-/// #   cmd: Command,
-/// # }
-/// #
+/// use std::process;
+/// use xtask_wasm::{anyhow::Result, clap};
+///
 /// #[derive(clap::Parser)]
-/// enum Command {
+/// enum Opt {
 ///     Watch(xtask_wasm::Watch),
 /// }
 ///
 /// fn main() -> Result<()> {
 ///     let opt: Opt = clap::Parser::parse();
 ///
-///     match opt.cmd {
-///         Command::Watch(watch) => {
+///     match opt {
+///         Opt::Watch(watch) => {
 ///             let mut command = process::Command::new("cargo");
 ///             command.args(["xtask", "build"]);
 ///

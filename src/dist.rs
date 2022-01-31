@@ -12,25 +12,19 @@ use wasm_bindgen_cli_support::Bindgen;
 /// # Usage
 ///
 /// ```rust,no_run
-/// # use std::process;
-/// # use xtask_wasm::{anyhow::Result, clap};
-/// #
-/// # #[derive(clap::Parser)]
-/// # struct Opt {
-/// #     #[clap(subcommand)]
-/// #     cmd: Command,
-/// # }
-/// #
+/// use std::process;
+/// use xtask_wasm::{anyhow::Result, clap};
+///
 /// #[derive(clap::Parser)]
-/// enum Command {
+/// enum Opt {
 ///     Dist(xtask_wasm::Dist),
 /// }
 ///
 /// fn main() -> Result<()> {
 ///     let opt: Opt = clap::Parser::parse();
 ///
-///     match opt.cmd {
-///         Command::Dist(dist) => {
+///     match opt {
+///         Opt::Dist(dist) => {
 ///             let dist = dist
 ///                 .dist_dir_path("dist")
 ///                 .static_dir_path("project/static")

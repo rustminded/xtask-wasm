@@ -18,29 +18,21 @@ use std::{
 /// # Usage
 ///
 /// ```rust,no_run
-/// # use std::process;
-/// # use xtask_wasm::{anyhow::Result, clap};
-/// #
-/// # #[derive(clap::Parser)]
-/// # struct Opt {
-/// #    #[clap(subcommand)]
-/// #    cmd: Command,
-/// # }
-/// #
+/// use std::process;
+/// use xtask_wasm::{anyhow::Result, clap};
+///
 /// #[derive(clap::Parser)]
-/// enum Command {
+/// enum Opt {
 ///     Serve(xtask_wasm::DevServer),
 /// }
 ///
 /// fn main() -> Result<()> {
 ///     let opt: Opt = clap::Parser::parse();
 ///
-///     match opt.cmd {
-///         Command::Serve(mut dev_server) => {
+///     match opt {
+///         Opt::Serve(mut dev_server) => {
 ///             let mut command = process::Command::new("cargo");
 ///             command.args(["xtask", "dist"]);
-///
-///             dev_server.watch = dev_server.watch.exclude_workspace_path("dist");
 ///
 ///             println!("Starting the dev server");
 ///             dev_server.command(command).start("dist")?;
