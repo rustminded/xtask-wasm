@@ -19,7 +19,11 @@ use std::{
 ///
 /// ```rust,no_run
 /// use std::process;
-/// use xtask_wasm::{anyhow::Result, clap};
+/// use xtask_wasm::{
+///     anyhow::Result,
+///     clap,
+///     default_dist_dir,
+/// };
 ///
 /// #[derive(clap::Parser)]
 /// enum Opt {
@@ -35,7 +39,7 @@ use std::{
 ///             command.args(["xtask", "dist"]);
 ///
 ///             log::info!("Starting the dev server");
-///             dev_server.command(command).start("dist")?;
+///             dev_server.command(command).start(default_dist_dir(false))?;
 ///         }
 ///     }
 ///
@@ -44,8 +48,8 @@ use std::{
 /// ```
 ///
 /// Add a `serve` subcommand that will run `cargo xtask dist`, watching for
-/// changes in the workspace and serve the files in the dist directory at a
-/// given IP address.
+/// changes in the workspace and serve the files in the default dist directory
+/// (`target/debug/dist` for non-release) at a given IP address.
 #[non_exhaustive]
 #[derive(Debug, Parser)]
 pub struct DevServer {
@@ -56,7 +60,7 @@ pub struct DevServer {
     #[clap(long, default_value = "8000")]
     pub port: u16,
 
-    /// Watched command running along the server.
+    /// Command executed when a change is detected.
     #[clap(skip)]
     pub command: Option<process::Command>,
     /// Watching process of the server.
@@ -65,13 +69,16 @@ pub struct DevServer {
 }
 
 impl DevServer {
-    /// Give a command to run when starting the server.
+    /// Set the command that is executed when a change is detected.
     pub fn command(mut self, command: process::Command) -> Self {
         self.command = Some(command);
         self
     }
 
     /// Start the server, serving the files at `served_path`.
+    ///
+    /// [`default_dist_dir`] should be used to get the dist directory that needs
+    /// to be served.
     pub fn start(self, served_path: impl AsRef<Path>) -> Result<()> {
         let watch_process = if let Some(command) = self.command {
             let watch = self.watch.exclude_path(&served_path);

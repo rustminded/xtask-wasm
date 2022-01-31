@@ -257,25 +257,6 @@ pub fn package(name: &str) -> Option<&cargo_metadata::Package> {
     metadata().packages.iter().find(|x| x.name == name)
 }
 
-/// Get the default dist directory.
-///
-/// The default for debug build is `target/debug/dist` and `target/release/dist`
-/// for the release build.
-pub fn default_dist_dir(release: bool) -> &'static camino::Utf8Path {
-    lazy_static! {
-        static ref DEFAULT_RELEASE_PATH: camino::Utf8PathBuf =
-            metadata().target_directory.join("release").join("dist");
-        static ref DEFAULT_DEBUG_PATH: camino::Utf8PathBuf =
-            metadata().target_directory.join("debug").join("dist");
-    }
-
-    if release {
-        &DEFAULT_RELEASE_PATH
-    } else {
-        &DEFAULT_DEBUG_PATH
-    }
-}
-
 /// Get the default command for the build in the dist process.
 ///
 /// This is `cargo build --target wasm32-unknown-unknown`.
