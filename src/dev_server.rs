@@ -34,7 +34,7 @@ use std::{
 ///             let mut command = process::Command::new("cargo");
 ///             command.args(["xtask", "dist"]);
 ///
-///             println!("Starting the dev server");
+///             log::info!("Starting the dev server");
 ///             dev_server.command(command).start("dist")?;
 ///         }
 ///     }

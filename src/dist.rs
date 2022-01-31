@@ -32,7 +32,7 @@ use wasm_bindgen_cli_support::Bindgen;
 ///                 .run_in_workspace(true)
 ///                 .run("project")?;
 ///
-///             println!("Built at {}", dist.dist_dir.display());
+///             log::info!("Built at {}", dist.dist_dir.display());
 ///         }
 ///     }
 ///

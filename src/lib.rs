@@ -152,23 +152,21 @@
 //!                     .run_in_workspace(true)
 //!                     .run("project")?;
 //!
-//!                 println!("Built at {}", dist.dist_dir.display());
+//!                 log::info!("Built at {}", dist.dist_dir.display());
 //!
 //!             }
 //!             Command::Watch(watch) => {
 //!                 let mut command = process::Command::new("cargo");
 //!                 command.args(["xtask", "dist"]);
 //!
-//!                 println!("Starting to watch");
+//!                 log::info!("Starting to watch");
 //!                 watch.exclude_workspace_path("dist").run(command)?;
 //!             }
 //!             Command::Serve(mut dev_server) => {
 //!                 let mut command = process::Command::new("cargo");
 //!                 command.args(["xtask", "dist"]);
 //!
-//!                 dev_server.watch = dev_server.watch.exclude_workspace_path("dist");
-//!
-//!                 println!("Starting the dev server");
+//!                 log::info!("Starting the dev server");
 //!                 dev_server.command(command).start("dist")?;
 //!             }
 //!         }

@@ -30,7 +30,7 @@ use std::{
 ///             let mut command = process::Command::new("cargo");
 ///             command.args(["xtask", "build"]);
 ///
-///             println!("Starting to watch");
+///             log::info!("Starting to watch");
 ///             watch.exclude_workspace_path("dist").run(command)?;
 ///         }
 ///     }
