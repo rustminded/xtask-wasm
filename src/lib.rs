@@ -117,7 +117,64 @@
 //! an existing CLI implementation and are flexible enough to be customized for
 //! most use-cases.
 //!
-//! You can find further for each type at their level documentation.
+//! A basic implementation could look like this:
+//!
+//! ```rust,no_run
+//! use std::process;
+//! use xtask_wasm::{anyhow::Result, clap};
+//!
+//! #[derive(clap::Parser)]
+//! struct Opt {
+//!     #[clap(subcommand)]
+//!     cmd: Command,
+//! }
+//!
+//! #[derive(clap::Parser)]
+//! enum Command {
+//!     Dist(xtask_wasm::Dist),
+//!     Watch(xtask_wasm::Watch),
+//!     Serve(xtask_wasm::DevServer),
+//! }
+//!
+//!
+//! fn main() -> Result<()> {
+//!     let opt: Opt = clap::Parser::parse();
+//!
+//!     match opt.cmd {
+//!         Command::Dist(dist) => {
+//!             let dist = dist
+//!                 .dist_dir_path("dist")
+//!                 .static_dir_path("project/static")
+//!                 .app_name("project")
+//!                 .run_in_workspace(true)
+//!                 .run("project")?;
+//!
+//!             println!("Built at {}", dist.dist_dir.display());
+//!
+//!         }
+//!         Command::Watch(watch) => {
+//!             let mut command = process::Command::new("cargo");
+//!             command.args(["xtask", "dist"]);
+//!
+//!             println!("Starting to watch");
+//!             watch.exclude_workspace_path("dist").run(command)?;
+//!         }
+//!         Command::Serve(mut dev_server) => {
+//!             let mut command = process::Command::new("cargo");
+//!             command.args(["xtask", "dist"]);
+//!
+//!             dev_server.watch = dev_server.watch.exclude_workspace_path("dist");
+//!
+//!             println!("Starting the dev server");
+//!             dev_server.command(command).start("dist")?;
+//!         }
+//!     }
+//!
+//!     Ok(())
+//! }
+//! ```
+//!
+//! You can find further information for each type at their documentation level.
 //!
 //! # Examples
 //!

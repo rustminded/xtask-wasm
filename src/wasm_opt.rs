@@ -51,6 +51,14 @@ fn download_wasm_opt() -> Result<&'static Path> {
 /// Abstraction over the `wasm-opt` binary from
 /// [binaryen](https://github.com/WebAssembly/binaryen) for optimizing your Wasm
 /// binary.
+///
+/// # Usage
+///
+/// ```rust,no_run
+/// WasmOpt::level(1)
+///     .shrink(2)
+///     .optimize("app.wasm")?;
+/// ```
 pub struct WasmOpt {
     /// How much to focus on optimizing code.
     pub optimization_level: u32,

@@ -6,6 +6,7 @@ use std::{
     path::{Path, PathBuf},
     process,
     sync::mpsc,
+    time::{Duration, Instant},
 };
 
 /// Watches over your project's source code, relaunching the given command when
@@ -56,6 +57,10 @@ pub struct Watch {
     /// Paths, relative to the workspace root, that will be excluded.
     #[clap(skip)]
     pub workspace_exclude_paths: Vec<PathBuf>,
+    /// Set the debounce duration after relaunching a command.
+    /// The default is 2 seconds
+    #[clap(skip)]
+    pub debounce: Option<Duration>,
 }
 
 impl Watch {
@@ -108,16 +113,28 @@ impl Watch {
         self
     }
 
+    /// Set the debounce duration after relaunching the command
+    pub fn debounce(mut self, duration: Duration) -> Self {
+        self.debounce = Some(duration);
+        self
+    }
+
     fn is_excluded_path(&self, path: &Path) -> bool {
-        if path.starts_with(metadata().workspace_root.as_std_path()) {
-            path.strip_prefix(metadata().workspace_root.as_std_path())
-                .expect("path starts with workspace root; qed");
-            self.workspace_exclude_paths
-                .iter()
-                .any(|x| path.starts_with(x))
-        } else {
-            self.exclude_paths.iter().any(|x| path.starts_with(x))
+        if self.exclude_paths.iter().any(|x| path.starts_with(x)) {
+            return true;
         }
+
+        if let Ok(stripped_path) = path.strip_prefix(metadata().workspace_root.as_std_path()) {
+            if self
+                .workspace_exclude_paths
+                .iter()
+                .any(|x| stripped_path.starts_with(x))
+            {
+                return true;
+            }
+        }
+
+        false
     }
 
     fn is_hidden_path(&self, path: &Path) -> bool {
@@ -150,7 +167,7 @@ impl Watch {
     /// Workspace's `target` directory and hidden paths are excluded by default.
     pub fn run(self, mut command: process::Command) -> Result<()> {
         let metadata = metadata();
-        let watch = self.exclude_workspace_path(&metadata.target_directory);
+        let watch = self.exclude_path(&metadata.target_directory);
 
         let (tx, rx) = mpsc::channel();
         let mut watcher: RecommendedWatcher =
@@ -171,18 +188,20 @@ impl Watch {
         }
 
         let mut child = command.spawn().context("cannot spawn command")?;
-        let mut command_start = std::time::Instant::now();
+        let mut command_start = Instant::now();
 
         loop {
             match rx.recv() {
                 Ok(notify::RawEvent {
                     path: Some(path), ..
                 }) if !watch.is_excluded_path(&path) && !watch.is_hidden_path(&path) => {
-                    if command_start.elapsed().as_secs() >= 2 {
+                    if command_start.elapsed()
+                        >= watch.debounce.unwrap_or_else(|| Duration::from_secs(2))
+                    {
                         log::trace!("Detected changes at {}", path.display());
                         #[cfg(unix)]
                         {
-                            let now = std::time::Instant::now();
+                            let now = Instant::now();
 
                             unsafe {
                                 log::trace!("Killing watch's command process");
@@ -193,7 +212,7 @@ impl Watch {
                             }
 
                             while now.elapsed().as_secs() < 2 {
-                                std::thread::sleep(std::time::Duration::from_millis(200));
+                                std::thread::sleep(Duration::from_millis(200));
                                 if let Ok(Some(_)) = child.try_wait() {
                                     break;
                                 }
@@ -210,7 +229,7 @@ impl Watch {
 
                         log::info!("Re-running command");
                         child = command.spawn().context("cannot spawn command")?;
-                        command_start = std::time::Instant::now();
+                        command_start = Instant::now();
                     } else {
                         log::trace!("Ignoring changes at {}", path.display());
                     }
@@ -219,5 +238,29 @@ impl Watch {
                 Err(err) => log::error!("watch error: {}", err),
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn exclude_relative_path() {
+        let watch = Watch {
+            debounce: None,
+            watch_paths: Vec::new(),
+            exclude_paths: Vec::new(),
+            workspace_exclude_paths: vec![PathBuf::from("src/watch.rs")],
+        };
+
+        assert!(watch.is_excluded_path(
+            metadata()
+                .workspace_root
+                .join("src")
+                .join("watch.rs")
+                .as_std_path()
+        ));
+        assert!(!watch.is_excluded_path(metadata().workspace_root.join("src").as_std_path()));
     }
 }
