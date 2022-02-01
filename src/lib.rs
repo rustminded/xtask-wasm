@@ -278,47 +278,27 @@
 
 #![deny(missing_docs)]
 
-use lazy_static::lazy_static;
-use std::process;
+use std::process::Command;
 
-pub use anyhow;
-pub use cargo_metadata;
-pub use cargo_metadata::camino;
-pub use clap;
+pub use xtask_watch::{
+    anyhow, cargo_metadata, cargo_metadata::camino, clap, metadata, package, Watch,
+};
 
 mod dev_server;
 mod dist;
 #[cfg(feature = "wasm-opt")]
 mod wasm_opt;
-mod watch;
 
 pub use dev_server::*;
 pub use dist::*;
 #[cfg(feature = "wasm-opt")]
 pub use wasm_opt::*;
-pub use watch::*;
-
-/// Fetch the metadata of the crate.
-pub fn metadata() -> &'static cargo_metadata::Metadata {
-    lazy_static! {
-        static ref METADATA: cargo_metadata::Metadata = cargo_metadata::MetadataCommand::new()
-            .exec()
-            .expect("cannot get crate's metadata");
-    }
-
-    &METADATA
-}
-
-/// Fetch information of a package in the current crate.
-pub fn package(name: &str) -> Option<&cargo_metadata::Package> {
-    metadata().packages.iter().find(|x| x.name == name)
-}
 
 /// Get the default command for the build in the dist process.
 ///
 /// This is `cargo build --target wasm32-unknown-unknown`.
-pub fn default_build_command() -> process::Command {
-    let mut command = process::Command::new("cargo");
+pub fn default_build_command() -> Command {
+    let mut command = Command::new("cargo");
     command.args(["build", "--target", "wasm32-unknown-unknown"]);
     command
 }

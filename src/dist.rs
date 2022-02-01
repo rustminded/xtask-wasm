@@ -1,6 +1,7 @@
-use crate::{camino, default_build_command, metadata};
-use anyhow::{ensure, Context, Result};
-use clap::Parser;
+use crate::{
+    anyhow::{ensure, Context, Result},
+    camino, clap, default_build_command, metadata,
+};
 use lazy_static::lazy_static;
 use std::{fs, path::PathBuf, process};
 use wasm_bindgen_cli_support::Bindgen;
@@ -48,7 +49,7 @@ use wasm_bindgen_cli_support::Bindgen;
 /// files will be written, and the content of the `project/static` directory
 /// will be copied, into the dist directory (returned by [`DistResult`]).
 #[non_exhaustive]
-#[derive(Debug, Parser)]
+#[derive(Debug, clap::Parser)]
 pub struct Dist {
     /// No output printed to stdout.
     #[clap(short, long)]

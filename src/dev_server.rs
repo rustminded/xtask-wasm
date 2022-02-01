@@ -1,6 +1,8 @@
-use crate::{camino::Utf8Path, Watch};
-use anyhow::{bail, Context, Result};
-use clap::Parser;
+use crate::{
+    anyhow::{bail, Context, Result},
+    camino::Utf8Path,
+    clap, Watch,
+};
 use std::{
     fs,
     io::{prelude::*, BufReader},
@@ -51,7 +53,7 @@ use std::{
 /// changes in the workspace and serve the files in the default dist directory
 /// (`target/debug/dist` for non-release) at a given IP address.
 #[non_exhaustive]
-#[derive(Debug, Parser)]
+#[derive(Debug, clap::Parser)]
 pub struct DevServer {
     /// Ip address to bind. Default to `127.0.0.1`.
     #[clap(long, default_value = "127.0.0.1")]
