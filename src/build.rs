@@ -1,11 +1,12 @@
-use crate::{default_build_command, default_build_dir, metadata};
-use anyhow::{ensure, Context, Result};
-use clap::Parser;
+use crate::{
+    anyhow::{ensure, Context, Result},
+    clap, default_build_command, default_build_dir, metadata,
+};
 use std::{fs, path::PathBuf, process};
 use wasm_bindgen_cli_support::Bindgen;
 
 #[non_exhaustive]
-#[derive(Debug, Parser)]
+#[derive(Debug, clap::Parser)]
 pub struct Build {
     #[clap(short, long)]
     pub quiet: bool,

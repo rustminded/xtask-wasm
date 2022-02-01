@@ -1,6 +1,8 @@
-use crate::{camino::Utf8Path, Watch};
-use anyhow::{bail, Context, Result};
-use clap::Parser;
+use crate::{
+    anyhow::{bail, Context, Result},
+    camino::Utf8Path,
+    clap, Watch,
+};
 use std::{
     fs,
     io::{prelude::*, BufReader},
@@ -10,7 +12,7 @@ use std::{
 };
 
 #[non_exhaustive]
-#[derive(Debug, Parser)]
+#[derive(Debug, clap::Parser)]
 pub struct DevServer {
     #[clap(long, default_value = "127.0.0.1")]
     pub ip: IpAddr,
