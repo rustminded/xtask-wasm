@@ -11,11 +11,13 @@ use std::{
     process,
 };
 
-/// A simple HTTP server that can, optionally, watch a given command.
+/// A simple HTTP server useful during development.
+/// It can watch the source code for changes and restart a provided build
+/// command.
 ///
 /// Get the files at `watch_path` and serve them at a given IP address
-/// (127.0.0.1:8000 by default). An optional command can be run along the
-/// server, relaunched if changes are detected in your project via a [`Watch`].
+/// (127.0.0.1:8000 by default). An optional command can be provided to restart
+/// the build when changes are detected.
 ///
 /// # Usage
 ///
@@ -29,33 +31,35 @@ use std::{
 ///
 /// #[derive(clap::Parser)]
 /// enum Opt {
-///     Serve(xtask_wasm::DevServer),
+///     Start(xtask_wasm::DevServer),
+///     Dist,
 /// }
 ///
 /// fn main() -> Result<()> {
 ///     let opt: Opt = clap::Parser::parse();
 ///
 ///     match opt {
-///         Opt::Serve(mut dev_server) => {
+///         Opt::Start(mut dev_server) => {
 ///             let mut command = process::Command::new("cargo");
 ///             command.args(["xtask", "dist"]);
 ///
 ///             log::info!("Starting the dev server");
 ///             dev_server.command(command).start(default_dist_dir(false))?;
 ///         }
+///         Opt::Dist => todo!("build project"),
 ///     }
 ///
 ///     Ok(())
 /// }
 /// ```
 ///
-/// Add a `serve` subcommand that will run `cargo xtask dist`, watching for
+/// Add a `start` subcommand that will run `cargo xtask dist`, watching for
 /// changes in the workspace and serve the files in the default dist directory
 /// (`target/debug/dist` for non-release) at a given IP address.
 #[non_exhaustive]
 #[derive(Debug, clap::Parser)]
 pub struct DevServer {
-    /// Ip address to bind. Default to `127.0.0.1`.
+    /// IP address to bind. Default to `127.0.0.1`.
     #[clap(long, default_value = "127.0.0.1")]
     pub ip: IpAddr,
     /// Port number. Default to `8000`.
@@ -65,7 +69,11 @@ pub struct DevServer {
     /// Command executed when a change is detected.
     #[clap(skip)]
     pub command: Option<process::Command>,
-    /// Watching process of the server.
+    /// Watch object for detecting changes.
+    ///
+    /// # Note
+    ///
+    /// Used only if `command` is set.
     #[clap(flatten)]
     pub watch: Watch,
 }
@@ -79,7 +87,7 @@ impl DevServer {
 
     /// Start the server, serving the files at `served_path`.
     ///
-    /// [`default_dist_dir`] should be used to get the dist directory that needs
+    /// [`crate::default_dist_dir`] should be used to get the dist directory that needs
     /// to be served.
     pub fn start(self, served_path: impl AsRef<Path>) -> Result<()> {
         let watch_process = if let Some(command) = self.command {

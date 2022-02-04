@@ -48,9 +48,9 @@ fn download_wasm_opt() -> Result<&'static Path> {
     WASM_OPT_PATH.as_deref().map_err(|err| anyhow!("{}", err))
 }
 
-/// Abstraction over the `wasm-opt` binary from
-/// [binaryen](https://github.com/WebAssembly/binaryen) for optimizing your Wasm
-/// binary.
+/// Helper Abstracting the `wasm-opt` binary from
+/// [binaryen](https://github.com/WebAssembly/binaryen) for easily optimizing
+/// your Wasm binary.
 ///
 /// # Usage
 ///

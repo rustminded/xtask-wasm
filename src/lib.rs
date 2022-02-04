@@ -1,11 +1,12 @@
 //! This crate aims to provide an easy and customizable way to help you build
 //! Wasm projects by extending them with custom subcommands, based on the
 //! [`xtask` concept](https://github.com/matklad/cargo-xtask/), instead of using
-//!  external tooling like [`wasm-pack`](https://github.com/rustwasm/wasm-pack).
+//! external tooling like [`wasm-pack`](https://github.com/rustwasm/wasm-pack).
 //!
 //! # Minimum Supported Rust Version
 //!
-//! This crate requires **Rust 1.58.1** at a minimum.
+//! This crate requires **Rust 1.58.1** at a minimum because there is a security
+//! issue on a function we use in std in previous version.
 //!
 //! # Setup
 //!
@@ -14,7 +15,7 @@
 //!
 //! ## Create or update a project using xtask
 //!
-//! * New project - You can create a new project using xtask, you can use the
+//! * New project: You can create a new project using xtask, you can use the
 //!     following:
 //!     ```console
 //!     mkdir project_name
@@ -23,44 +24,46 @@
 //!     cargo new xtask
 //!     touch Cargo.toml
 //!     ```
-//!     Open the workspace's Cargo.toml and add the following:
+//!     Open the workspace's `Cargo.toml` and add the following:
 //!     ```toml
 //!     [workspace]
+//!     default-members = ["my-project"]
 //!     members = [
 //!         "project",
 //!         "xtask",
 //!     ]
 //!     ```
 //!
-//! * Project with a single package - If you project contains only one package,
-//!     move all the content of the project expect the `.git` directory into a
+//! * Project with a single package: If you project contains only one package,
+//!     move all the content of the project except the `.git` directory into a
 //!     new directory named after the package name at the root of the project.
 //!     * Create a new package for the xtasks using the following:
 //!         ```console
-//!         cargo new --bin xtask
+//!         cargo new xtask
 //!         ```
-//!     * Create a new Cargo.toml at the root of the project and add the following:
+//!     * Create a new `Cargo.toml` at the root of the project and add the following:
 //!         ```toml
 //!         [workspace]
+//!         default-members = ["my-project"]
 //!         members = [
-//!             "project",
+//!             "my-project",
 //!             "xtask",
 //!         ]
 //!         ```
-//!         Replace `project` by the name of the project package
+//!         Replace `my-project` by the name of the project package.
 //!
-//! * Project with a workspace - If your project already use a workspace,
+//! * Project with a workspace: If your project already uses a workspace,
 //!     * Create a new package:
 //!         ```console
-//!         cargo new --bin xtask
+//!         cargo new xtask
 //!         ```
-//!     * Add the new package to your workspace's Cargo.toml with the
-//!         workspace members field
+//!     * Add the new package to your workspace's `Cargo.toml` using the
+//!         workspace members field.
 //!
 //! ## Add a command alias
 //!
-//! Create a `.cargo` directory at the workspace root and add a file named
-//! `config.toml` with the following content:
+//! Create the file `.cargo/config.toml` if it doesn't already exit and add the
+//! following content:
 //!
 //! ```toml
 //! [alias]
@@ -75,15 +78,15 @@
 //!
 //! ## Directory layout example
 //!
-//! If the name of the project package is `app`, the directory layout should
+//! If the name of the project package is `my-project`, the directory layout should
 //! look like this:
 //!
-//! ```bash
+//! ```console
 //! project
 //! ├── .cargo
 //! │   └── config.toml
 //! ├── Cargo.toml
-//! ├── app
+//! ├── my-project
 //! │   ├── Cargo.toml
 //! │   └── src
 //! │       └── ...
@@ -98,7 +101,7 @@
 //!
 //! ## Use xtask-wasm as a dependency
 //!
-//! Finally, add the following to the xtask package's Cargo.toml:
+//! Finally, add the following to the xtask package's `Cargo.toml`:
 //!
 //! ```toml
 //! [dependencies]
@@ -107,72 +110,16 @@
 //!
 //! # Usage
 //!
-//! This library give you 3 types:
+//! This library gives you 3 [clap](https://docs.rs/clap/latest/clap/) structs:
 //!
 //! * [`Dist`] - Generate a distributed package for Wasm
-//! * [`Watch`] - Re-run a given command when changes are detected
+//! * [`Watch`] - Re-run a given command when changes are detected (using
+//!     [xtask-watch](https://github.com/rustminded/xtask-watch))
 //! * [`DevServer`] - Serve your project at a given IP address.
 //!
 //! They all implement [`clap::Parser`] allowing to add them easily to
 //! an existing CLI implementation and are flexible enough to be customized for
 //! most use-cases.
-//!
-//! A basic implementation could look like this:
-//!
-//! ```rust,no_run
-//! use std::process;
-//! use xtask_wasm::{anyhow::Result, clap};
-//!
-//! #[derive(clap::Parser)]
-//! struct Opt {
-//!     #[clap(subcommand)]
-//!     cmd: Command,
-//! }
-//!
-//! #[derive(clap::Parser)]
-//! enum Command {
-//!     Dist(xtask_wasm::Dist),
-//!     Watch(xtask_wasm::Watch),
-//!     Serve(xtask_wasm::DevServer),
-//! }
-//!
-//!
-//! fn main() -> Result<()> {
-//!     let opt: Opt = clap::Parser::parse();
-//!
-//!     match opt.cmd {
-//!         Command::Dist(dist) => {
-//!             let dist = dist
-//!                 .dist_dir_path("dist")
-//!                 .static_dir_path("project/static")
-//!                 .app_name("project")
-//!                 .run_in_workspace(true)
-//!                 .run("project")?;
-//!
-//!             println!("Built at {}", dist.dist_dir.display());
-//!
-//!         }
-//!         Command::Watch(watch) => {
-//!             let mut command = process::Command::new("cargo");
-//!             command.args(["xtask", "dist"]);
-//!
-//!             println!("Starting to watch");
-//!             watch.exclude_workspace_path("dist").run(command)?;
-//!         }
-//!         Command::Serve(mut dev_server) => {
-//!             let mut command = process::Command::new("cargo");
-//!             command.args(["xtask", "dist"]);
-//!
-//!             dev_server.watch = dev_server.watch.exclude_workspace_path("dist");
-//!
-//!             println!("Starting the dev server");
-//!             dev_server.command(command).start("dist")?;
-//!         }
-//!     }
-//!
-//!     Ok(())
-//! }
-//! ```
 //!
 //! You can find further information for each type at their documentation level.
 //!
@@ -180,7 +127,7 @@
 //!
 //! * A basic implementation could look like this:
 //!     ```rust,no_run
-//!     use std::process;
+//!     use std::process::Command;
 //!     use xtask_wasm::{anyhow::Result, clap};
 //!
 //!     #[derive(clap::Parser)]
@@ -213,7 +160,7 @@
 //!
 //!             }
 //!             Command::Watch(watch) => {
-//!                 let mut command = process::Command::new("cargo");
+//!                 let mut command = Command::new("cargo");
 //!                 command.args(["xtask", "dist"]);
 //!
 //!                 log::info!("Starting to watch");
@@ -234,13 +181,13 @@
 //!
 //! * [`examples/demo`](https://github.com/rustminded/xtask-wasm/tree/main/examples/demo)
 //!     provides an implementation of xtask-wasm to build the `webapp` package, an
-//!     `hello world` app using [Yew](https://yew.rs/). This example demonstrate a
-//!     simple directory layout and a customized build process that use the
-//!     [`wasm-opt`] feature.
+//!     "hello world" app using [Yew](https://yew.rs/). This example
+//!     demonstrates a simple directory layout and a customized build process
+//!     that use the [`wasm-opt`] feature.
 //!
 //! The available subcommands are:
 //!
-//! * Build the `webapp` package.
+//! * Build the web app package.
 //!     ```console
 //!     cargo xtask build
 //!     ```
@@ -250,12 +197,12 @@
 //!         cargo xtask build --optimize
 //!         ```
 //!
-//! * Build the `webapp` package and watch for changes in the workspace root.
+//! * Build the web app package and watch for changes in the workspace root.
 //!     ```console
 //!     cargo xtask watch
 //!     ```
 //!
-//! * Serve an optimized `webapp` dist on `127.0.0.1:8000` and watch for
+//! * Serve an optimized web app dist on `127.0.0.1:8000` and watch for
 //!     changes in the workspace root.
 //!     ```console
 //!     cargo xtask serve
@@ -265,16 +212,9 @@
 //!
 //! # Features
 //!
-//! * wasm-opt - Enable `WasmOpt` that download the
+//! * `wasm-opt` - Enable [`WasmOpt`] that download the
 //!     [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools) binary and
 //!     abstract its use to optimize the WASM.
-//!
-//!     This feature can be enabled using the following in the xtask package's
-//!     Cargo.toml:
-//!     ```toml
-//!     [dependencies]
-//!     xtask-wasm = { version = "0.1.0", features = ["wasm-opt"] }
-//!     ```
 
 #![deny(missing_docs)]
 

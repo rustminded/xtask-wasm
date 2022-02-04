@@ -8,9 +8,6 @@ use wasm_bindgen_cli_support::Bindgen;
 
 /// A helper to generate the distributed package
 ///
-/// This struct provide a customizable way to assemble and generate a package
-/// for Wasm.
-///
 /// # Usage
 ///
 /// ```rust,no_run
@@ -28,10 +25,10 @@ use wasm_bindgen_cli_support::Bindgen;
 ///     match opt {
 ///         Opt::Dist(dist) => {
 ///             let dist = dist
-///                 .static_dir_path("myproject/static")
-///                 .app_name("myproject")
+///                 .static_dir_path("my-project/static")
+///                 .app_name("my-project")
 ///                 .run_in_workspace(true)
-///                 .run("project")?;
+///                 .run("my-project")?;
 ///
 ///             log::info!("Built at {}", dist.dist_dir.display());
 ///         }
@@ -41,13 +38,14 @@ use wasm_bindgen_cli_support::Bindgen;
 /// }
 /// ```
 ///
-/// Add a `dist` subcommand to assemble the distributed package for the
-/// `myproject` crate.
+/// In this example, we added a `dist` subcommand to build and package the
+/// `my-project` crate.
 ///
-/// It will run the [`default_build_command`] at the workspace root, generate JS
-/// bindings and output two files: `project.js` and `project.wasm`. These two
-/// files will be written, and the content of the `project/static` directory
-/// will be copied, into the dist directory (returned by [`DistResult`]).
+/// By default it will run the [`default_build_command`] at the workspace root,
+/// generate JS bindings and output two files: `project.js` ([`DistResult.js`])
+/// and `project.wasm` ([`DistResult.wasm`]).
+/// The content of the `project/static` directory will be copied into the dist
+/// directory (returned by [`DistResult.dist_dir`]).
 #[non_exhaustive]
 #[derive(Debug, clap::Parser)]
 pub struct Dist {
@@ -151,6 +149,9 @@ impl Dist {
     /// This will generate JS bindings via [`wasm-bindgen`](https://docs.rs/wasm-bindgen/latest/wasm_bindgen/)
     /// and copy files from a given static directory if any to finally return
     /// the paths of the generated artifacts with [`DistResult`].
+    ///
+    /// WASM optimizations can be achieved using [`crate::WasmOpt`] if the feature
+    /// `wasm-opt` is enabled.
     pub fn run(self, package_name: &str) -> Result<DistResult> {
         log::trace!("Getting package's metadata");
         let metadata = metadata();
