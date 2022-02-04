@@ -39,13 +39,10 @@ use wasm_bindgen_cli_support::Bindgen;
 /// ```
 ///
 /// In this example, we added a `dist` subcommand to build and package the
-/// `my-project` crate.
-///
-/// By default it will run the [`default_build_command`] at the workspace root,
-/// generate JS bindings and output two files: `project.js` ([`DistResult.js`])
-/// and `project.wasm` ([`DistResult.wasm`]).
-/// The content of the `project/static` directory will be copied into the dist
-/// directory (returned by [`DistResult.dist_dir`]).
+/// `my-project` crate. It will run the [`default_build_command`] at the
+/// workspace root, copy the content of the `project/static` directory, generate
+/// JS bindings and output two files: `project.js` and `project.wasm` into the
+/// dist directory.
 #[non_exhaustive]
 #[derive(Debug, clap::Parser)]
 pub struct Dist {
