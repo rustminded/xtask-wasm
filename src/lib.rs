@@ -57,8 +57,15 @@
 //!         ```console
 //!         cargo new xtask
 //!         ```
-//!     * Add the new package to your workspace's `Cargo.toml` using the
-//!         workspace members field.
+//!     * Add the new package to your workspace's `Cargo.toml` like this:
+//!         ```toml
+//!         [workspace]
+//!         default-members = [..]
+//!         members = [
+//!             ..
+//!             "xtask",
+//!         ]
+//!         ```
 //!
 //! ## Add a command alias
 //!
@@ -131,13 +138,7 @@
 //!     use xtask_wasm::{anyhow::Result, clap};
 //!
 //!     #[derive(clap::Parser)]
-//!     struct Opt {
-//!         #[clap(subcommand)]
-//!         cmd: Command,
-//!     }
-//!
-//!     #[derive(clap::Parser)]
-//!     enum Command {
+//!     enum Opt {
 //!         Dist(xtask_wasm::Dist),
 //!         Watch(xtask_wasm::Watch),
 //!         Serve(xtask_wasm::DevServer),
@@ -147,8 +148,8 @@
 //!     fn main() -> Result<()> {
 //!         let opt: Opt = clap::Parser::parse();
 //!
-//!         match opt.cmd {
-//!             Command::Dist(dist) => {
+//!         match opt {
+//!             Opt::Dist(dist) => {
 //!                 let dist = dist
 //!                     .dist_dir_path("dist")
 //!                     .static_dir_path("project/static")
@@ -159,15 +160,15 @@
 //!                 log::info!("Built at {}", dist.dist_dir.display());
 //!
 //!             }
-//!             Command::Watch(watch) => {
+//!             Opt::Watch(watch) => {
 //!                 let mut command = Command::new("cargo");
 //!                 command.args(["xtask", "dist"]);
 //!
 //!                 log::info!("Starting to watch");
 //!                 watch.exclude_workspace_path("dist").run(command)?;
 //!             }
-//!             Command::Serve(mut dev_server) => {
-//!                 let mut command = process::Command::new("cargo");
+//!             Opt::Serve(mut dev_server) => {
+//!                 let mut command = Command::new("cargo");
 //!                 command.args(["xtask", "dist"]);
 //!
 //!                 log::info!("Starting the dev server");
@@ -212,9 +213,8 @@
 //!
 //! # Features
 //!
-//! * `wasm-opt` - Enable [`WasmOpt`] that download the
-//!     [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools) binary and
-//!     abstract its use to optimize the WASM.
+//! * `wasm-opt`: enable the [`WasmOpt`] struct that helps downloading and using
+//!     [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools) very easily.
 
 #![deny(missing_docs)]
 
