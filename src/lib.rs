@@ -28,7 +28,7 @@
 //!     $ cargo new xtask
 //!     ```
 //!
-//! * Open the workspace's Cargo.toml and add the following:
+//! * Open the workspace's `Cargo.toml` and add the following:
 //!     ```toml
 //!     [workspace]
 //!     members = [
@@ -93,7 +93,7 @@
 //!     [xtask-watch](https://github.com/rustminded/xtask-watch))
 //! * [`DevServer`] - Serve your project at a given IP address.
 //!
-//! They all implement [`clap::Parser`] allowing to add them easily to
+//! They all implement [`clap::Parser`] allowing them to be added easily to
 //! an existing CLI implementation and are flexible enough to be customized for
 //! most use-cases.
 //!
@@ -131,10 +131,10 @@
 //!             }
 //!             Opt::Watch(watch) => {
 //!                 let mut command = Command::new("cargo");
-//!                 command.args(["xtask", "dist"]);
+//!                 command.arg("check");
 //!
 //!                 log::info!("Starting to watch");
-//!                 watch.exclude_workspace_path("dist").run(command)?;
+//!                 watch.run(command)?;
 //!             }
 //!             Opt::Serve(mut dev_server) => {
 //!                 let mut command = Command::new("cargo");
