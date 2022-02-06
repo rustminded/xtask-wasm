@@ -34,11 +34,11 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: -- -D warnings
 
-      - name: README check
+      - name: Install cargo-rdme
         uses: dtolnay/install@master
         with:
-          bin: cargo-rdme
-      - run: cargo-rdme --check
+          crate: cargo-expand
+      - run: cargo-expand --version
 
   build-windows:
     needs: [cargo-test-and-lint]
