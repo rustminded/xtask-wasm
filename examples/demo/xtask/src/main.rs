@@ -22,7 +22,7 @@ struct Build {
     optimize: bool,
 
     #[clap(flatten)]
-    base: xtask_wasm::Build,
+    base: xtask_wasm::Dist,
 }
 
 fn main() -> Result<()> {
@@ -40,9 +40,9 @@ fn main() -> Result<()> {
             log::info!("Starting to build");
             let build_result = arg
                 .base
-                .static_dir_path("demo-webapp/static")
-                .app_name("hello_world")
-                .run("demo-webapp")?;
+                .static_dir_path("webapp/static")
+                .app_name("web_app")
+                .run("webapp")?;
             if arg.optimize {
                 xtask_wasm::WasmOpt::level(1)
                     .shrink(2)
@@ -57,7 +57,7 @@ fn main() -> Result<()> {
             log::info!("Starting to serve");
             build_command.arg("--optimize");
             arg.command(build_command)
-                .start(xtask_wasm::default_build_dir(false))?;
+                .start(xtask_wasm::default_dist_dir(false))?;
         }
     }
 

@@ -48,13 +48,28 @@ fn download_wasm_opt() -> Result<&'static Path> {
     WASM_OPT_PATH.as_deref().map_err(|err| anyhow!("{}", err))
 }
 
+/// Helper Abstracting the `wasm-opt` binary from
+/// [binaryen](https://github.com/WebAssembly/binaryen) for easily optimizing
+/// your Wasm binary.
+///
+/// # Usage
+///
+/// ```rust,no_run
+/// WasmOpt::level(1)
+///     .shrink(2)
+///     .optimize("app.wasm")?;
+/// ```
 pub struct WasmOpt {
-    optimization_level: u32,
-    shrink_level: u32,
-    debug_info: bool,
+    /// How much to focus on optimizing code.
+    pub optimization_level: u32,
+    /// How much to focus on shrinking code size.
+    pub shrink_level: u32,
+    /// Emit names section in wasm binary.
+    pub debug_info: bool,
 }
 
 impl WasmOpt {
+    /// Set the level of code optimization.
     pub fn level(optimization_level: u32) -> Self {
         Self {
             optimization_level,
@@ -63,16 +78,22 @@ impl WasmOpt {
         }
     }
 
+    /// Set the level of size shrinking.
     pub fn shrink(mut self, shrink_level: u32) -> Self {
         self.shrink_level = shrink_level;
         self
     }
 
+    /// Preserve debug info.
     pub fn debug(mut self) -> Self {
         self.debug_info = true;
         self
     }
 
+    /// Optimize the Wasm binary provided by `binary_path`.
+    ///
+    /// This function will execute `wasm-opt` over the given Wasm binary,
+    /// downloading it if necessary (cached into the `target` directory).
     pub fn optimize(self, binary_path: impl AsRef<Path>) -> Result<Self> {
         let input_path = binary_path.as_ref();
         let output_path = input_path.with_extension("opt");

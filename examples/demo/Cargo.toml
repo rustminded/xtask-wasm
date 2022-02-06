@@ -1,2 +1,3 @@
 [workspace]
-members = ["demo-webapp", "xtask"]
+default-members = ["webapp"]
+members = ["webapp", "xtask"]
