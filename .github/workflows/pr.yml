@@ -14,6 +14,10 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v2
 
+      - name: Install cargo-rdme
+        run: |
+          cargo install cargo-rdme
+
       - uses: Swatinem/rust-cache@v1
 
       - name: cargo test
@@ -34,11 +38,9 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: -- -D warnings
 
-      - name: Install cargo-rdme
-        uses: dtolnay/install@master
-        with:
-          crate: cargo-expand
-      - run: cargo-expand --version
+      - name: check README.md
+        run: |
+          cargo-rdme --check
 
   build-windows:
     needs: [cargo-test-and-lint]
