@@ -1,21 +1,21 @@
-# xtask-wasm
+<!-- cargo-rdme start -->
 
 This crate aims to provide an easy and customizable way to help you build
 Wasm projects by extending them with custom subcommands, based on the
 [`xtask` concept](https://github.com/matklad/cargo-xtask/), instead of using
 external tooling like [`wasm-pack`](https://github.com/rustwasm/wasm-pack).
 
-## Minimum Supported Rust Version
+# Minimum Supported Rust Version
 
 This crate requires **Rust 1.58.1** at a minimum because there is a security
 issue on a function we use in std in previous version.
 
-## Setup
+# Setup
 
 The best way to add xtask-wasm to your project is to create a workspace
 with two packages: your project's package and the xtask package.
 
-### Create a project using xtask
+## Create a project using xtask
 
 * Create a new directory that will contains the two package of your project
     and the workspace's `Cargo.toml`
@@ -39,7 +39,7 @@ with two packages: your project's package and the xtask package.
     ]
     ```
 
-### Add a command alias
+## Add a command alias
 
 Create a `.cargo/config.toml` file and add the following content:
 
@@ -54,7 +54,7 @@ Now you can run your xtask package using:
 cargo xtask
 ```
 
-### Directory layout example
+## Directory layout example
 
 If the name of the project package is `my-project`, the directory layout should
 look like this:
@@ -77,7 +77,7 @@ project
 You can find more informations about xtask
 [here](https://github.com/cargo-xtask/).
 
-### Use xtask-wasm as a dependency
+## Use xtask-wasm as a dependency
 
 Finally, add the following to the xtask package's `Cargo.toml`:
 
@@ -86,25 +86,26 @@ Finally, add the following to the xtask package's `Cargo.toml`:
 xtask-wasm = "0.1.0"
 ```
 
-## Usage
+# Usage
 
 This library gives you 3 [clap](https://docs.rs/clap/latest/clap/) structs:
 
-* [`Dist`] - Generate a distributed package for Wasm
-* [`Watch`] - Re-run a given command when changes are detected (using
-    [xtask-watch](https://github.com/rustminded/xtask-watch))
-* [`DevServer`] - Serve your project at a given IP address.
+* [`Dist`](https://docs.rs/xtask-wasm/latest/xtask_wasm/dist/struct.Dist.html) - Generate a distributed package for Wasm
+* [`Watch`](https://docs.rs/xtask-watch/latest/xtask_watch/struct.Watch.html)
+    - Re-run a given command when changes are detected
+    (using [xtask-watch](https://github.com/rustminded/xtask-watch))
+* [`DevServer`](https://docs.rs/xtask-wasm/latest/xtask_wasm/dev_server/struct.DevServer.html) - Serve your project at a given IP address.
 
-They all implement [`clap::Parser`] allowing them to be added easily to
-an existing CLI implementation and are flexible enough to be customized for
-most use-cases.
+They all implement [`clap::Parser`](https://docs.rs/clap/3.0.14/clap/trait.Parser.html)
+allowing them to be added easily to an existing CLI implementation and are
+flexible enough to be customized for most use-cases.
 
 You can find further information for each type at their documentation level.
 
-## Examples
+# Examples
 
 * A basic implementation could look like this:
-    ```rust,no_run
+    ```rust
     use std::process::Command;
     use xtask_wasm::{anyhow::Result, clap};
 
@@ -152,10 +153,10 @@ You can find further information for each type at their documentation level.
     ```
 
 * [`examples/demo`](https://github.com/rustminded/xtask-wasm/tree/main/examples/demo)
-    provides an implementation of xtask-wasm to build the `webapp` package, an
-    "hello world" app using [Yew](https://yew.rs/). This example
+    provides an implementation of xtask-wasm to build the web app` package,
+    an "hello world" app using [Yew](https://yew.rs/). This example
     demonstrates a simple directory layout and a customized build process
-    that use the [`wasm-opt`] feature.
+    that use the `wasm-opt` feature.
 
 The available subcommands are:
 
@@ -183,9 +184,9 @@ The available subcommands are:
 
 Additional flags can be found using `cargo xtask <subcommand> --help`
 
-## Features
+# Features
 
-* `wasm-opt`: enable the [`WasmOpt`] struct that helps downloading and using
+* `wasm-opt`: enable the [`WasmOpt`](https://docs.rs/xtask-wasm/latest/xtask_wasm/wasm_opt/struct.WasmOpt.html) struct that helps downloading and using
     [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools) very easily.
 
-License: MIT OR Apache-2.0
+<!-- cargo-rdme end -->
