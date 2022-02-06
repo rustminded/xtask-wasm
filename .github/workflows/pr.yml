@@ -38,7 +38,7 @@ jobs:
         uses: actions-rs/install@v0.1
         with:
           crate: cargo-rdme
-          version: latest
+          version: 0.5.0
           use-tool-cache: true
 
       - name: check README.md
