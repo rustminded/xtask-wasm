@@ -14,10 +14,6 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v2
 
-      - name: Install cargo-rdme
-        run: |
-          cargo install cargo-rdme
-
       - uses: Swatinem/rust-cache@v1
 
       - name: cargo test
@@ -37,6 +33,13 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: -- -D warnings
+
+      - name: Install cargo-rdme
+        uses: actions-rs/install@v0.1
+        with:
+          crate: cargo-rdme
+          version: latest
+          use-tool-cache: true
 
       - name: check README.md
         run: |
