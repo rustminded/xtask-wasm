@@ -34,9 +34,11 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: -- -D warnings
 
-      - name: readme check
+      - name: Install cargo-rdme
         run: |
           cargo install cargo-rdme
+      - name: check README.md
+        run: |
           cargo-rdme --check
 
   build-windows:
