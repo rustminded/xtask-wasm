@@ -20,17 +20,17 @@ with two packages: your project's package and the xtask package.
 * Create a new directory that will contains the two package of your project
     and the workspace's `Cargo.toml`
     ```console
-    $ mkdir my-project
-    $ cd my-project
-    $ touch Cargo.toml
+    mkdir my-project
+    cd my-project
+    touch Cargo.toml
     ```
 * Create the project package and the xtask package using `cargo new`:
     ```console
-    $ cargo new my-project
-    $ cargo new xtask
+    cargo new my-project
+    cargo new xtask
     ```
 
-* Open the workspace's Cargo.toml and add the following:
+* Open the workspace's `Cargo.toml` and add the following:
     ```toml
     [workspace]
     members = [
@@ -95,7 +95,7 @@ This library gives you 3 [clap](https://docs.rs/clap/latest/clap/) structs:
     [xtask-watch](https://github.com/rustminded/xtask-watch))
 * [`DevServer`] - Serve your project at a given IP address.
 
-They all implement [`clap::Parser`] allowing to add them easily to
+They all implement [`clap::Parser`] allowing them to be added easily to
 an existing CLI implementation and are flexible enough to be customized for
 most use-cases.
 
@@ -133,10 +133,10 @@ You can find further information for each type at their documentation level.
             }
             Opt::Watch(watch) => {
                 let mut command = Command::new("cargo");
-                command.args(["xtask", "dist"]);
+                command.arg("check");
 
                 log::info!("Starting to watch");
-                watch.exclude_workspace_path("dist").run(command)?;
+                watch.run(command)?;
             }
             Opt::Serve(mut dev_server) => {
                 let mut command = Command::new("cargo");

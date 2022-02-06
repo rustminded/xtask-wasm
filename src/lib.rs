@@ -18,14 +18,14 @@
 //! * Create a new directory that will contains the two package of your project
 //!     and the workspace's `Cargo.toml`
 //!     ```console
-//!     $ mkdir my-project
-//!     $ cd my-project
-//!     $ touch Cargo.toml
+//!     mkdir my-project
+//!     cd my-project
+//!     touch Cargo.toml
 //!     ```
 //! * Create the project package and the xtask package using `cargo new`:
 //!     ```console
-//!     $ cargo new my-project
-//!     $ cargo new xtask
+//!     cargo new my-project
+//!     cargo new xtask
 //!     ```
 //!
 //! * Open the workspace's `Cargo.toml` and add the following:
