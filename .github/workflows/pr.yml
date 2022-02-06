@@ -38,7 +38,7 @@ jobs:
         uses: dtolnay/install@master
         with:
           crate: cargo-rdme
-        run: cargo-rdme --check
+      - run: cargo-rdme --check
 
   build-windows:
     needs: [cargo-test-and-lint]
