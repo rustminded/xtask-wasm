@@ -37,7 +37,7 @@ jobs:
       - name: README check
         uses: dtolnay/install@master
         with:
-          crate: cargo-rdme
+          bin: cargo-rdme
       - run: cargo-rdme --check
 
   build-windows:
