@@ -88,14 +88,15 @@
 //!
 //! This library gives you 3 [clap](https://docs.rs/clap/latest/clap/) structs:
 //!
-//! * [`Dist`] - Generate a distributed package for Wasm
-//! * [`Watch`] - Re-run a given command when changes are detected (using
-//!     [xtask-watch](https://github.com/rustminded/xtask-watch))
-//! * [`DevServer`] - Serve your project at a given IP address.
+//! * [`Dist`](crate::dist::Dist) - Generate a distributed package for Wasm
+//! * [`Watch`](https://docs.rs/xtask-watch/latest/xtask_watch/struct.Watch.html)
+//!     - Re-run a given command when changes are detected
+//!     (using [xtask-watch](https://github.com/rustminded/xtask-watch))
+//! * [`DevServer`](crate::dev_server::DevServer) - Serve your project at a given IP address.
 //!
-//! They all implement [`clap::Parser`] allowing them to be added easily to
-//! an existing CLI implementation and are flexible enough to be customized for
-//! most use-cases.
+//! They all implement [`clap::Parser`](https://docs.rs/clap/3.0.14/clap/trait.Parser.html)
+//! allowing them to be added easily to an existing CLI implementation and are
+//! flexible enough to be customized for most use-cases.
 //!
 //! You can find further information for each type at their documentation level.
 //!
@@ -150,10 +151,10 @@
 //!     ```
 //!
 //! * [`examples/demo`](https://github.com/rustminded/xtask-wasm/tree/main/examples/demo)
-//!     provides an implementation of xtask-wasm to build the `webapp` package, an
-//!     "hello world" app using [Yew](https://yew.rs/). This example
+//!     provides an implementation of xtask-wasm to build the web app` package,
+//!     an "hello world" app using [Yew](https://yew.rs/). This example
 //!     demonstrates a simple directory layout and a customized build process
-//!     that use the [`wasm-opt`] feature.
+//!     that use the `wasm-opt` feature.
 //!
 //! The available subcommands are:
 //!
@@ -183,7 +184,7 @@
 //!
 //! # Features
 //!
-//! * `wasm-opt`: enable the [`WasmOpt`] struct that helps downloading and using
+//! * `wasm-opt`: enable the [`WasmOpt`](crate::wasm_opt::WasmOpt) struct that helps downloading and using
 //!     [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools) very easily.
 
 #![deny(missing_docs)]
