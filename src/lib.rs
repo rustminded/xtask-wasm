@@ -3,8 +3,6 @@
 //! [`xtask` concept](https://github.com/matklad/cargo-xtask/), instead of using
 //! external tooling like [`wasm-pack`](https://github.com/rustwasm/wasm-pack).
 //!
-//! This is a test.
-//!
 //! # Minimum Supported Rust Version
 //!
 //! This crate requires **Rust 1.58.1** at a minimum because there is a security

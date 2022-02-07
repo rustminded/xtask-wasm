@@ -34,17 +34,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: -- -D warnings
 
-      - name: Install cargo-rdme
-        uses: actions-rs/install@v0.1
-        with:
-          crate: cargo-rdme
-          version: 0.5.0
-          use-tool-cache: true
-
-      - name: check README.md
-        run: |
-          cargo-rdme --check
-
   build-windows:
     needs: [cargo-test-and-lint]
     runs-on: windows-latest
