@@ -185,7 +185,7 @@
 //!
 //! * Make an example that will run the dev server:
 //!     * In the file `examples/my_example.rs`, create your example:
-//!         ```rust,no_run
+//!         ```rust,ignore
 //!         use wasm_bindgen::prelude::*;
 //!
 //!         #[wasm_bindgen]
