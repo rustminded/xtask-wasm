@@ -11,3 +11,6 @@ crate-type = ["cdylib"]
 [dependencies]
 wasm-bindgen = "0.2"
 yew = "0.18"
+
+[dev-dependencies]
+xtask-wasm = { path = "../../..", features = ["run-example"] }
