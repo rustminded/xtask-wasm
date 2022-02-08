@@ -88,7 +88,7 @@ impl RunExample {
                     .init();
 
                 let cli: Cli = clap::Parser::parse();
-                let mut dist_command = std::process::Command::new(std::env::args().next().unwrap());
+                let mut dist_command = xtask_wasm::xtask_command();
                 dist_command.arg("dist");
 
                 match cli.command {

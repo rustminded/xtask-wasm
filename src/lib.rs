@@ -221,7 +221,7 @@
 use std::process::Command;
 
 pub use xtask_watch::{
-    anyhow, cargo_metadata, cargo_metadata::camino, clap, metadata, package, Watch,
+    anyhow, cargo_metadata, cargo_metadata::camino, clap, metadata, package, xtask_command, Watch,
 };
 
 mod dev_server;
