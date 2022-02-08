@@ -100,6 +100,9 @@
 //!
 //! You can find further information for each type at their documentation level.
 //!
+//! This library also provides a helper to run examples in the `examples/` directory using a
+//! development server. This is under the feature `run-example`.
+//!
 //! # Examples
 //!
 //! * A basic implementation could look like this:
@@ -180,19 +183,45 @@
 //!     cargo xtask serve
 //!     ```
 //!
+//! * Make an example that will run the dev server:
+//!     * In the file `examples/my_example.rs`, create your example:
+//!         ```rust,ignore
+//!         use wasm_bindgen::prelude::*;
+//!
+//!         #[wasm_bindgen]
+//!         extern "C" {
+//!             #[wasm_bindgen(js_namespace = console)]
+//!             fn log(message: &str);
+//!         }
+//!
+//!         #[xtask_wasm::run_example]
+//!         fn run_app() {
+//!             log("Hello World!");
+//!         }
+//!         ```
+//!     * In the file `Cargo.toml`:
+//!         ```toml
+//!         [dev-dependencies]
+//!         xtask-wasm = { version = "*", features = ["run-example"] }
+//!         ```
+//!     * Then to run the dev server with the example:
+//!         ```console
+//!         cargo run --example my_example.rs
+//!         ```
+//!
 //! Additional flags can be found using `cargo xtask <subcommand> --help`
 //!
 //! # Features
 //!
-//! * `wasm-opt`: enable the [`WasmOpt`](crate::wasm_opt::WasmOpt) struct that helps downloading and using
-//!     [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools) very easily.
+//! * `wasm-opt`: enable the [`WasmOpt`](crate::wasm_opt::WasmOpt) struct that helps downloading
+//!     and using [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools) very easily.
 
 #![deny(missing_docs)]
 
 use std::process::Command;
 
 pub use xtask_watch::{
-    anyhow, cargo_metadata, cargo_metadata::camino, clap, metadata, package, Watch,
+    anyhow, cargo_metadata, cargo_metadata::camino, clap, metadata, package, xtask_command, Watch,
 };
 
 mod dev_server;
@@ -213,3 +242,14 @@ pub fn default_build_command() -> Command {
     command.args(["build", "--target", "wasm32-unknown-unknown"]);
     command
 }
+
+#[cfg(feature = "run-example")]
+pub use console_error_panic_hook;
+#[cfg(feature = "run-example")]
+pub use env_logger;
+#[cfg(feature = "run-example")]
+pub use log;
+#[cfg(feature = "run-example")]
+pub use wasm_bindgen;
+#[cfg(feature = "run-example")]
+pub use xtask_wasm_run_example::*;

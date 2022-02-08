@@ -85,6 +85,9 @@ pub struct Dist {
     /// Ignore `rust-version` specification in packages.
     #[clap(long)]
     pub ignore_rust_version: bool,
+    /// Name of the example target to run.
+    #[clap(long)]
+    pub example: Option<String>,
 
     /// Command passed to the build process.
     #[clap(skip = default_build_command())]
@@ -138,6 +141,12 @@ impl Dist {
     /// Set the dist process current directory as the workspace root.
     pub fn run_in_workspace(mut self, res: bool) -> Self {
         self.run_in_workspace = res;
+        self
+    }
+
+    /// Set the example to build.
+    pub fn example(mut self, example: impl Into<String>) -> Self {
+        self.example = Some(example.into());
         self
     }
 
@@ -218,12 +227,24 @@ impl Dist {
 
         build_process.args(["--package", package_name]);
 
-        let input_path = metadata
+        if let Some(example) = &self.example {
+            build_process.args(["--example", example]);
+        }
+
+        let build_dir = metadata
             .target_directory
             .join("wasm32-unknown-unknown")
-            .join(if self.release { "release" } else { "debug" })
-            .join(&package_name.replace("-", "_"))
-            .with_extension("wasm");
+            .join(if self.release { "release" } else { "debug" });
+        let input_path = if let Some(example) = &self.example {
+            build_dir
+                .join("examples")
+                .join(&example.replace("-", "_"))
+                .with_extension("wasm")
+        } else {
+            build_dir
+                .join(&package_name.replace("-", "_"))
+                .with_extension("wasm")
+        };
 
         if input_path.exists() {
             log::trace!("Removing existing target directory");
