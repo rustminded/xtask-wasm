@@ -100,6 +100,9 @@
 //!
 //! You can find further information for each type at their documentation level.
 //!
+//! This library also provides a helper to run examples in the `examples/` directory using a
+//! development server. This is under the feature `run-example`.
+//!
 //! # Examples
 //!
 //! * A basic implementation could look like this:
@@ -180,12 +183,38 @@
 //!     cargo xtask serve
 //!     ```
 //!
+//! * Make an example that will run the dev server:
+//!     * In the file `examples/my_example.rs`, create your example:
+//!         ```rust,no_run
+//!         use wasm_bindgen::prelude::*;
+//!
+//!         #[wasm_bindgen]
+//!         extern "C" {
+//!             #[wasm_bindgen(js_namespace = console)]
+//!             fn log(message: &str);
+//!         }
+//!
+//!         #[xtask_wasm::run_example]
+//!         fn run_app() {
+//!             log("Hello World!");
+//!         }
+//!         ```
+//!     * In the file `Cargo.toml`:
+//!         ```toml
+//!         [dev-dependencies]
+//!         xtask-wasm = { path = "../../..", features = ["run-example"] }
+//!         ```
+//!     * Then to run the dev server with the example:
+//!         ```console
+//!         cargo run --example my_example.rs
+//!         ```
+//!
 //! Additional flags can be found using `cargo xtask <subcommand> --help`
 //!
 //! # Features
 //!
-//! * `wasm-opt`: enable the [`WasmOpt`](crate::wasm_opt::WasmOpt) struct that helps downloading and using
-//!     [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools) very easily.
+//! * `wasm-opt`: enable the [`WasmOpt`](crate::wasm_opt::WasmOpt) struct that helps downloading
+//!     and using [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools) very easily.
 
 #![deny(missing_docs)]
 
