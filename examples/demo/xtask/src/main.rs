@@ -48,9 +48,9 @@ fn main() -> Result<()> {
         }
         Command::Watch(arg) => {
             log::info!("Watching for changes and check...");
-            let mut build_command = process::Command::new("cargo");
-            build_command.arg("check");
-            arg.run(build_command)?;
+            let mut command = process::Command::new("cargo");
+            command.arg("check");
+            arg.run(command)?;
         }
         Command::Start(arg) => {
             log::info!("Starting to development server...");
