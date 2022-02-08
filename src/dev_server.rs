@@ -4,7 +4,7 @@ use crate::{
     clap, Watch,
 };
 use std::{
-    fs,
+    ffi, fs,
     io::{prelude::*, BufReader},
     net::{IpAddr, SocketAddr, TcpListener, TcpStream},
     path::Path,
@@ -12,6 +12,7 @@ use std::{
 };
 
 /// A simple HTTP server useful during development.
+///
 /// It can watch the source code for changes and restart a provided build
 /// command.
 ///
@@ -40,11 +41,8 @@ use std::{
 ///
 ///     match opt {
 ///         Opt::Start(mut dev_server) => {
-///             let mut command = process::Command::new("cargo");
-///             command.args(["xtask", "dist"]);
-///
 ///             log::info!("Starting the dev server");
-///             dev_server.command(command).start(default_dist_dir(false))?;
+///             dev_server.arg("dist").start(default_dist_dir(false))?;
 ///         }
 ///         Opt::Dist => todo!("build project"),
 ///     }
@@ -85,6 +83,33 @@ impl DevServer {
         self
     }
 
+    /// Adds an argument to pass to the command executed when changes are detected.
+    ///
+    /// This will use the xtask command by default.
+    pub fn arg<S: AsRef<ffi::OsStr>>(mut self, arg: S) -> Self {
+        self.set_xtask_command().arg(arg);
+        self
+    }
+
+    /// Adds multiple arguments to pass to the command executed when changes are detected.
+    ///
+    /// This will use the xtask command by default.
+    pub fn args<I, S>(mut self, args: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<ffi::OsStr>,
+    {
+        self.set_xtask_command().args(args);
+        self
+    }
+
+    fn set_xtask_command(&mut self) -> &mut process::Command {
+        if self.command.is_none() {
+            self.command = Some(crate::xtask_command());
+        }
+        self.command.as_mut().unwrap()
+    }
+
     /// Start the server, serving the files at `served_path`.
     ///
     /// [`crate::default_dist_dir`] should be used to get the dist directory that needs
@@ -102,10 +127,8 @@ impl DevServer {
             None
         };
 
-        match serve(self.ip, self.port, served_path) {
-            Ok(()) => log::trace!("Starting to serve"),
-            Err(err) => log::error!("an error occurred when starting to serve: {}", err),
-        }
+        serve(self.ip, self.port, served_path)
+            .context("an error occurred when starting to serve")?;
 
         if let Some(handle) = watch_process {
             handle.join().expect("an error occurred when exiting watch");
