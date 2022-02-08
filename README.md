@@ -111,7 +111,7 @@ development server. This is under the feature `run-example`.
 
 ```rust
 use std::process::Command;
-use xtask_wasm::{anyhow::Result, clap};
+use xtask_wasm::{anyhow::Result, clap, default_dist_dir};
 
 #[derive(clap::Parser)]
 enum Opt {
@@ -138,7 +138,7 @@ fn main() -> Result<()> {
             log::info!("Built at {}", dist.dist_dir.display());
         }
         Opt::Watch(watch) => {
-            log::info("Watching for changes and check...");
+            log::info!("Watching for changes and check...");
 
             let mut command = Command::new("cargo");
             command.arg("check");
@@ -187,9 +187,9 @@ The available subcommands are:
     ```
 
 ## An example that will run the dev server using the `run-example` feature:
-```rust
+
 * In the file `examples/my_example.rs`, create your example:
-    ```rust,ignore
+    ```rust
     use wasm_bindgen::prelude::*;
 
     #[wasm_bindgen]
@@ -212,7 +212,6 @@ The available subcommands are:
     ```console
     cargo run --example my_example.rs
     ```
-```
 
 Additional flags can be found using `cargo xtask <subcommand> --help`
 
