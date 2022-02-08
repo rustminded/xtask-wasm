@@ -202,7 +202,7 @@
 //!     * In the file `Cargo.toml`:
 //!         ```toml
 //!         [dev-dependencies]
-//!         xtask-wasm = { path = "../../..", features = ["run-example"] }
+//!         xtask-wasm = { version = "*", features = ["run-example"] }
 //!         ```
 //!     * Then to run the dev server with the example:
 //!         ```console
