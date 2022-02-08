@@ -17,17 +17,23 @@ include = ["src/**/*.rs", "README.md", "LICENSE.Apache-2.0", "LICENSE.MIT"]
 
 [features]
 wasm-opt = ["binary-install", "platforms"]
+run-example = ["xtask-wasm-run-example", "console_error_panic_hook", "wasm-bindgen", "env_logger"]
 
 [dependencies]
 binary-install = { version = "0.0.2", optional = true }
+console_error_panic_hook = { version = "0.1.7", optional = true }
+env_logger = { version = "0.9.0", optional = true }
 fs_extra = "1.2.0"
 lazy_static = "1.4.0"
 log = "0.4.14"
 platforms = { version = "2.0.0", optional = true }
+wasm-bindgen = { version = "0.2.78", optional = true }
 wasm-bindgen-cli-support = "0.2.68"
+xtask-wasm-run-example = { path = "./xtask-wasm-run-example", optional = true }
 xtask-watch = { version = "0.1.0", git = "https://github.com/rustminded/xtask-watch" }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.112"
 
 [workspace]
+members = ["xtask-wasm-run-example"]
