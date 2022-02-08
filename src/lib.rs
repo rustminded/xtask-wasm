@@ -115,7 +115,7 @@
 //! enum Opt {
 //!     Dist(xtask_wasm::Dist),
 //!     Watch(xtask_wasm::Watch),
-//!     Serve(xtask_wasm::DevServer),
+//!     Start(xtask_wasm::DevServer),
 //! }
 //!
 //!
@@ -143,8 +143,9 @@
 //!
 //!             watch.run(command)?;
 //!         }
-//!         Opt::Serve(mut dev_server) => {
+//!         Opt::Start(mut dev_server) => {
 //!             log::info!("Starting the development server...");
+//!
 //!             dev_server.arg("dist").start(default_dist_dir(false))?;
 //!         }
 //!     }
@@ -155,8 +156,8 @@
 //!
 //! ## [`examples/demo`](https://github.com/rustminded/xtask-wasm/tree/main/examples/demo):
 //!
-//! Provides an implementation of xtask-wasm to generate the web app package,
-//! an "hello world" app using [Yew](https://yew.rs/). This example
+//! Provides a basic implementation of xtask-wasm to generate the web app
+//! package, an "hello world" app using [Yew](https://yew.rs/). This example
 //! demonstrates a simple directory layout and a customized dist process
 //! that use the `wasm-opt` feature.
 //!

@@ -24,6 +24,8 @@ use wasm_bindgen_cli_support::Bindgen;
 ///
 ///     match opt {
 ///         Opt::Dist(dist) => {
+///             log::info!("Generating package...");
+///
 ///             let dist = dist
 ///                 .static_dir_path("my-project/static")
 ///                 .app_name("my-project")
