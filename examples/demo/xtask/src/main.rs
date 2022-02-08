@@ -11,9 +11,9 @@ struct Opt {
 
 #[derive(clap::Parser)]
 enum Command {
-    Build(Build),
+    Dist(Build),
     Watch(xtask_wasm::Watch),
-    Serve(xtask_wasm::DevServer),
+    Start(xtask_wasm::DevServer),
 }
 
 #[derive(clap::Parser)]
@@ -32,12 +32,9 @@ fn main() -> Result<()> {
         .filter(Some("xtask"), opt.log_level)
         .init();
 
-    let mut build_command = process::Command::new("cargo");
-    build_command.args(["xtask", "build"]);
-
     match opt.cmd {
-        Command::Build(arg) => {
-            log::info!("Starting to build");
+        Command::Dist(arg) => {
+            log::info!("Generating package...");
             let build_result = arg
                 .base
                 .static_dir_path("webapp/static")
@@ -50,14 +47,14 @@ fn main() -> Result<()> {
             }
         }
         Command::Watch(arg) => {
-            log::info!("Starting to watch");
+            log::info!("Watching for changes and check...");
+            let mut build_command = process::Command::new("cargo");
+            build_command.arg("check");
             arg.run(build_command)?;
         }
-        Command::Serve(arg) => {
-            log::info!("Starting to serve");
-            build_command.arg("--optimize");
-            arg.command(build_command)
-                .start(xtask_wasm::default_dist_dir(false))?;
+        Command::Start(arg) => {
+            log::info!("Starting to development server...");
+            arg.arg("dist").start(xtask_wasm::default_dist_dir(false))?;
         }
     }
 
