@@ -91,8 +91,8 @@ xtask-wasm = "0.1.0"
 This library gives you 3 [clap](https://docs.rs/clap/latest/clap/) structs:
 
 * [`Dist`](https://docs.rs/xtask-wasm/latest/xtask_wasm/dist/struct.Dist.html) - Generate a distributed package for Wasm
-* [`Watch`](https://docs.rs/xtask-watch/latest/xtask_watch/struct.Watch.html)
-    - Re-run a given command when changes are detected
+* [`Watch`](https://docs.rs/xtask-watch/latest/xtask_watch/struct.Watch.html) -
+    Re-run a given command when changes are detected
     (using [xtask-watch](https://github.com/rustminded/xtask-watch))
 * [`DevServer`](https://docs.rs/xtask-wasm/latest/xtask_wasm/dev_server/struct.DevServer.html) - Serve your project at a given IP address.
 
@@ -107,59 +107,60 @@ development server. This is under the feature `run-example`.
 
 # Examples
 
-* A basic implementation could look like this:
-    ```rust
-    use std::process::Command;
-    use xtask_wasm::{anyhow::Result, clap};
+## A basic implementation:
 
-    #[derive(clap::Parser)]
-    enum Opt {
-        Dist(xtask_wasm::Dist),
-        Watch(xtask_wasm::Watch),
-        Serve(xtask_wasm::DevServer),
-    }
+```rust
+use std::process::Command;
+use xtask_wasm::{anyhow::Result, clap};
+
+#[derive(clap::Parser)]
+enum Opt {
+    Dist(xtask_wasm::Dist),
+    Watch(xtask_wasm::Watch),
+    Serve(xtask_wasm::DevServer),
+}
 
 
-    fn main() -> Result<()> {
-        let opt: Opt = clap::Parser::parse();
+fn main() -> Result<()> {
+    let opt: Opt = clap::Parser::parse();
 
-        match opt {
-            Opt::Dist(dist) => {
-                let dist = dist
-                    .dist_dir_path("dist")
-                    .static_dir_path("project/static")
-                    .app_name("project")
-                    .run_in_workspace(true)
-                    .run("project")?;
+    match opt {
+        Opt::Dist(dist) => {
+            log::info!("Generating package...");
 
-                log::info!("Built at {}", dist.dist_dir.display());
+            let dist = dist
+                .dist_dir_path("dist")
+                .static_dir_path("project/static")
+                .app_name("project")
+                .run_in_workspace(true)
+                .run("project")?;
 
-            }
-            Opt::Watch(watch) => {
-                let mut command = Command::new("cargo");
-                command.arg("check");
-
-                log::info!("Starting to watch");
-                watch.run(command)?;
-            }
-            Opt::Serve(mut dev_server) => {
-                let mut command = Command::new("cargo");
-                command.args(["xtask", "dist"]);
-
-                log::info!("Starting the dev server");
-                dev_server.command(command).start("dist")?;
-            }
+            log::info!("Built at {}", dist.dist_dir.display());
         }
+        Opt::Watch(watch) => {
+            log::info("Watching for changes and check...");
 
-        Ok(())
+            let mut command = Command::new("cargo");
+            command.arg("check");
+
+            watch.run(command)?;
+        }
+        Opt::Serve(mut dev_server) => {
+            log::info!("Starting the development server...");
+            dev_server.arg("dist").start(default_dist_dir(false))?;
+        }
     }
-    ```
 
-* [`examples/demo`](https://github.com/rustminded/xtask-wasm/tree/main/examples/demo)
-    provides an implementation of xtask-wasm to generate the web app package,
-    an "hello world" app using [Yew](https://yew.rs/). This example
-    demonstrates a simple directory layout and a customized dist process
-    that use the `wasm-opt` feature.
+    Ok(())
+}
+```
+
+## [`examples/demo`](https://github.com/rustminded/xtask-wasm/tree/main/examples/demo):
+
+Provides an implementation of xtask-wasm to generate the web app package,
+an "hello world" app using [Yew](https://yew.rs/). This example
+demonstrates a simple directory layout and a customized dist process
+that use the `wasm-opt` feature.
 
 The available subcommands are:
 
@@ -185,31 +186,33 @@ The available subcommands are:
     cargo xtask serve
     ```
 
-* Make an example that will run the dev server:
-    * In the file `examples/my_example.rs`, create your example:
-        ```rust
-        use wasm_bindgen::prelude::*;
+## An example that will run the dev server using the `run-example` feature:
+```rust
+* In the file `examples/my_example.rs`, create your example:
+    ```rust,ignore
+    use wasm_bindgen::prelude::*;
 
-        #[wasm_bindgen]
-        extern "C" {
-            #[wasm_bindgen(js_namespace = console)]
-            fn log(message: &str);
-        }
+    #[wasm_bindgen]
+    extern "C" {
+        #[wasm_bindgen(js_namespace = console)]
+        fn log(message: &str);
+    }
 
-        #[xtask_wasm::run_example]
-        fn run_app() {
-            log("Hello World!");
-        }
-        ```
-    * In the file `Cargo.toml`:
-        ```toml
-        [dev-dependencies]
-        xtask-wasm = { version = "*", features = ["run-example"] }
-        ```
-    * Then to run the dev server with the example:
-        ```console
-        cargo run --example my_example.rs
-        ```
+    #[xtask_wasm::run_example]
+    fn run_app() {
+        log("Hello World!");
+    }
+    ```
+* In the file `Cargo.toml`:
+    ```toml
+    [dev-dependencies]
+    xtask-wasm = { version = "*", features = ["run-example"] }
+    ```
+* Then to run the dev server with the example:
+    ```console
+    cargo run --example my_example.rs
+    ```
+```
 
 Additional flags can be found using `cargo xtask <subcommand> --help`
 
@@ -217,5 +220,7 @@ Additional flags can be found using `cargo xtask <subcommand> --help`
 
 * `wasm-opt`: enable the [`WasmOpt`](https://docs.rs/xtask-wasm/latest/xtask_wasm/wasm_opt/struct.WasmOpt.html) struct that helps downloading
     and using [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools) very easily.
+* `run-example`: a helper to run examples in the `examples/` directory using a development
+    server.
 
 <!-- cargo-rdme end -->
