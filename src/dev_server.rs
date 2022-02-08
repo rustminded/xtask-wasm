@@ -4,7 +4,7 @@ use crate::{
     clap, Watch,
 };
 use std::{
-    env, ffi, fs,
+    ffi, fs,
     io::{prelude::*, BufReader},
     net::{IpAddr, SocketAddr, TcpListener, TcpStream},
     path::Path,
@@ -105,7 +105,7 @@ impl DevServer {
 
     fn set_xtask_command(&mut self) -> &mut process::Command {
         if self.command.is_none() {
-            self.command = Some(process::Command::new(env::args_os().next().unwrap()));
+            self.command = Some(crate::xtask_command());
         }
         self.command.as_mut().unwrap()
     }
