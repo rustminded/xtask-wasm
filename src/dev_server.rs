@@ -41,7 +41,7 @@ use std::{
 ///
 ///     match opt {
 ///         Opt::Start(mut dev_server) => {
-///             log::info!("Starting the dev server");
+///             log::info!("Starting the development server...");
 ///             dev_server.arg("dist").start(default_dist_dir(false))?;
 ///         }
 ///         Opt::Dist => todo!("build project"),

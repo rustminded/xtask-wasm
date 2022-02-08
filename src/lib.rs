@@ -109,13 +109,13 @@
 //!
 //! ```rust,no_run
 //! use std::process::Command;
-//! use xtask_wasm::{anyhow::Result, clap};
+//! use xtask_wasm::{anyhow::Result, clap, default_dist_dir};
 //!
 //! #[derive(clap::Parser)]
 //! enum Opt {
 //!     Dist(xtask_wasm::Dist),
 //!     Watch(xtask_wasm::Watch),
-//!     Serve(xtask_wasm::DevServer),
+//!     Start(xtask_wasm::DevServer),
 //! }
 //!
 //!
@@ -136,15 +136,16 @@
 //!             log::info!("Built at {}", dist.dist_dir.display());
 //!         }
 //!         Opt::Watch(watch) => {
-//!             log::info("Watching for changes and check...");
+//!             log::info!("Watching for changes and check...");
 //!
 //!             let mut command = Command::new("cargo");
 //!             command.arg("check");
 //!
 //!             watch.run(command)?;
 //!         }
-//!         Opt::Serve(mut dev_server) => {
+//!         Opt::Start(mut dev_server) => {
 //!             log::info!("Starting the development server...");
+//!
 //!             dev_server.arg("dist").start(default_dist_dir(false))?;
 //!         }
 //!     }
@@ -155,8 +156,8 @@
 //!
 //! ## [`examples/demo`](https://github.com/rustminded/xtask-wasm/tree/main/examples/demo):
 //!
-//! Provides an implementation of xtask-wasm to generate the web app package,
-//! an "hello world" app using [Yew](https://yew.rs/). This example
+//! Provides a basic implementation of xtask-wasm to generate the web app
+//! package, an "hello world" app using [Yew](https://yew.rs/). This example
 //! demonstrates a simple directory layout and a customized dist process
 //! that use the `wasm-opt` feature.
 //!
@@ -185,30 +186,31 @@
 //!     ```
 //!
 //! ## An example that will run the dev server using the `run-example` feature:
-//!     * In the file `examples/my_example.rs`, create your example:
-//!         ```rust,ignore
-//!         use wasm_bindgen::prelude::*;
 //!
-//!         #[wasm_bindgen]
-//!         extern "C" {
-//!             #[wasm_bindgen(js_namespace = console)]
-//!             fn log(message: &str);
-//!         }
+//! * In the file `examples/my_example.rs`, create your example:
+//!     ```rust,ignore
+//!     use wasm_bindgen::prelude::*;
 //!
-//!         #[xtask_wasm::run_example]
-//!         fn run_app() {
-//!             log("Hello World!");
-//!         }
-//!         ```
-//!     * In the file `Cargo.toml`:
-//!         ```toml
-//!         [dev-dependencies]
-//!         xtask-wasm = { version = "*", features = ["run-example"] }
-//!         ```
-//!     * Then to run the dev server with the example:
-//!         ```console
-//!         cargo run --example my_example.rs
-//!         ```
+//!     #[wasm_bindgen]
+//!     extern "C" {
+//!         #[wasm_bindgen(js_namespace = console)]
+//!         fn log(message: &str);
+//!     }
+//!
+//!     #[xtask_wasm::run_example]
+//!     fn run_app() {
+//!         log("Hello World!");
+//!     }
+//!     ```
+//! * In the file `Cargo.toml`:
+//!     ```toml
+//!     [dev-dependencies]
+//!     xtask-wasm = { version = "*", features = ["run-example"] }
+//!     ```
+//! * Then to run the dev server with the example:
+//!     ```console
+//!     cargo run --example my_example.rs
+//!     ```
 //!
 //! Additional flags can be found using `cargo xtask <subcommand> --help`
 //!
