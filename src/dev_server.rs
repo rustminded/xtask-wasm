@@ -41,11 +41,8 @@ use std::{
 ///
 ///     match opt {
 ///         Opt::Start(mut dev_server) => {
-///             let mut command = process::Command::new("cargo");
-///             command.args(["xtask", "dist"]);
-///
 ///             log::info!("Starting the dev server");
-///             dev_server.command(command).start(default_dist_dir(false))?;
+///             dev_server.arg("dist").start(default_dist_dir(false))?;
 ///         }
 ///         Opt::Dist => todo!("build project"),
 ///     }
