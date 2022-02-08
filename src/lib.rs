@@ -213,3 +213,14 @@ pub fn default_build_command() -> Command {
     command.args(["build", "--target", "wasm32-unknown-unknown"]);
     command
 }
+
+#[cfg(feature = "run-example")]
+pub use console_error_panic_hook;
+#[cfg(feature = "run-example")]
+pub use env_logger;
+#[cfg(feature = "run-example")]
+pub use log;
+#[cfg(feature = "run-example")]
+pub use wasm_bindgen;
+#[cfg(feature = "run-example")]
+pub use xtask_wasm_run_example::*;
