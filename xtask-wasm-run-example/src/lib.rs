@@ -88,8 +88,8 @@ impl RunExample {
                     .init();
 
                 let cli: Cli = clap::Parser::parse();
-                let mut dist_command = std::process::Command::new("cargo");
-                dist_command.args(["run", "--example", module_path!(), "--", "dist"]);
+                let mut dist_command = std::process::Command::new(std::env::args().next().unwrap());
+                dist_command.arg("dist");
 
                 match cli.command {
                     Some(Command::Dist(mut dist)) => {
