@@ -52,12 +52,6 @@ with two packages: your project's package and the xtask package.
     xtask = "run --package xtask --"
     ```
 
-    Now you can run your xtask package using:
-
-    ```console
-    cargo xtask
-    ```
-
 The directory layout should look like this:
 
 ```console
@@ -73,6 +67,12 @@ project
     ├── Cargo.toml
     └── src
         └── main.rs
+```
+
+And now you can run your xtask package using:
+
+```console
+cargo xtask
 ```
 
 You can find more informations about xtask
