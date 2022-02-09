@@ -35,25 +35,30 @@ fn main() -> Result<()> {
     match opt.cmd {
         Command::Dist(arg) => {
             log::info!("Generating package...");
-            let build_result = arg
+
+            let dist_result = arg
                 .base
                 .static_dir_path("webapp/static")
                 .app_name("web_app")
                 .run("webapp")?;
+
             if arg.optimize {
                 xtask_wasm::WasmOpt::level(1)
                     .shrink(2)
-                    .optimize(build_result.wasm)?;
+                    .optimize(dist_result.wasm)?;
             }
         }
         Command::Watch(arg) => {
             log::info!("Watching for changes and check...");
+
             let mut command = process::Command::new("cargo");
             command.arg("check");
+
             arg.run(command)?;
         }
         Command::Start(arg) => {
-            log::info!("Starting to development server...");
+            log::info!("Starting the development server...");
+
             arg.arg("dist").start(xtask_wasm::default_dist_dir(false))?;
         }
     }

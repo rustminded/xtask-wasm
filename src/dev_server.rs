@@ -13,12 +13,10 @@ use std::{
 
 /// A simple HTTP server useful during development.
 ///
-/// It can watch the source code for changes and restart a provided build
-/// command.
+/// It can watch the source code for changes and restart a provided build command.
 ///
-/// Get the files at `watch_path` and serve them at a given IP address
-/// (127.0.0.1:8000 by default). An optional command can be provided to restart
-/// the build when changes are detected.
+/// Get the files at `watch_path` and serve them at a given IP address (127.0.0.1:8000 by default).
+/// An optional command can be provided to restart the build when changes are detected.
 ///
 /// # Usage
 ///
@@ -51,9 +49,9 @@ use std::{
 /// }
 /// ```
 ///
-/// Add a `start` subcommand that will run `cargo xtask dist`, watching for
-/// changes in the workspace and serve the files in the default dist directory
-/// (`target/debug/dist` for non-release) at a given IP address.
+/// Add a `start` subcommand that will run `cargo xtask dist`, watching for changes in the workspace
+/// and serve the files in the default dist directory (`target/debug/dist` for non-release) at a
+/// given IP address.
 #[non_exhaustive]
 #[derive(Debug, clap::Parser)]
 pub struct DevServer {
@@ -103,17 +101,9 @@ impl DevServer {
         self
     }
 
-    fn set_xtask_command(&mut self) -> &mut process::Command {
-        if self.command.is_none() {
-            self.command = Some(crate::xtask_command());
-        }
-        self.command.as_mut().unwrap()
-    }
-
     /// Start the server, serving the files at `served_path`.
     ///
-    /// [`crate::default_dist_dir`] should be used to get the dist directory that needs
-    /// to be served.
+    /// [`crate::default_dist_dir`] should be used to get the dist directory that needs to be served.
     pub fn start(self, served_path: impl AsRef<Path>) -> Result<()> {
         let watch_process = if let Some(command) = self.command {
             let watch = self.watch.exclude_path(&served_path);
@@ -135,6 +125,13 @@ impl DevServer {
         }
 
         Ok(())
+    }
+
+    fn set_xtask_command(&mut self) -> &mut process::Command {
+        if self.command.is_none() {
+            self.command = Some(crate::xtask_command());
+        }
+        self.command.as_mut().unwrap()
     }
 }
 

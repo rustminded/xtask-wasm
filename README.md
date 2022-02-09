@@ -8,7 +8,8 @@ external tooling like [`wasm-pack`](https://github.com/rustwasm/wasm-pack).
 # Minimum Supported Rust Version
 
 This crate requires **Rust 1.58.1** at a minimum because there is a security
-issue on a function we use in std in previous version.
+issue on a function we use from std in previous version
+(see [cve-2022-21658](https://groups.google.com/g/rustlang-security-announcements/c/R1fZFDhnJVQ)).
 
 # Setup
 
@@ -18,46 +19,40 @@ with two packages: your project's package and the xtask package.
 ## Create a project using xtask
 
 * Create a new directory that will contains the two package of your project
-    and the workspace's `Cargo.toml`
-    ```console
-    mkdir my-project
-    cd my-project
-    touch Cargo.toml
-    ```
+  and the workspace's `Cargo.toml`:
+
+  ```console
+  mkdir my-project
+  cd my-project
+  touch Cargo.toml
+  ```
+
 * Create the project package and the xtask package using `cargo new`:
-    ```console
-    cargo new my-project
-    cargo new xtask
-    ```
+
+  ```console
+  cargo new my-project
+  cargo new xtask
+  ```
 
 * Open the workspace's `Cargo.toml` and add the following:
-    ```toml
-    [workspace]
-    members = [
-        "my-project",
-        "xtask",
-    ]
-    ```
 
-## Add a command alias
+  ```toml
+  [workspace]
+  default-members = ["my-project"]
+  members = [
+      "my-project",
+      "xtask",
+  ]
+  ```
 
-Create a `.cargo/config.toml` file and add the following content:
+* Create a `.cargo/config.toml` file and add the following content:
 
-```toml
-[alias]
-xtask = "run --package xtask --"
-```
+  ```toml
+  [alias]
+  xtask = "run --package xtask --"
+  ```
 
-Now you can run your xtask package using:
-
-```console
-cargo xtask
-```
-
-## Directory layout example
-
-If the name of the project package is `my-project`, the directory layout should
-look like this:
+The directory layout should look like this:
 
 ```console
 project
@@ -74,8 +69,14 @@ project
         └── main.rs
 ```
 
+And now you can run your xtask package using:
+
+```console
+cargo xtask
+```
+
 You can find more informations about xtask
-[here](https://github.com/cargo-xtask/).
+[here](https://github.com/matklad/cargo-xtask/).
 
 ## Use xtask-wasm as a dependency
 
@@ -88,12 +89,12 @@ xtask-wasm = "0.1.0"
 
 # Usage
 
-This library gives you 3 [clap](https://docs.rs/clap/latest/clap/) structs:
+This library gives you three structs:
 
-* [`Dist`](https://docs.rs/xtask-wasm/latest/xtask_wasm/dist/struct.Dist.html) - Generate a distributed package for Wasm
+* [`Dist`](https://docs.rs/xtask-wasm/latest/xtask_wasm/dist/struct.Dist.html) - Generate a distributed package for Wasm.
 * [`Watch`](https://docs.rs/xtask-watch/latest/xtask_watch/struct.Watch.html) -
-    Re-run a given command when changes are detected
-    (using [xtask-watch](https://github.com/rustminded/xtask-watch))
+  Re-run a given command when changes are detected
+  (using [xtask-watch](https://github.com/rustminded/xtask-watch)).
 * [`DevServer`](https://docs.rs/xtask-wasm/latest/xtask_wasm/dev_server/struct.DevServer.html) - Serve your project at a given IP address.
 
 They all implement [`clap::Parser`](https://docs.rs/clap/3.0.14/clap/trait.Parser.html)
@@ -102,12 +103,9 @@ flexible enough to be customized for most use-cases.
 
 You can find further information for each type at their documentation level.
 
-This library also provides a helper to run examples in the `examples/` directory using a
-development server. This is under the feature `run-example`.
-
 # Examples
 
-## A basic implementation:
+## A basic implementation
 
 ```rust
 use std::process::Command;
@@ -128,14 +126,12 @@ fn main() -> Result<()> {
         Opt::Dist(dist) => {
             log::info!("Generating package...");
 
-            let dist = dist
+            dist
                 .dist_dir_path("dist")
-                .static_dir_path("project/static")
-                .app_name("project")
+                .static_dir_path("my-project/static")
+                .app_name("my-project")
                 .run_in_workspace(true)
-                .run("project")?;
-
-            log::info!("Built at {}", dist.dist_dir.display());
+                .run("my-project")?;
         }
         Opt::Watch(watch) => {
             log::info!("Watching for changes and check...");
@@ -156,7 +152,7 @@ fn main() -> Result<()> {
 }
 ```
 
-## [`examples/demo`](https://github.com/rustminded/xtask-wasm/tree/main/examples/demo):
+## [`examples/demo`](https://github.com/rustminded/xtask-wasm/tree/main/examples/demo)
 
 Provides a basic implementation of xtask-wasm to generate the web app
 package, an "hello world" app using [Yew](https://yew.rs/). This example
@@ -166,61 +162,46 @@ that use the `wasm-opt` feature.
 The available subcommands are:
 
 * Build the web app package.
+
+  ```console
+  cargo xtask dist
+  ```
+  * Build the web app package, download the [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools)
+    binary and optimize the Wasm generated by the dist process.
+
     ```console
-    cargo xtask dist
+    cargo xtask dist --optimize
     ```
-    * Build the web app package, download the
-        [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools) binary
-        and optimize the Wasm generated by the dist process.
-        ```console
-        cargo xtask dist --optimize
-        ```
 
 * Build the web app package and watch for changes in the workspace root.
-    ```console
-    cargo xtask watch
-    ```
+
+  ```console
+  cargo xtask watch
+  ```
 
 * Serve an optimized web app dist on `127.0.0.1:8000` and watch for
-    changes in the workspace root.
-    ```console
-    cargo xtask serve
-    ```
+  changes in the workspace root.
 
-## An example that will run the dev server using the `run-example` feature:
+  ```console
+  cargo xtask start
+  ```
 
-* In the file `examples/my_example.rs`, create your example:
-    ```rust
-    use wasm_bindgen::prelude::*;
+Additional flags can be found using `cargo xtask <subcommand> --help`.
 
-    #[wasm_bindgen]
-    extern "C" {
-        #[wasm_bindgen(js_namespace = console)]
-        fn log(message: &str);
-    }
+This example also demonstrates the use of the `run-example` feature that allows you to use the
+following:
 
-    #[xtask_wasm::run_example]
-    fn run_app() {
-        log("Hello World!");
-    }
-    ```
-* In the file `Cargo.toml`:
-    ```toml
-    [dev-dependencies]
-    xtask-wasm = { version = "*", features = ["run-example"] }
-    ```
-* Then to run the dev server with the example:
-    ```console
-    cargo run --example my_example.rs
-    ```
+```console
+cargo run --example run_example
+```
 
-Additional flags can be found using `cargo xtask <subcommand> --help`
+This command will run the code in `examples/run_example` using the development server.
 
 # Features
 
 * `wasm-opt`: enable the [`WasmOpt`](https://docs.rs/xtask-wasm/latest/xtask_wasm/wasm_opt/struct.WasmOpt.html) struct that helps downloading
     and using [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools) very easily.
-* `run-example`: a helper to run examples in the `examples/` directory using a development
+* `run-example`: a helper to run examples from `examples/` directory using a development
     server.
 
 <!-- cargo-rdme end -->
