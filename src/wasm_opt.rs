@@ -55,9 +55,13 @@ fn download_wasm_opt() -> Result<&'static Path> {
 /// # Usage
 ///
 /// ```rust,no_run
+/// # use xtask_wasm::{anyhow::Result, WasmOpt};
+/// # fn main() -> Result<()> {
 /// WasmOpt::level(1)
 ///     .shrink(2)
 ///     .optimize("app.wasm")?;
+/// # Ok(())
+/// # }
 /// ```
 pub struct WasmOpt {
     /// How much to focus on optimizing code.

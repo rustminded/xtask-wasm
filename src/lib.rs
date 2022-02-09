@@ -212,23 +212,26 @@ pub use xtask_watch::{
 
 mod dev_server;
 mod dist;
+
 #[cfg(feature = "wasm-opt")]
 mod wasm_opt;
 
-#[cfg(feature = "run-example")]
-pub use console_error_panic_hook;
 pub use dev_server::*;
 pub use dist::*;
+
+#[cfg(feature = "run-example")]
+pub use console_error_panic_hook;
 #[cfg(feature = "run-example")]
 pub use env_logger;
 #[cfg(feature = "run-example")]
 pub use log;
 #[cfg(feature = "run-example")]
 pub use wasm_bindgen;
-#[cfg(feature = "wasm-opt")]
-pub use wasm_opt::*;
 #[cfg(feature = "run-example")]
 pub use xtask_wasm_run_example::*;
+
+#[cfg(feature = "wasm-opt")]
+pub use wasm_opt::*;
 
 /// Get the default command for the build in the dist process.
 ///
