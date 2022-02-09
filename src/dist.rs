@@ -31,7 +31,6 @@ use wasm_bindgen_cli_support::Bindgen;
 ///                 .app_name("my-project")
 ///                 .run_in_workspace(true)
 ///                 .run("my-project")?;
-///
 ///         }
 ///     }
 ///

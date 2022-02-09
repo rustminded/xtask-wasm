@@ -183,42 +183,16 @@
 //!     cargo xtask start
 //!     ```
 //!
-//! ## An example using the `run-example` feature
-//!
-//! This library also provides a helper to run examples from the `examples/` directory using a
-//! development server. This is under the feature `run-example`.
-//!
-//! * In the file `examples/my_example.rs`, create your example:
-//!
-//!     ```rust,ignore
-//!     use wasm_bindgen::prelude::*;
-//!
-//!     #[wasm_bindgen]
-//!     extern "C" {
-//!         #[wasm_bindgen(js_namespace = console)]
-//!         fn log(message: &str);
-//!     }
-//!
-//!     #[xtask_wasm::run_example]
-//!     fn run_app() {
-//!         log("Hello World!");
-//!     }
-//!     ```
-//!
-//! * In the file `Cargo.toml`:
-//!
-//!     ```toml
-//!     [dev-dependencies]
-//!     xtask-wasm = { version = "*", features = ["run-example"] }
-//!     ```
-//!
-//! * Then to run the dev server with the example:
-//!
-//!     ```console
-//!     cargo run --example my_example.rs
-//!     ```
-//!
 //! Additional flags can be found using `cargo xtask <subcommand> --help`.
+//!
+//! This example also demonstrates the use of the `run-example` feature that allows you to use the
+//! following:
+//!
+//! ```console
+//! cargo run --example run_example
+//! ```
+//!
+//! This command will run the code in `examples/run_example` using the development server.
 //!
 //! # Features
 //!
