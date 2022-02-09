@@ -1,3 +1,5 @@
+#![deny(missing_docs)]
+
 //! This crate aims to provide an easy and customizable way to help you build
 //! Wasm projects by extending them with custom subcommands, based on the
 //! [`xtask` concept](https://github.com/matklad/cargo-xtask/), instead of using
@@ -7,6 +9,7 @@
 //!
 //! This crate requires **Rust 1.58.1** at a minimum because there is a security
 //! issue on a function we use in std in previous version.
+//! (see # [cve-2022-21658](https://groups.google.com/g/rustlang-security-announcements/c/R1fZFDhnJVQ)
 //!
 //! # Setup
 //!
@@ -16,7 +19,7 @@
 //! ## Create a project using xtask
 //!
 //! * Create a new directory that will contains the two package of your project
-//!     and the workspace's `Cargo.toml`
+//!     and the workspace's `Cargo.toml`:
 //!     ```console
 //!     mkdir my-project
 //!     cd my-project
@@ -88,9 +91,9 @@
 //!
 //! This library gives you 3 [clap](https://docs.rs/clap/latest/clap/) structs:
 //!
-//! * [`Dist`](crate::dist::Dist) - Generate a distributed package for Wasm
+//! * [`Dist`](crate::dist::Dist) - Generate a distributed package for Wasm.
 //! * [`Watch`](https://docs.rs/xtask-watch/latest/xtask_watch/struct.Watch.html) -
-//!     Re-run a given command when changes are detected
+//!     Re-run a given command when changes are detected.
 //!     (using [xtask-watch](https://github.com/rustminded/xtask-watch))
 //! * [`DevServer`](crate::dev_server::DevServer) - Serve your project at a given IP address.
 //!
@@ -102,7 +105,7 @@
 //!
 //! # Examples
 //!
-//! ## A basic implementation:
+//! ## A basic implementation
 //!
 //! ```rust,no_run
 //! use std::process::Command;
@@ -125,10 +128,10 @@
 //!
 //!             let dist = dist
 //!                 .dist_dir_path("dist")
-//!                 .static_dir_path("project/static")
-//!                 .app_name("project")
+//!                 .static_dir_path("my-project/static")
+//!                 .app_name("my-project")
 //!                 .run_in_workspace(true)
-//!                 .run("project")?;
+//!                 .run("my-project")?;
 //!
 //!             log::info!("Built at {}", dist.dist_dir.display());
 //!         }
@@ -151,7 +154,7 @@
 //! }
 //! ```
 //!
-//! ## [`examples/demo`](https://github.com/rustminded/xtask-wasm/tree/main/examples/demo):
+//! ## [`examples/demo`](https://github.com/rustminded/xtask-wasm/tree/main/examples/demo)
 //!
 //! Provides a basic implementation of xtask-wasm to generate the web app
 //! package, an "hello world" app using [Yew](https://yew.rs/). This example
@@ -182,7 +185,7 @@
 //!     cargo xtask serve
 //!     ```
 //!
-//! ## An example using the `run-example` feature:
+//! ## An example using the `run-example` feature
 //!
 //! This library also provides a helper to run examples from the `examples/` directory using a
 //! development server. This is under the feature `run-example`.
@@ -212,7 +215,7 @@
 //!     cargo run --example my_example.rs
 //!     ```
 //!
-//! Additional flags can be found using `cargo xtask <subcommand> --help`
+//! Additional flags can be found using `cargo xtask <subcommand> --help`.
 //!
 //! # Features
 //!
@@ -220,8 +223,6 @@
 //!     and using [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools) very easily.
 //! * `run-example`: a helper to run examples from `examples/` directory using a development
 //!     server.
-
-#![deny(missing_docs)]
 
 use std::process::Command;
 
@@ -234,10 +235,20 @@ mod dist;
 #[cfg(feature = "wasm-opt")]
 mod wasm_opt;
 
+#[cfg(feature = "run-example")]
+pub use console_error_panic_hook;
 pub use dev_server::*;
 pub use dist::*;
+#[cfg(feature = "run-example")]
+pub use env_logger;
+#[cfg(feature = "run-example")]
+pub use log;
+#[cfg(feature = "run-example")]
+pub use wasm_bindgen;
 #[cfg(feature = "wasm-opt")]
 pub use wasm_opt::*;
+#[cfg(feature = "run-example")]
+pub use xtask_wasm_run_example::*;
 
 /// Get the default command for the build in the dist process.
 ///
@@ -247,14 +258,3 @@ pub fn default_build_command() -> Command {
     command.args(["build", "--target", "wasm32-unknown-unknown"]);
     command
 }
-
-#[cfg(feature = "run-example")]
-pub use console_error_panic_hook;
-#[cfg(feature = "run-example")]
-pub use env_logger;
-#[cfg(feature = "run-example")]
-pub use log;
-#[cfg(feature = "run-example")]
-pub use wasm_bindgen;
-#[cfg(feature = "run-example")]
-pub use xtask_wasm_run_example::*;

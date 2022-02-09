@@ -103,13 +103,6 @@ impl DevServer {
         self
     }
 
-    fn set_xtask_command(&mut self) -> &mut process::Command {
-        if self.command.is_none() {
-            self.command = Some(crate::xtask_command());
-        }
-        self.command.as_mut().unwrap()
-    }
-
     /// Start the server, serving the files at `served_path`.
     ///
     /// [`crate::default_dist_dir`] should be used to get the dist directory that needs
@@ -135,6 +128,13 @@ impl DevServer {
         }
 
         Ok(())
+    }
+
+    fn set_xtask_command(&mut self) -> &mut process::Command {
+        if self.command.is_none() {
+            self.command = Some(crate::xtask_command());
+        }
+        self.command.as_mut().unwrap()
     }
 }
 

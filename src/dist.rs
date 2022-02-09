@@ -6,7 +6,7 @@ use lazy_static::lazy_static;
 use std::{fs, path::PathBuf, process};
 use wasm_bindgen_cli_support::Bindgen;
 
-/// A helper to generate the distributed package
+/// A helper to generate the distributed package.
 ///
 /// # Usage
 ///
