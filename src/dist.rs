@@ -26,13 +26,12 @@ use wasm_bindgen_cli_support::Bindgen;
 ///         Opt::Dist(dist) => {
 ///             log::info!("Generating package...");
 ///
-///             let dist = dist
+///             dist
 ///                 .static_dir_path("my-project/static")
 ///                 .app_name("my-project")
 ///                 .run_in_workspace(true)
 ///                 .run("my-project")?;
 ///
-///             log::info!("Built at {}", dist.dist_dir.display());
 ///         }
 ///     }
 ///
