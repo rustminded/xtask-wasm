@@ -102,9 +102,6 @@ flexible enough to be customized for most use-cases.
 
 You can find further information for each type at their documentation level.
 
-This library also provides a helper to run examples in the `examples/` directory using a
-development server. This is under the feature `run-example`.
-
 # Examples
 
 ## A basic implementation:
@@ -187,7 +184,10 @@ The available subcommands are:
     cargo xtask serve
     ```
 
-## An example that will run the dev server using the `run-example` feature:
+## An example using the `run-example` feature:
+
+This library also provides a helper to run examples from the `examples/` directory using a
+development server. This is under the feature `run-example`.
 
 * In the file `examples/my_example.rs`, create your example:
     ```rust
@@ -220,7 +220,7 @@ Additional flags can be found using `cargo xtask <subcommand> --help`
 
 * `wasm-opt`: enable the [`WasmOpt`](https://docs.rs/xtask-wasm/latest/xtask_wasm/wasm_opt/struct.WasmOpt.html) struct that helps downloading
     and using [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools) very easily.
-* `run-example`: a helper to run examples in the `examples/` directory using a development
+* `run-example`: a helper to run examples from `examples/` directory using a development
     server.
 
 <!-- cargo-rdme end -->
