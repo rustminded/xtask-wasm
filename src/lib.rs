@@ -9,7 +9,7 @@
 //!
 //! This crate requires **Rust 1.58.1** at a minimum because there is a security
 //! issue on a function we use in std in previous version.
-//! (see # [cve-2022-21658](https://groups.google.com/g/rustlang-security-announcements/c/R1fZFDhnJVQ)
+//! (see [cve-2022-21658](https://groups.google.com/g/rustlang-security-announcements/c/R1fZFDhnJVQ))
 //!
 //! # Setup
 //!
