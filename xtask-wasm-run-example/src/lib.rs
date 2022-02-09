@@ -9,27 +9,28 @@ use syn::{parse, parse_macro_input};
 ///
 /// * In the file `examples/my_example.rs`, create your example:
 ///
-///     ```rust,ignore
-///     use wasm_bindgen::prelude::*;
+///   ```rust,ignore
+///   use wasm_bindgen::prelude::*;
 ///
-///     #[wasm_bindgen]
-///     extern "C" {
-///         #[wasm_bindgen(js_namespace = console)]
-///         fn log(message: &str);
-///     }
+///   #[wasm_bindgen]
+///   extern "C" {
+///       #[wasm_bindgen(js_namespace = console)]
+///       fn log(message: &str);
+///   }
 ///
-///     #[xtask_wasm::run_example]
-///     fn run_app() {
-///         log::("Hello World!");
-///     }
-///     ```
+///   #[xtask_wasm::run_example]
+///   fn run_app() {
+///       log::("Hello World!");
+///   }
+///   ```
 ///
 /// * In the project's `Cargo.toml`:
 ///
-///     ```toml
-///     [dev-dependencies]
-///     xtask-wasm = { version = "*", features = ["run-example"] }
-///     ```
+///   ```toml
+///   [dev-dependencies]
+///   xtask-wasm = { version = "*", features = ["run-example"] }
+///   ```
+///
 /// * Then to run the development server with the example:
 ///
 ///     ```console
