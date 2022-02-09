@@ -54,7 +54,7 @@ fn download_wasm_opt() -> Result<&'static Path> {
 ///
 /// # Usage
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// WasmOpt::level(1)
 ///     .shrink(2)
 ///     .optimize("app.wasm")?;
