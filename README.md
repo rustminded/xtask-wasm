@@ -6,7 +6,7 @@
 
 [crates-badge]: https://crates.io/crates/xtask-wasm/badge.svg
 [docs-badge]: https://docs.rs/xtask-wasm/badge.svg
-[actions-badge]: https://github.com/rustminded/xtask-wasm/workflows/CI/badge.svg
+[actions-badge]: https://github.com/rustminded/xtask-wasm/workflows/main.yml/badge.svg
 
 <!-- cargo-rdme start -->
 
