@@ -1,10 +1,13 @@
 # xtask-wasm
 
 [![actions status][actions-badge]][actions-url]
+[![crates.io][crates-badge]][crates-url]
 [![documentation][docs-badge]][docs-url]
 
 [actions-badge]: https://github.com/rustminded/xtask-wasm/workflows/main/badge.svg
 [actions-url]: https://github.com/rustminded/xtask-wasm/actions
+[crates-badge]: https://crates.io/crates/xtask-wasm/badge.svg
+[crates-url]: https://crates.io/crates/xtask-wasm
 [docs-badge]: https://docs.rs/xtask-wasm/badge.svg
 [docs-url]: https://docs.rs/xtask-wasm/
 
