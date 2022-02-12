@@ -1,5 +1,15 @@
 # xtask-wasm
 
+[![Crates.io][crates-badge]][crates-url]
+[![Documentation][docs-badge]][docs-url]
+![Build Status][actions-badge]
+
+[crates-badge]:
+[crates-url]: https://crates.io/crates/xtask-wasm
+[docs-badge]: https://docs.rs/tracing/badge.svg
+[docs-url]: https://docs.rs/xtask-wasm
+[actions-badge]: https://github.com/rustminded/xtask-wasm/workflows/CI/badge.svg
+
 <!-- cargo-rdme start -->
 
 This crate aims to provide an easy and customizable way to help you build
