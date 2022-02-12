@@ -4,9 +4,6 @@
 ![documentation](https://crates.io/crates/xtask-wasm/badge.svg)
 ![build status](https://github.com/rustminded/xtask-wasm/workflows/main.yml/badge.svg)
 
-
-[crates-badge]: [docs-badge]: https://docs.rs/xtask-wasm/badge.svg
-
 <!-- cargo-rdme start -->
 
 This crate aims to provide an easy and customizable way to help you build
