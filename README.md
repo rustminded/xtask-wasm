@@ -1,6 +1,6 @@
 # xtask-wasm
 
-[![actions status][actions-badge]][action-url]
+[![actions status][actions-badge]][actions-url]
 [![documentation][docs-badge]][docs-url]
 
 [actions-badge]: https://github.com/rustminded/xtask-wasm/workflows/main/badge.svg
