@@ -1,8 +1,12 @@
 # xtask-wasm
 
-![crates.io][crates-badge]
-![documentation](https://crates.io/crates/xtask-wasm/badge.svg)
-![build status](https://github.com/rustminded/xtask-wasm/workflows/main.yml/badge.svg)
+[![actions status][actions-badge]][action-url]
+[![documentation][docs-badge]][docs-url]
+
+[actions-badge]: https://github.com/rustminded/xtask-wasm/workflows/main/badge.svg
+[actions-url]: https://github.com/rustminded/xtask-wasm/actions
+[docs-badge]: https://docs.rs/xtask-wasm/badge.svg
+[docs-url]: https://docs.rs/xtask-wasm/
 
 <!-- cargo-rdme start -->
 
