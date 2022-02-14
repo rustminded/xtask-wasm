@@ -1,17 +1,29 @@
 # xtask-wasm
 
-[![actions status][actions-badge]][actions-url]
-[![crate version][crates-version-badge]][crates-url]
-[![documentation][docs-badge]][docs-url]
-![licenses][licenses-badge]
-
-[actions-badge]: https://github.com/rustminded/xtask-wasm/workflows/main/badge.svg
-[actions-url]: https://github.com/rustminded/xtask-wasm/actions
-[crates-version-badge]: https://img.shields.io/crates/v/xtask-wasm
-[crates-url]: https://crates.io/crates/xtask-wasm
-[docs-badge]: https://docs.rs/xtask-wasm/badge.svg
-[docs-url]: https://docs.rs/xtask-wasm/
-[licenses-badge]: https://img.shields.io/crates/l/xtask-wasm
+<div id="badges" align="center">
+    <a href="https://github.com/rustminded/xtask-wasm/actions">
+        <img
+            src="https://github.com/rustminded/xtask-wasm/workflows/main/badge.svg"
+            alt="Actions status"
+        />
+    </a>
+    <a href="https://crates.io/crates/xtask-wasm">
+        <img
+            src="https://img.shields.io/crates/v/xtask-wasm"
+            alt="crates.io status"
+        />
+    </a>
+    <a href="https://docs.rs/xtask-wasm">
+        <img
+            src="https://docs.rs/xtask-wasm/badge.svg"
+            alt="docs.rs status"
+        />
+    </a>
+    <img
+        src="https://img.shields.io/crates/l/xtask-wasm"
+        alt="Licenses"
+    />
+</div>
 
 <!-- cargo-rdme start -->
 
