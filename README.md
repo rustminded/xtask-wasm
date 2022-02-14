@@ -12,8 +12,8 @@
 [crates-url]: https://crates.io/crates/xtask-wasm
 [docs-badge]: https://docs.rs/xtask-wasm/badge.svg
 [docs-url]: https://docs.rs/xtask-wasm/
-[deps-badge]: https://deps.rs/crate/xtask-wasm
-[deps-url]: https://deps.rs/xtask-wasm
+[deps-badge]: https://deps.rs/crate/xtask-wasm/status.svg
+[deps-url]: https://deps.rs/crate/xtask-wasm
 [licenses-badge]: https://img.shields.io/crates/l/xtask-wasm
 
 <!-- cargo-rdme start -->
