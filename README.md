@@ -1,5 +1,18 @@
 # xtask-wasm
 
+[![actions status][actions-badge]][actions-url]
+[![crate version][crates-version-badge]][crates-url]
+[![documentation][docs-badge]][docs-url]
+![licenses][licenses-badge]
+
+[actions-badge]: https://github.com/rustminded/xtask-wasm/workflows/main/badge.svg
+[actions-url]: https://github.com/rustminded/xtask-wasm/actions
+[crates-version-badge]: https://img.shields.io/crates/v/xtask-wasm
+[crates-url]: https://crates.io/crates/xtask-wasm
+[docs-badge]: https://docs.rs/xtask-wasm/badge.svg
+[docs-url]: https://docs.rs/xtask-wasm/
+[licenses-badge]: https://img.shields.io/crates/l/xtask-wasm
+
 <!-- cargo-rdme start -->
 
 This crate aims to provide an easy and customizable way to help you build
