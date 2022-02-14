@@ -3,7 +3,7 @@ name = "xtask-wasm"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-description = "Extend your project workflow with custom xtask command for WASM"
+description = "Customizable subcommands to build your WASM projects using xtask."
 homepage = "https://github.com/rustminded/xtask-wasm"
 repository = "https://github.com/rustminded/xtask-wasm"
 documentation = "https://docs.rs/xtask-wasm"
@@ -30,7 +30,7 @@ platforms = { version = "2.0.0", optional = true }
 wasm-bindgen = { version = "0.2.78", optional = true }
 wasm-bindgen-cli-support = "0.2.68"
 xtask-wasm-run-example = { version = "0.1.0", optional = true }
-xtask-watch = { version = "0.1.0", git = "https://github.com/rustminded/xtask-watch" }
+xtask-watch = { version = "0.1.1" }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.112"
