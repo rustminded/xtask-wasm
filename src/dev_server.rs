@@ -106,6 +106,8 @@ impl DevServer {
     /// [`crate::default_dist_dir`] should be used to get the dist directory that needs to be served.
     pub fn start(self, served_path: impl AsRef<Path>) -> Result<()> {
         let watch_process = if let Some(command) = self.command {
+            // NOTE: the path needs to exists in order to be excluded because it is canonicalize
+            let _ = std::fs::create_dir_all(&served_path);
             let watch = self.watch.exclude_path(&served_path);
             let handle = std::thread::spawn(|| match watch.run(command) {
                 Ok(()) => log::trace!("Starting to watch"),
