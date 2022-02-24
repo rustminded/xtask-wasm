@@ -8,4 +8,4 @@ edition = "2021"
 [dependencies]
 env_logger = "0.9"
 log = "0.4"
-xtask-wasm = { path = "../../../", version = "0.0.0", features = ["wasm-opt"]}
+xtask-wasm = { path = "../../../", features = ["wasm-opt"]}
