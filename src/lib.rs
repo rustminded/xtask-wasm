@@ -1,4 +1,5 @@
 #![deny(missing_docs)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! This crate aims to provide an easy and customizable way to help you build
 //! Wasm projects by extending them with custom subcommands, based on the
@@ -204,40 +205,50 @@
 //! * `run-example`: a helper to run examples from `examples/` directory using a development
 //!     server.
 
-use std::process::Command;
+#[macro_use]
+mod cfg;
 
-pub use xtask_watch::{
-    anyhow, cargo_metadata, cargo_metadata::camino, clap, metadata, package, xtask_command, Watch,
-};
+cfg_not_wasm32! {
+    use std::process::Command;
 
-mod dev_server;
-mod dist;
+    pub use xtask_watch::{
+        anyhow, cargo_metadata, cargo_metadata::camino, clap, metadata, package, xtask_command,
+        Watch,
+    };
 
-#[cfg(feature = "wasm-opt")]
-mod wasm_opt;
+    mod dev_server;
+    mod dist;
 
-pub use dev_server::*;
-pub use dist::*;
+    pub use dev_server::*;
+    pub use dist::*;
 
-#[cfg(feature = "run-example")]
-pub use console_error_panic_hook;
-#[cfg(feature = "run-example")]
-pub use env_logger;
-#[cfg(feature = "run-example")]
-pub use log;
-#[cfg(feature = "run-example")]
-pub use wasm_bindgen;
-#[cfg(feature = "run-example")]
-pub use xtask_wasm_run_example::*;
+    cfg_run_example! {
+        pub use env_logger;
+        pub use log;
+    }
 
-#[cfg(feature = "wasm-opt")]
-pub use wasm_opt::*;
+    cfg_wasm_opt! {
+        mod wasm_opt;
+        pub use wasm_opt::*;
+    }
 
-/// Get the default command for the build in the dist process.
-///
-/// This is `cargo build --target wasm32-unknown-unknown`.
-pub fn default_build_command() -> Command {
-    let mut command = Command::new("cargo");
-    command.args(["build", "--target", "wasm32-unknown-unknown"]);
-    command
+    /// Get the default command for the build in the dist process.
+    ///
+    /// This is `cargo build --target wasm32-unknown-unknown`.
+    pub fn default_build_command() -> Command {
+        let mut command = Command::new("cargo");
+        command.args(["build", "--target", "wasm32-unknown-unknown"]);
+        command
+    }
+}
+
+cfg_wasm32! {
+    cfg_run_example! {
+        pub use console_error_panic_hook;
+        pub use wasm_bindgen;
+    }
+}
+
+cfg_run_example! {
+    pub use xtask_wasm_run_example::*;
 }
