@@ -39,5 +39,9 @@ xtask-watch = { version = "0.1.1" }
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.112"
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [workspace]
 members = ["xtask-wasm-run-example"]

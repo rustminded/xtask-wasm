@@ -1,4 +1,5 @@
 #![deny(missing_docs)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! This crate aims to provide an easy and customizable way to help you build
 //! Wasm projects by extending them with custom subcommands, based on the
