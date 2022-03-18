@@ -166,68 +166,68 @@ impl Dist {
             .unwrap_or_else(|| default_dist_dir(self.release).as_std_path().to_path_buf());
 
         log::trace!("Initializing dist process");
-        let mut build_process = self.build_command;
+        let mut build_command = self.build_command;
 
         if self.run_in_workspace {
-            build_process.current_dir(&metadata.workspace_root);
+            build_command.current_dir(&metadata.workspace_root);
         }
 
         if self.quiet {
-            build_process.arg("--quiet");
+            build_command.arg("--quiet");
         }
 
         if let Some(number) = self.jobs {
-            build_process.args(["--jobs", &number]);
+            build_command.args(["--jobs", &number]);
         }
 
         if let Some(profile) = self.profile {
-            build_process.args(["--profile", &profile]);
+            build_command.args(["--profile", &profile]);
         }
 
         if self.release {
-            build_process.arg("--release");
+            build_command.arg("--release");
         }
 
         for feature in &self.features {
-            build_process.args(["--features", feature]);
+            build_command.args(["--features", feature]);
         }
 
         if self.all_features {
-            build_process.arg("--all-features");
+            build_command.arg("--all-features");
         }
 
         if self.no_default_features {
-            build_process.arg("--no-default-features");
+            build_command.arg("--no-default-features");
         }
 
         if self.verbose {
-            build_process.arg("--verbose");
+            build_command.arg("--verbose");
         }
 
         if let Some(color) = self.color {
-            build_process.args(["--color", &color]);
+            build_command.args(["--color", &color]);
         }
 
         if self.frozen {
-            build_process.arg("--frozen");
+            build_command.arg("--frozen");
         }
 
         if self.locked {
-            build_process.arg("--locked");
+            build_command.arg("--locked");
         }
 
         if self.offline {
-            build_process.arg("--offline");
+            build_command.arg("--offline");
         }
 
         if self.ignore_rust_version {
-            build_process.arg("--ignore-rust-version");
+            build_command.arg("--ignore-rust-version");
         }
 
-        build_process.args(["--package", package_name]);
+        build_command.args(["--package", package_name]);
 
         if let Some(example) = &self.example {
-            build_process.args(["--example", example]);
+            build_command.args(["--example", example]);
         }
 
         let build_dir = metadata
@@ -252,7 +252,7 @@ impl Dist {
 
         log::trace!("Spawning build process");
         ensure!(
-            build_process
+            build_command
                 .status()
                 .context("could not start cargo")?
                 .success(),
