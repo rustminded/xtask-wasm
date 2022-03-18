@@ -87,6 +87,7 @@ impl RunExample {
         };
 
         Ok(quote! {
+            #[cfg(target_arch = "wasm32")]
             pub mod xtask_wasm_run_example {
                 use super::*;
                 use xtask_wasm::wasm_bindgen;
@@ -101,6 +102,7 @@ impl RunExample {
                 }
             }
 
+            #[cfg(not(target_arch = "wasm32"))]
             fn main() -> xtask_wasm::anyhow::Result<()> {
                 use xtask_wasm::{env_logger, log, clap};
 
@@ -145,6 +147,9 @@ impl RunExample {
                     }
                 }
             }
+
+            #[cfg(target_arch = "wasm32")]
+            fn main() {}
         })
     }
 }
