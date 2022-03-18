@@ -224,7 +224,6 @@ cfg_not_wasm32! {
     cfg_run_example! {
         pub use env_logger;
         pub use log;
-        pub use xtask_wasm_run_example::*;
     }
 
     cfg_wasm_opt! {
@@ -246,6 +245,9 @@ cfg_wasm32! {
     cfg_run_example! {
         pub use console_error_panic_hook;
         pub use wasm_bindgen;
-        pub use xtask_wasm_run_example::*;
     }
+}
+
+cfg_run_example! {
+    pub use xtask_wasm_run_example::*;
 }
