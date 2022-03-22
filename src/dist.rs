@@ -38,10 +38,11 @@ use wasm_bindgen_cli_support::Bindgen;
 /// }
 /// ```
 ///
-/// In this example, we added a `dist` subcommand to build and package the `my-project` crate.
-/// It will run the [`default_build_command`](crate::default_build_command) at the workspace root,
-/// copy the content of the `project/static` directory, generate JS bindings and output two files:
-/// `project.js` and `project.wasm` into the dist directory.
+/// In this example, we added a `dist` subcommand to build and package the
+/// `my-project` crate. It will run the [`default_build_command`](crate::default_build_command)
+/// at the workspace root, copy the content of the `project/static` directory,
+/// generate JS bindings and output two files: `project.js` and `project.wasm`
+/// into the dist directory.
 #[non_exhaustive]
 #[derive(Debug, clap::Parser)]
 #[clap(
@@ -158,11 +159,11 @@ impl Dist {
     /// Build the given package for Wasm.
     ///
     /// This will generate JS bindings via [`wasm-bindgen`](https://docs.rs/wasm-bindgen/latest/wasm_bindgen/)
-    /// and copy files from a given static directory if any to finally return the paths of the
-    /// generated artifacts with [`DistResult`].
+    /// and copy files from a given static directory if any to finally return
+    /// the paths of the generated artifacts with [`DistResult`].
     ///
-    /// WASM optimizations can be achieved using [`crate::WasmOpt`] if the feature `wasm-opt`
-    /// is enabled.
+    /// WASM optimizations can be achieved using [`crate::WasmOpt`] if the
+    /// feature `wasm-opt` is enabled.
     pub fn run(self, package_name: &str) -> Result<DistResult> {
         log::trace!("Getting package's metadata");
         let metadata = metadata();
