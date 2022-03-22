@@ -54,6 +54,16 @@ use std::{
 /// given IP address.
 #[non_exhaustive]
 #[derive(Debug, clap::Parser)]
+#[clap(
+    about = "A simple HTTP server useful during development.",
+    long_about = "A simple HTTP server useful during development. \n\
+        It can watch the source code for changes and restart a provided \
+        build command. \n\
+        Get the files at `watch_path` and serve them at a given IP address \
+        (127.0.0.1:8000 by default). \n\
+        An optional command can be provided to restart the build when changes are detected.
+    ",
+)]
 pub struct DevServer {
     /// IP address to bind. Default to `127.0.0.1`.
     #[clap(long, default_value = "127.0.0.1")]
