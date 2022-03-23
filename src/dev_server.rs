@@ -57,9 +57,8 @@ use std::{
 #[derive(Debug, clap::Parser)]
 #[clap(
     about = "A simple HTTP server useful during development.",
-    long_about = "A simple HTTP server useful during development. \n\
-        It can watch the source code for changes and restart a provided \
-        command.
+    long_about = "A simple HTTP server useful during development.\n\
+        It can watch the source code for changes.
     ",
 )]
 pub struct DevServer {
