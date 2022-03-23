@@ -46,8 +46,8 @@ use wasm_bindgen_cli_support::Bindgen;
 #[non_exhaustive]
 #[derive(Debug, clap::Parser)]
 #[clap(
-    about = "A helper to generate the distributed package.",
-    long_about = "A helper to generate the distributed package. \n\
+    about = "Generate the distributed package.",
+    long_about = "Generate the distributed package. \n\
         It will build and package the project for WASM.
     ",
 )]

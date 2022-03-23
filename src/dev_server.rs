@@ -13,8 +13,7 @@ use std::{
 
 /// A simple HTTP server useful during development.
 ///
-/// It can watch the source code for changes and restart a provided build
-/// command.
+/// It can watch the source code for changes and restart a provided command.
 ///
 /// Get the files at `watch_path` and serve them at a given IP address
 /// (127.0.0.1:8000 by default). An optional command can be provided to restart
@@ -60,7 +59,7 @@ use std::{
     about = "A simple HTTP server useful during development.",
     long_about = "A simple HTTP server useful during development. \n\
         It can watch the source code for changes and restart a provided \
-        build command.
+        command.
     ",
 )]
 pub struct DevServer {
