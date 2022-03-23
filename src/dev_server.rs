@@ -58,8 +58,7 @@ use std::{
 #[clap(
     about = "A simple HTTP server useful during development.",
     long_about = "A simple HTTP server useful during development.\n\
-        It can watch the source code for changes.
-    ",
+        It can watch the source code for changes.",
 )]
 pub struct DevServer {
     /// IP address to bind. Default to `127.0.0.1`.
