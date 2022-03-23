@@ -227,7 +227,7 @@
 //! use xtask_wasm::clap;
 //!
 //! #[derive(clap::Parser)]
-//! struct MyStruct
+//! struct MyStruct {}
 //! ```
 //!
 //! Or like this:
@@ -236,7 +236,7 @@
 //! use xtask_wasm::{clap, clap::Parser};
 //!
 //! #[derive(Parser)]
-//! struct MyStruct
+//! struct MyStruct {}
 //! ```
 
 #[macro_use]
