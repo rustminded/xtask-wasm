@@ -48,8 +48,7 @@ use wasm_bindgen_cli_support::Bindgen;
 #[clap(
     about = "Generate the distributed package.",
     long_about = "Generate the distributed package.\n\
-        It will build and package the project for WASM.
-    ",
+        It will build and package the project for WASM.",
 )]
 pub struct Dist {
     /// No output printed to stdout.
