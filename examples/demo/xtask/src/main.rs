@@ -18,6 +18,7 @@ enum Command {
 
 #[derive(clap::Parser)]
 struct Build {
+    /// Optimize the generated package using `wasm-opt`.
     #[clap(long)]
     optimize: bool,
 

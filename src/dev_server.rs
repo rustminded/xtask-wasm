@@ -13,10 +13,11 @@ use std::{
 
 /// A simple HTTP server useful during development.
 ///
-/// It can watch the source code for changes and restart a provided build command.
+/// It can watch the source code for changes and restart a provided command.
 ///
-/// Get the files at `watch_path` and serve them at a given IP address (127.0.0.1:8000 by default).
-/// An optional command can be provided to restart the build when changes are detected.
+/// Get the files at `watch_path` and serve them at a given IP address
+/// (127.0.0.1:8000 by default). An optional command can be provided to restart
+/// the build when changes are detected.
 ///
 /// # Usage
 ///
@@ -49,11 +50,16 @@ use std::{
 /// }
 /// ```
 ///
-/// Add a `start` subcommand that will run `cargo xtask dist`, watching for changes in the workspace
-/// and serve the files in the default dist directory (`target/debug/dist` for non-release) at a
-/// given IP address.
+/// Add a `start` subcommand that will run `cargo xtask dist`, watching for
+/// changes in the workspace and serve the files in the default dist directory
+/// (`target/debug/dist` for non-release) at a given IP address.
 #[non_exhaustive]
 #[derive(Debug, clap::Parser)]
+#[clap(
+    about = "A simple HTTP server useful during development.",
+    long_about = "A simple HTTP server useful during development.\n\
+        It can watch the source code for changes.",
+)]
 pub struct DevServer {
     /// IP address to bind. Default to `127.0.0.1`.
     #[clap(long, default_value = "127.0.0.1")]
@@ -81,7 +87,8 @@ impl DevServer {
         self
     }
 
-    /// Adds an argument to pass to the command executed when changes are detected.
+    /// Adds an argument to pass to the command executed when changes are
+    /// detected.
     ///
     /// This will use the xtask command by default.
     pub fn arg<S: AsRef<ffi::OsStr>>(mut self, arg: S) -> Self {
@@ -89,7 +96,8 @@ impl DevServer {
         self
     }
 
-    /// Adds multiple arguments to pass to the command executed when changes are detected.
+    /// Adds multiple arguments to pass to the command executed when changes are
+    /// detected.
     ///
     /// This will use the xtask command by default.
     pub fn args<I, S>(mut self, args: I) -> Self
@@ -103,7 +111,8 @@ impl DevServer {
 
     /// Start the server, serving the files at `served_path`.
     ///
-    /// [`crate::default_dist_dir`] should be used to get the dist directory that needs to be served.
+    /// [`crate::default_dist_dir`] should be used to get the dist directory
+    /// that needs to be served.
     pub fn start(self, served_path: impl AsRef<Path>) -> Result<()> {
         let watch_process = if let Some(command) = self.command {
             // NOTE: the path needs to exists in order to be excluded because it is canonicalize
