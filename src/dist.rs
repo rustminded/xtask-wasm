@@ -378,7 +378,7 @@ use std::path::Path;
         }
 
         for other in others {
-            todo!("handle other files");
+            fs::copy(&other, dist_dir.join(&other))?;
         }
 
         Ok(())
