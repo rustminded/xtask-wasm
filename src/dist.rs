@@ -330,9 +330,6 @@ impl Dist {
 }
 
 #[cfg(feature = "scss")]
-use std::path::Path;
-
-#[cfg(feature = "scss")]
     fn scss(static_dir: PathBuf, dist_dir: PathBuf) -> Result<()> {
         use walkdir::{DirEntry, WalkDir};
 
@@ -377,7 +374,22 @@ use std::path::Path;
         log::debug!("others: {:?}", others);
 
         for style in styles {
-            todo!("handle SCSS/SASS files");
+            let css_path = dist_dir
+                .join(&style.strip_prefix(&static_dir).unwrap())
+                .with_extension("css");
+
+            match sass_rs::compile_file(&style, sass_rs::Options::default()) {
+                Ok(css) => {
+                    let _ = fs::create_dir_all(css_path.parent().unwrap());
+                    match fs::write(&css_path, css) {
+                        Ok(()) => {},
+                        Err(err) => log::error!("could not write CSS to file `{}`: {}", css_path.display(), err),
+                    }
+                }
+                Err(err) => {
+                    log::error!("could not convert SCSS file `{}` to `{}`: {}", &style.display(), css_path.display(), err);
+                }
+            }
         }
 
         for other in others {
