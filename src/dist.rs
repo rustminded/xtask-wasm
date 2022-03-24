@@ -303,7 +303,7 @@ impl Dist {
             #[cfg(feature = "scss")]
             {
                 log::trace!("Generating CSS files from SCSS");
-                match scss() {
+                match scss(static_dir) {
                     Ok(()) => log::trace!("CSS generated from SCSS"),
                     Err(err) => log::error!("Cannot generate the CSS files from SCSS: {}", err),
                 }
@@ -328,9 +328,52 @@ impl Dist {
 }
 
 #[cfg(feature = "scss")]
-fn scss() -> Result<()> {
-    unimplemented!();
-}
+    fn scss(static_dir: PathBuf) -> Result<()> {
+        use walkdir::{DirEntry, WalkDir};
+
+        fn is_sass(entry: &DirEntry) -> bool {
+            matches!(
+                entry.path().extension().map(|x| x.to_str()).flatten(),
+                Some("sass") | Some("scss")
+            )
+        }
+
+        fn should_ignore(entry: &DirEntry) -> bool {
+            entry
+                .file_name()
+                .to_str()
+                .map(|x| x.starts_with("_"))
+                .unwrap_or(false)
+        }
+
+        let mut styles = Vec::new();
+        let mut others = Vec::new();
+        let mut to_ignore = Vec::new();
+
+        let walker = WalkDir::new(&static_dir).into_iter();
+        for entry in walker
+            .filter_map(|x| match x {
+                Ok(x) => Some(x),
+                Err(_err) => {
+                    log::error!("could not walk into directory: `{}`", &static_dir.display());
+                    None
+                }
+            })
+        {
+            if entry.path().is_file() && is_sass(&entry) && !should_ignore(&entry) {
+                styles.push(entry.path().to_owned())
+            } else if entry.path().is_dir() || should_ignore(&entry) {
+                to_ignore.push(entry.path().to_owned())
+            } else {
+                others.push(entry.path().to_owned())
+            }
+        }
+
+        log::debug!("styles: {:?}", styles);
+        log::debug!("to_ignore: {:?}", to_ignore);
+        log::debug!("others: {:?}", others);
+        todo!("handle walking result");
+    }
 
 /// Provides paths of the generated dist artifacts.
 pub struct DistResult {
