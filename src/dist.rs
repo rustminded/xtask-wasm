@@ -295,15 +295,13 @@ impl Dist {
         fs::write(&wasm_js_path, wasm_js).with_context(|| "cannot write js file")?;
         fs::write(&wasm_bin_path, wasm_bin).with_context(|| "cannot write WASM file")?;
 
-        let mut copy_options = fs_extra::dir::CopyOptions::new();
-        copy_options.overwrite = true;
-        copy_options.content_only = true;
+
 
         if let Some(static_dir) = self.static_dir_path {
             #[cfg(feature = "scss")]
             {
                 log::trace!("Generating CSS files from SCSS");
-                match scss(static_dir) {
+                match scss(static_dir, dist_dir_path.clone()) {
                     Ok(()) => log::trace!("CSS generated from SCSS"),
                     Err(err) => log::error!("Cannot generate the CSS files from SCSS: {}", err),
                 }
@@ -311,6 +309,10 @@ impl Dist {
 
             #[cfg(not(feature = "scss"))]
             {
+                let mut copy_options = fs_extra::dir::CopyOptions::new();
+                copy_options.overwrite = true;
+                copy_options.content_only = true;
+
                 log::trace!("Copying static directory into dist directory");
                 fs_extra::dir::copy(static_dir, &dist_dir_path, &copy_options)
                     .context("cannot copy static directory")?;
@@ -328,7 +330,10 @@ impl Dist {
 }
 
 #[cfg(feature = "scss")]
-    fn scss(static_dir: PathBuf) -> Result<()> {
+use std::path::Path;
+
+#[cfg(feature = "scss")]
+    fn scss(static_dir: PathBuf, dist_dir: PathBuf) -> Result<()> {
         use walkdir::{DirEntry, WalkDir};
 
         fn is_sass(entry: &DirEntry) -> bool {
@@ -348,7 +353,6 @@ impl Dist {
 
         let mut styles = Vec::new();
         let mut others = Vec::new();
-        let mut to_ignore = Vec::new();
 
         let walker = WalkDir::new(&static_dir).into_iter();
         for entry in walker
@@ -361,18 +365,23 @@ impl Dist {
             })
         {
             if entry.path().is_file() && is_sass(&entry) && !should_ignore(&entry) {
-                styles.push(entry.path().to_owned())
+                styles.push(entry.path().to_owned());
             } else if entry.path().is_dir() || should_ignore(&entry) {
-                to_ignore.push(entry.path().to_owned())
+                log::debug!("{} will be ignored", entry.path().display());
             } else {
-                others.push(entry.path().to_owned())
+                others.push(entry.path().to_owned());
             }
         }
 
-        log::debug!("styles: {:?}", styles);
-        log::debug!("to_ignore: {:?}", to_ignore);
-        log::debug!("others: {:?}", others);
-        todo!("handle walking result");
+        for style in styles {
+            todo!("handle SCSS/SASS files");
+        }
+
+        for other in others {
+            todo!("handle other files");
+        }
+
+        Ok(())
     }
 
 /// Provides paths of the generated dist artifacts.
