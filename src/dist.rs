@@ -300,6 +300,15 @@ impl Dist {
         copy_options.content_only = true;
 
         if let Some(static_dir) = self.static_dir_path {
+            #[cfg(feature = "scss")]
+            {
+                log::trace!("Generating CSS files from SCSS");
+                match scss() {
+                    Ok(()) => log::trace!("CSS generated from SCSS"),
+                    Err(err) => log::error!("Cannot generate the CSS files from SCSS: {}", err),
+                }
+            }
+
             log::trace!("Copying static directory into dist directory");
             fs_extra::dir::copy(static_dir, &dist_dir_path, &copy_options)
                 .context("cannot copy static directory")?;
@@ -313,6 +322,11 @@ impl Dist {
             wasm: wasm_bin_path,
         })
     }
+}
+
+#[cfg(feature = "scss")]
+fn scss() -> Result<()> {
+    unimplemented!();
 }
 
 /// Provides paths of the generated dist artifacts.
