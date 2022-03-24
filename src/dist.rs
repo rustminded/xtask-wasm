@@ -48,8 +48,8 @@ use wasm_bindgen_cli_support::Bindgen;
 #[clap(
     about = "Generate the distributed package.",
     long_about = "Generate the distributed package.\n\
-    It will build and package the project for WASM.",
-    )]
+        It will build and package the project for WASM.",
+)]
 pub struct Dist {
     /// No output printed to stdout.
     #[clap(short, long)]
@@ -109,11 +109,6 @@ pub struct Dist {
     /// Set the command's current directory as the workspace root.
     #[clap(skip = true)]
     pub run_in_workspace: bool,
-    /// Set the output style for SCSS files
-    #[cfg(feature = "scss")]
-    #[clap(skip)]
-    pub scss_options: Option<sass_rs::Options>,
-
 }
 
 impl Dist {
@@ -157,16 +152,6 @@ impl Dist {
     /// Set the example to build.
     pub fn example(mut self, example: impl Into<String>) -> Self {
         self.example = Some(example.into());
-        self
-    }
-
-    /// Set the output style for SCSS
-    #[cfg(feature = "scss")]
-    pub fn scss_output_style(mut self, output_style: sass_rs::OutputStyle) -> Self {
-        self.scss_options = Some(sass_rs::Options {
-            output_style,
-            ..sass_rs::Options::default()
-        });
         self
     }
 
@@ -274,11 +259,11 @@ impl Dist {
         log::trace!("Spawning build process");
         ensure!(
             build_command
-            .status()
-            .context("could not start cargo")?
-            .success(),
+                .status()
+                .context("could not start cargo")?
+                .success(),
             "cargo command failed"
-            );
+        );
 
         let app_name = self.app_name.unwrap_or_else(|| "app".to_string());
 
@@ -316,7 +301,7 @@ impl Dist {
             #[cfg(feature = "scss")]
             {
                 log::trace!("Generating CSS files from SCSS");
-                match scss(static_dir, dist_dir_path.clone(), self.scss_options.unwrap_or_default()) {
+                match scss(static_dir, dist_dir_path.clone()) {
                     Ok(()) => log::trace!("CSS generated from SCSS"),
                     Err(err) => log::error!("Cannot generate the CSS files from SCSS: {}", err),
                 }
@@ -345,70 +330,59 @@ impl Dist {
 }
 
 #[cfg(feature = "scss")]
-fn scss(static_dir: PathBuf, dist_dir: PathBuf, options: sass_rs::Options) -> Result<()> {
-    use walkdir::{DirEntry, WalkDir};
+use std::path::Path;
 
-    fn is_sass(entry: &DirEntry) -> bool {
-        matches!(
-            entry.path().extension().map(|x| x.to_str()).flatten(),
-            Some("sass") | Some("scss")
+#[cfg(feature = "scss")]
+    fn scss(static_dir: PathBuf, dist_dir: PathBuf) -> Result<()> {
+        use walkdir::{DirEntry, WalkDir};
+
+        fn is_sass(entry: &DirEntry) -> bool {
+            matches!(
+                entry.path().extension().map(|x| x.to_str()).flatten(),
+                Some("sass") | Some("scss")
             )
-    }
-
-    fn should_ignore(entry: &DirEntry) -> bool {
-        entry
-            .file_name()
-            .to_str()
-            .map(|x| x.starts_with("_"))
-            .unwrap_or(false)
-    }
-
-    let mut styles = Vec::new();
-    let mut others = Vec::new();
-
-    let walker = WalkDir::new(&static_dir).into_iter();
-    for entry in walker
-        .filter_map(|x| match x {
-            Ok(x) => Some(x),
-            Err(_err) => {
-                log::error!("could not walk into directory: `{}`", &static_dir.display());
-                None
-            }
-        })
-    {
-        if entry.path().is_file() && is_sass(&entry) && !should_ignore(&entry) {
-            styles.push(entry.path().to_owned());
-        } else if entry.path().is_dir() || should_ignore(&entry) {
-            log::debug!("{} will be ignored", entry.path().display());
-        } else {
-            others.push(entry.path().to_owned());
         }
-    }
 
-    log::debug!("styles: {:?}", styles);
-    log::debug!("others: {:?}", styles);
+        fn should_ignore(entry: &DirEntry) -> bool {
+            entry
+                .file_name()
+                .to_str()
+                .map(|x| x.starts_with("_"))
+                .unwrap_or(false)
+        }
 
-    for style in styles {
-        let css_path = dist_dir.join(&style.strip_prefix(&static_dir).unwrap())
-            .with_extension("css");
+        let mut styles = Vec::new();
+        let mut others = Vec::new();
 
-        match sass_rs::compile_file(&style, options.clone()) {
-            Ok(css) => {
-                let _ = fs::create_dir_all(css_path.parent().unwrap());
-                fs::write(&css_path, css).context(format!("could not write CSS to file: {}", css_path.display()))?;
-            }
-            Err(err) => {
-                log::error!("could not convert SCSS file `{}` to `{}`: {}", style.display(), css_path.display(), err);
+        let walker = WalkDir::new(&static_dir).into_iter();
+        for entry in walker
+            .filter_map(|x| match x {
+                Ok(x) => Some(x),
+                Err(_err) => {
+                    log::error!("could not walk into directory: `{}`", &static_dir.display());
+                    None
+                }
+            })
+        {
+            if entry.path().is_file() && is_sass(&entry) && !should_ignore(&entry) {
+                styles.push(entry.path().to_owned());
+            } else if entry.path().is_dir() || should_ignore(&entry) {
+                log::debug!("{} will be ignored", entry.path().display());
+            } else {
+                others.push(entry.path().to_owned());
             }
         }
-    }
 
-    for other in others {
-        fs::copy(&other, dist_dir.join(&other))?;
-    }
+        for style in styles {
+            todo!("handle SCSS/SASS files");
+        }
 
-    Ok(())
-}
+        for other in others {
+            fs::copy(&other, dist_dir.join(&other))?;
+        }
+
+        Ok(())
+    }
 
 /// Provides paths of the generated dist artifacts.
 pub struct DistResult {
