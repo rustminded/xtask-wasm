@@ -109,6 +109,10 @@ pub struct Dist {
     /// Set the command's current directory as the workspace root.
     #[clap(skip = true)]
     pub run_in_workspace: bool,
+    /// Output style for SCSS
+    #[cfg(feature = "scss")]
+    #[clap(skip)]
+    pub scss_options: Option<sass_rs::OutputStyle>,
 }
 
 impl Dist {
@@ -146,6 +150,13 @@ impl Dist {
     /// Set the dist process current directory as the workspace root.
     pub fn run_in_workspace(mut self, res: bool) -> Self {
         self.run_in_workspace = res;
+        self
+    }
+
+    #[cfg(feature = "scss")]
+    /// Set the output style for SCSS/SASS
+    pub fn scss_output_style(mut self, output_style: sass_rs::OutputStyle) -> Self {
+        self.scss_options = Some(output_style);
         self
     }
 
@@ -300,8 +311,16 @@ impl Dist {
         if let Some(static_dir) = self.static_dir_path {
             #[cfg(feature = "scss")]
             {
+                let options = if let Some(output_style) = self.scss_options {
+                    sass_rs::Options {
+                        output_style,
+                        ..sass_rs::Options::default()
+                    }
+                } else {
+                    sass_rs::Options::default()
+                };
                 log::trace!("Generating CSS files from SCSS");
-                scss(&static_dir, &dist_dir_path)?;
+                scss(&static_dir, &dist_dir_path, options)?;
             }
 
             #[cfg(not(feature = "scss"))]
@@ -330,7 +349,7 @@ impl Dist {
 use std::path::Path;
 
 #[cfg(feature = "scss")]
-fn scss(static_dir: &Path, dist_dir: &Path) -> Result<()> {
+fn scss(static_dir: &Path, dist_dir: &Path, options: sass_rs::Options) -> Result<()> {
     use walkdir::{DirEntry, WalkDir};
 
     fn is_scss(path: &Path) -> bool {
@@ -372,7 +391,7 @@ fn scss(static_dir: &Path, dist_dir: &Path) -> Result<()> {
                 .join(&file_path.strip_prefix(&static_dir).unwrap())
                 .with_extension("css");
 
-            match sass_rs::compile_file(file_path, sass_rs::Options::default()) {
+            match sass_rs::compile_file(file_path, options.clone()) {
                 Ok(css) => {
                     let _ = fs::create_dir_all(css_path.parent().unwrap());
                     match fs::write(&css_path, css) {
