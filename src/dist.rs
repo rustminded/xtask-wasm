@@ -373,6 +373,9 @@ use std::path::Path;
             }
         }
 
+        log::debug!("styles: {:?}", styles);
+        log::debug!("others: {:?}", others);
+
         for style in styles {
             todo!("handle SCSS/SASS files");
         }
