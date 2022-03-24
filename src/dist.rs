@@ -291,7 +291,7 @@ impl Dist {
         log::trace!("Creating new dist directory");
         fs::create_dir_all(&dist_dir_path).context("cannot create build directory")?;
 
-        log::trace!("Writing files into dist directory");
+        log::trace!("Writing wasm output into dist directory");
         fs::write(&wasm_js_path, wasm_js).with_context(|| "cannot write js file")?;
         fs::write(&wasm_bin_path, wasm_bin).with_context(|| "cannot write WASM file")?;
 
@@ -301,10 +301,7 @@ impl Dist {
             #[cfg(feature = "scss")]
             {
                 log::trace!("Generating CSS files from SCSS");
-                match scss(static_dir, dist_dir_path.clone()) {
-                    Ok(()) => log::trace!("CSS generated from SCSS"),
-                    Err(err) => log::error!("Cannot generate the CSS files from SCSS: {}", err),
-                }
+                scss(&static_dir, &dist_dir_path)?;
             }
 
             #[cfg(not(feature = "scss"))]
@@ -330,55 +327,52 @@ impl Dist {
 }
 
 #[cfg(feature = "scss")]
-    fn scss(static_dir: PathBuf, dist_dir: PathBuf) -> Result<()> {
-        use walkdir::{DirEntry, WalkDir};
+use std::path::Path;
 
-        fn is_sass(entry: &DirEntry) -> bool {
-            matches!(
-                entry.path().extension().map(|x| x.to_str()).flatten(),
-                Some("sass") | Some("scss")
-            )
-        }
+#[cfg(feature = "scss")]
+fn scss(static_dir: &Path, dist_dir: &Path) -> Result<()> {
+    use walkdir::{DirEntry, WalkDir};
 
-        fn should_ignore(entry: &DirEntry) -> bool {
-            entry
-                .file_name()
-                .to_str()
-                .map(|x| x.starts_with("_"))
-                .unwrap_or(false)
-        }
+    fn is_scss(path: &Path) -> bool {
+        matches!(
+            path.extension().map(|x| x.to_str()).flatten(),
+            Some("sass") | Some("scss")
+        )
+    }
 
-        let mut styles = Vec::new();
-        let mut others = Vec::new();
+    fn should_ignore(entry: &DirEntry) -> bool {
+        entry
+            .file_name()
+            .to_str()
+            .map(|x| x.starts_with("_"))
+            .unwrap_or(false)
+    }
 
-        let walker = WalkDir::new(&static_dir).into_iter();
-        for entry in walker
-            .filter_map(|x| match x {
-                Ok(x) => Some(x),
-                Err(_err) => {
-                    log::error!("could not walk into directory: `{}`", &static_dir.display());
+    log::trace!("Copying static directory into dist directory");
+    let walker = WalkDir::new(&static_dir).into_iter();
+    for entry in walker
+        .filter_map(|x| match x {
+            Ok(x) => {
+                if !x.path().is_dir() && !should_ignore(&x) {
+                    Some(x)
+                } else {
                     None
                 }
-            })
-        {
-            if entry.path().is_file() && is_sass(&entry) && !should_ignore(&entry) {
-                styles.push(entry.path().to_owned());
-            } else if entry.path().is_dir() || should_ignore(&entry) {
-                log::debug!("{} will be ignored", entry.path().display());
-            } else {
-                others.push(entry.path().to_owned());
+            },
+            Err(_err) => {
+                log::error!("could not walk into directory: `{}`", &static_dir.display());
+                None
             }
-        }
+        })
+    {
+        let file_path = entry.path();
 
-        log::debug!("styles: {:?}", styles);
-        log::debug!("others: {:?}", others);
-
-        for style in styles {
+        if is_scss(file_path) {
             let css_path = dist_dir
-                .join(&style.strip_prefix(&static_dir).unwrap())
+                .join(&file_path.strip_prefix(&static_dir).unwrap())
                 .with_extension("css");
 
-            match sass_rs::compile_file(&style, sass_rs::Options::default()) {
+            match sass_rs::compile_file(file_path, sass_rs::Options::default()) {
                 Ok(css) => {
                     let _ = fs::create_dir_all(css_path.parent().unwrap());
                     match fs::write(&css_path, css) {
@@ -387,17 +381,21 @@ impl Dist {
                     }
                 }
                 Err(err) => {
-                    log::error!("could not convert SCSS file `{}` to `{}`: {}", &style.display(), css_path.display(), err);
+                    log::error!("could not convert SCSS file `{}` to `{}`: {}", file_path.display(), css_path.display(), err);
                 }
             }
+        } else {
+            let dist_path = dist_dir.join(file_path.strip_prefix(&static_dir).unwrap());
+            let _ = fs::create_dir_all(dist_path.parent().unwrap());
+            match fs::copy(file_path, &dist_path) {
+                Ok(_) => {},
+                Err(err) => log::error!("cannot move `{}` to `{}` : {}", file_path.display(), dist_path.display(), err),
+            }
         }
-
-        for other in others {
-            fs::copy(&other, dist_dir.join(&other))?;
-        }
-
-        Ok(())
     }
+
+    Ok(())
+}
 
 /// Provides paths of the generated dist artifacts.
 pub struct DistResult {
