@@ -309,9 +309,12 @@ impl Dist {
                 }
             }
 
-            log::trace!("Copying static directory into dist directory");
-            fs_extra::dir::copy(static_dir, &dist_dir_path, &copy_options)
-                .context("cannot copy static directory")?;
+            #[cfg(not(feature = "scss"))]
+            {
+                log::trace!("Copying static directory into dist directory");
+                fs_extra::dir::copy(static_dir, &dist_dir_path, &copy_options)
+                    .context("cannot copy static directory")?;
+            }
         }
 
         log::info!("Successfully built in {}", dist_dir_path.display());
