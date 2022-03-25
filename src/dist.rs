@@ -309,10 +309,14 @@ impl Dist {
 
 
         if let Some(static_dir) = self.static_dir_path {
-            if cfg!(feature = "sass") {
+            #[cfg(feature = "sass")]
+            {
                 log::trace!("Generating CSS files from SASS/SCSS");
                 sass(&static_dir, &dist_dir_path, self.sass_options)?;
-            } else {
+            }
+
+            #[cfg(not(feature = "sass"))]
+            {
                 let mut copy_options = fs_extra::dir::CopyOptions::new();
                 copy_options.overwrite = true;
                 copy_options.content_only = true;
