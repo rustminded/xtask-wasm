@@ -346,13 +346,14 @@ impl Dist {
 }
 
 #[cfg(feature = "scss")]
-use std::path::Path;
-
-#[cfg(feature = "scss")]
-fn scss(static_dir: &Path, dist_dir: &Path, options: sass_rs::Options) -> Result<()> {
+fn scss(
+    static_dir: &std::path::Path,
+    dist_dir: &std::path::Path,
+    options: sass_rs::Options
+) -> Result<()> {
     use walkdir::{DirEntry, WalkDir};
 
-    fn is_scss(path: &Path) -> bool {
+    fn is_scss(path: &std::path::Path) -> bool {
         matches!(
             path.extension().map(|x| x.to_str()).flatten(),
             Some("sass") | Some("scss")
