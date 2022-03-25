@@ -50,7 +50,7 @@ fn download_wasm_opt() -> Result<&'static Path> {
 
 /// Helper Abstracting the `wasm-opt` binary from
 /// [binaryen](https://github.com/WebAssembly/binaryen) for easily optimizing
-/// your Wasm binary.
+/// your WASM binary.
 ///
 /// # Usage
 ///
@@ -68,7 +68,7 @@ pub struct WasmOpt {
     pub optimization_level: u32,
     /// How much to focus on shrinking code size.
     pub shrink_level: u32,
-    /// Emit names section in wasm binary.
+    /// Emit names section in WASM binary.
     pub debug_info: bool,
 }
 
@@ -96,7 +96,7 @@ impl WasmOpt {
 
     /// Optimize the Wasm binary provided by `binary_path`.
     ///
-    /// This function will execute `wasm-opt` over the given Wasm binary,
+    /// This function will execute `wasm-opt` over the given WASM binary,
     /// downloading it if necessary (cached into the `target` directory).
     pub fn optimize(self, binary_path: impl AsRef<Path>) -> Result<Self> {
         let input_path = binary_path.as_ref();
