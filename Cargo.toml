@@ -16,8 +16,8 @@ keywords = ["wasm", "cli"]
 include = ["src/**/*.rs", "README.md", "LICENSE.Apache-2.0", "LICENSE.MIT"]
 
 [features]
-scss = ["sass-rs", "walkdir"]
 run-example = ["xtask-wasm-run-example", "console_error_panic_hook", "wasm-bindgen", "env_logger"]
+scss = ["sass-rs", "walkdir"]
 wasm-opt = ["binary-install", "platforms"]
 
 [dependencies]

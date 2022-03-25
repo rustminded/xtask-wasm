@@ -311,7 +311,7 @@ impl Dist {
         if let Some(static_dir) = self.static_dir_path {
             #[cfg(feature = "scss")]
             {
-                let options = if let Some(output_style) = self.scss_options {
+                let scss_options = if let Some(output_style) = self.scss_options {
                     sass_rs::Options {
                         output_style,
                         ..sass_rs::Options::default()
@@ -365,17 +365,19 @@ fn scss(
             .file_name()
             .to_str()
             .map(|x| x.starts_with("_"))
-            .unwrap_or(false)
+            .unwrap_or(false) || entry.path().is_dir()
     }
 
-    log::trace!("Copying static directory into dist directory");
+    log::trace!("Generating dist artifacts");
     let walker = WalkDir::new(&static_dir).into_iter();
     for entry in walker
         .filter_map(|x| match x {
             Ok(x) => {
-                if !x.path().is_dir() && !should_ignore(&x) {
+                if !should_ignore(&x) {
+                    log::debug!("Will be handled: `{}`", &x.path().display());
                     Some(x)
                 } else {
+                    log::debug!("Will be ignored: `{}`", &x.path().display());
                     None
                 }
             },
@@ -386,10 +388,10 @@ fn scss(
         })
     {
         let file_path = entry.path();
+        let dist_path = dist_dir.join(file_path.strip_prefix(&static_dir).unwrap());
 
         if is_scss(file_path) {
-            let css_path = dist_dir
-                .join(&file_path.strip_prefix(&static_dir).unwrap())
+            let css_path = dist_path
                 .with_extension("css");
 
             match sass_rs::compile_file(file_path, options.clone()) {
@@ -405,7 +407,6 @@ fn scss(
                 }
             }
         } else {
-            let dist_path = dist_dir.join(file_path.strip_prefix(&static_dir).unwrap());
             let _ = fs::create_dir_all(dist_path.parent().unwrap());
             match fs::copy(file_path, &dist_path) {
                 Ok(_) => {},
