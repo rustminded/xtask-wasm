@@ -357,7 +357,7 @@ fn sass(
             .file_name()
             .to_str()
             .map(|x| x.starts_with("_"))
-            .unwrap_or(false) || entry.path().is_dir()
+            .unwrap_or(false)
     }
 
     log::trace!("Generating dist artifacts");
@@ -373,36 +373,36 @@ fn sass(
                     None
                 }
             },
-            Err(_err) => {
-                log::error!("could not walk into directory: `{}`", &static_dir.display());
+            Err(err) => {
+                log::error!("could not walk into directory `{}`: {}", &static_dir.display(), err);
                 None
             }
         })
     {
-        let file_path = entry.path();
-        let dist_path = dist_dir.join(file_path.strip_prefix(&static_dir).unwrap());
+        let source = entry.path();
+        let dest = dist_dir.join(source.strip_prefix(&static_dir).unwrap());
 
-        if is_sass(file_path) {
-            let css_path = dist_path
+        if is_sass(source) {
+            let dest = dest
                 .with_extension("css");
 
-            match sass_rs::compile_file(file_path, options.clone()) {
+            match sass_rs::compile_file(source, options.clone()) {
                 Ok(css) => {
-                    let _ = fs::create_dir_all(css_path.parent().unwrap());
-                    match fs::write(&css_path, css) {
+                    let _ = fs::create_dir_all(dest.parent().unwrap());
+                    match fs::write(&dest, css) {
                         Ok(()) => {},
-                        Err(err) => log::error!("could not write CSS to file `{}`: {}", css_path.display(), err),
+                        Err(err) => log::error!("could not write CSS to file `{}`: {}", dest.display(), err),
                     }
                 }
                 Err(err) => {
-                    log::error!("could not convert SASS/ file `{}` to `{}`: {}", file_path.display(), css_path.display(), err);
+                    log::error!("could not convert SASS/ file `{}` to `{}`: {}", source.display(), dest.display(), err);
                 }
             }
-        } else {
-            let _ = fs::create_dir_all(dist_path.parent().unwrap());
-            match fs::copy(file_path, &dist_path) {
+        } else if source.is_file(){
+            let _ = fs::create_dir_all(dest.parent().unwrap());
+            match fs::copy(source, &dest) {
                 Ok(_) => {},
-                Err(err) => log::error!("cannot move `{}` to `{}` : {}", file_path.display(), dist_path.display(), err),
+                Err(err) => log::error!("cannot move `{}` to `{}` : {}", source.display(), dest.display(), err),
             }
         }
     }
