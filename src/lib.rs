@@ -266,7 +266,7 @@ cfg_not_wasm32! {
         pub use wasm_opt::*;
     }
 
-    cfg_scss! {
+    cfg_sass! {
         pub use sass_rs;
     }
 

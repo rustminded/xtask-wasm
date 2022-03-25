@@ -109,10 +109,10 @@ pub struct Dist {
     /// Set the command's current directory as the workspace root.
     #[clap(skip = true)]
     pub run_in_workspace: bool,
-    /// Output style for SCSS
-    #[cfg(feature = "scss")]
+    /// Output style for SASS/SCSS
+    #[cfg(feature = "sass")]
     #[clap(skip)]
-    pub scss_options: Option<sass_rs::OutputStyle>,
+    pub sass_options: sass_rs::Options,
 }
 
 impl Dist {
@@ -153,10 +153,10 @@ impl Dist {
         self
     }
 
-    #[cfg(feature = "scss")]
+    #[cfg(feature = "sass")]
     /// Set the output style for SCSS/SASS
-    pub fn scss_output_style(mut self, output_style: sass_rs::OutputStyle) -> Self {
-        self.scss_options = Some(output_style);
+    pub fn sass_output_style(mut self, output_style: sass_rs::Options) -> Self {
+        self.sass_options = output_style;
         self
     }
 
@@ -309,21 +309,13 @@ impl Dist {
 
 
         if let Some(static_dir) = self.static_dir_path {
-            #[cfg(feature = "scss")]
+            #[cfg(feature = "sass")]
             {
-                let scss_options = if let Some(output_style) = self.scss_options {
-                    sass_rs::Options {
-                        output_style,
-                        ..sass_rs::Options::default()
-                    }
-                } else {
-                    sass_rs::Options::default()
-                };
-                log::trace!("Generating CSS files from SCSS");
-                scss(&static_dir, &dist_dir_path, options)?;
+                log::trace!("Generating CSS files from SASS/SCSS");
+                sass(&static_dir, &dist_dir_path, self.sass_options)?;
             }
 
-            #[cfg(not(feature = "scss"))]
+            #[cfg(not(feature = "sass"))]
             {
                 let mut copy_options = fs_extra::dir::CopyOptions::new();
                 copy_options.overwrite = true;
@@ -345,15 +337,15 @@ impl Dist {
     }
 }
 
-#[cfg(feature = "scss")]
-fn scss(
+#[cfg(feature = "sass")]
+fn sass(
     static_dir: &std::path::Path,
     dist_dir: &std::path::Path,
     options: sass_rs::Options
 ) -> Result<()> {
     use walkdir::{DirEntry, WalkDir};
 
-    fn is_scss(path: &std::path::Path) -> bool {
+    fn is_sass(path: &std::path::Path) -> bool {
         matches!(
             path.extension().map(|x| x.to_str()).flatten(),
             Some("sass") | Some("scss")
@@ -390,7 +382,7 @@ fn scss(
         let file_path = entry.path();
         let dist_path = dist_dir.join(file_path.strip_prefix(&static_dir).unwrap());
 
-        if is_scss(file_path) {
+        if is_sass(file_path) {
             let css_path = dist_path
                 .with_extension("css");
 
@@ -403,7 +395,7 @@ fn scss(
                     }
                 }
                 Err(err) => {
-                    log::error!("could not convert SCSS file `{}` to `{}`: {}", file_path.display(), css_path.display(), err);
+                    log::error!("could not convert SASS/ file `{}` to `{}`: {}", file_path.display(), css_path.display(), err);
                 }
             }
         } else {

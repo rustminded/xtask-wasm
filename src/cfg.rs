@@ -38,11 +38,11 @@ macro_rules! cfg_wasm_opt {
     }
 }
 
-macro_rules! cfg_scss {
+macro_rules! cfg_sass {
     ($($item:item)*) => {
         $(
-            #[cfg(feature = "scss")]
-            #[cfg_attr(docsrs, doc(cfg(feature = "scss")))]
+            #[cfg(feature = "sass")]
+            #[cfg_attr(docsrs, doc(cfg(feature = "sass")))]
             $item
         )*
     }
