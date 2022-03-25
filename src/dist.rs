@@ -309,14 +309,10 @@ impl Dist {
 
 
         if let Some(static_dir) = self.static_dir_path {
-            #[cfg(feature = "sass")]
-            {
+            if cfg!(feature = "sass") {
                 log::trace!("Generating CSS files from SASS/SCSS");
                 sass(&static_dir, &dist_dir_path, self.sass_options)?;
-            }
-
-            #[cfg(not(feature = "sass"))]
-            {
+            } else {
                 let mut copy_options = fs_extra::dir::CopyOptions::new();
                 copy_options.overwrite = true;
                 copy_options.content_only = true;
@@ -343,8 +339,6 @@ fn sass(
     dist_dir: &std::path::Path,
     options: sass_rs::Options
 ) -> Result<()> {
-    use walkdir::{DirEntry, WalkDir};
-
     fn is_sass(path: &std::path::Path) -> bool {
         matches!(
             path.extension().map(|x| x.to_str()).flatten(),
@@ -352,27 +346,20 @@ fn sass(
         )
     }
 
-    fn should_ignore(entry: &DirEntry) -> bool {
-        entry
+    fn should_ignore(path: &std::path::Path) -> bool {
+        path
             .file_name()
+            .expect("static files contains non-UTF8")
             .to_str()
             .map(|x| x.starts_with("_"))
             .unwrap_or(false)
     }
 
     log::trace!("Generating dist artifacts");
-    let walker = WalkDir::new(&static_dir).into_iter();
+    let walker = walkdir::WalkDir::new(&static_dir).into_iter();
     for entry in walker
         .filter_map(|x| match x {
-            Ok(x) => {
-                if !should_ignore(&x) {
-                    log::debug!("Will be handled: `{}`", &x.path().display());
-                    Some(x)
-                } else {
-                    log::debug!("Will be ignored: `{}`", &x.path().display());
-                    None
-                }
-            },
+            Ok(x) => Some(x),
             Err(err) => {
                 log::error!("could not walk into directory `{}`: {}", &static_dir.display(), err);
                 None
@@ -382,7 +369,7 @@ fn sass(
         let source = entry.path();
         let dest = dist_dir.join(source.strip_prefix(&static_dir).unwrap());
 
-        if is_sass(source) {
+        if is_sass(source) && !should_ignore(source) {
             let dest = dest
                 .with_extension("css");
 
