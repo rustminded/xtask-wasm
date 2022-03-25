@@ -155,7 +155,7 @@ impl Dist {
 
     #[cfg(feature = "sass")]
     /// Set the output style for SCSS/SASS
-    pub fn sass_output_style(mut self, output_style: sass_rs::Options) -> Self {
+    pub fn sass_options(mut self, output_style: sass_rs::Options) -> Self {
         self.sass_options = output_style;
         self
     }
