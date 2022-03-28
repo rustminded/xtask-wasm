@@ -50,7 +50,7 @@ fn download_wasm_opt() -> Result<&'static Path> {
 
 /// Helper Abstracting the `wasm-opt` binary from
 /// [binaryen](https://github.com/WebAssembly/binaryen) for easily optimizing
-/// your WASM binary.
+/// your Wasm binary.
 ///
 /// # Usage
 ///
@@ -68,7 +68,7 @@ pub struct WasmOpt {
     pub optimization_level: u32,
     /// How much to focus on shrinking code size.
     pub shrink_level: u32,
-    /// Emit names section in WASM binary.
+    /// Emit names section in Wasm binary.
     pub debug_info: bool,
 }
 
@@ -96,7 +96,7 @@ impl WasmOpt {
 
     /// Optimize the Wasm binary provided by `binary_path`.
     ///
-    /// This function will execute `wasm-opt` over the given WASM binary,
+    /// This function will execute `wasm-opt` over the given Wasm binary,
     /// downloading it if necessary (cached into the `target` directory).
     pub fn optimize(self, binary_path: impl AsRef<Path>) -> Result<Self> {
         let input_path = binary_path.as_ref();
@@ -124,7 +124,7 @@ impl WasmOpt {
             command.env("DYLD_LIBRARY_PATH", wasm_opt.parent().unwrap());
         }
 
-        log::info!("Optimizing WASM");
+        log::info!("Optimizing Wasm");
         ensure!(
             command.output()?.status.success(),
             "command `wasm-opt` failed"
@@ -133,7 +133,7 @@ impl WasmOpt {
         fs::remove_file(&input_path)?;
         fs::rename(&output_path, &input_path)?;
 
-        log::info!("WASM optimized");
+        log::info!("Wasm optimized");
         Ok(self)
     }
 }
