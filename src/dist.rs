@@ -302,15 +302,15 @@ impl Dist {
         log::trace!("Creating new dist directory");
         fs::create_dir_all(&dist_dir_path).context("cannot create build directory")?;
 
-        log::trace!("Writing WASM output into dist directory");
-        fs::write(&wasm_js_path, wasm_js).with_context(|| "cannot write js file")?;
-        fs::write(&wasm_bin_path, wasm_bin).with_context(|| "cannot write Wasm file")?;
+        log::trace!("Writing Wasm output into dist directory");
+        fs::write(&wasm_js_path, wasm_js).context("cannot write js file")?;
+        fs::write(&wasm_bin_path, wasm_bin).context("cannot write Wasm file")?;
 
         if let Some(static_dir) = self.static_dir_path {
             #[cfg(feature = "sass")]
             {
                 log::trace!("Generating CSS files from SASS/SCSS");
-                sass(&static_dir, &dist_dir_path, self.sass_options)?;
+                sass(&static_dir, &dist_dir_path, &self.sass_options)?;
             }
 
             #[cfg(not(feature = "sass"))]
@@ -339,11 +339,11 @@ impl Dist {
 fn sass(
     static_dir: &std::path::Path,
     dist_dir: &std::path::Path,
-    options: sass_rs::Options
+    options: &sass_rs::Options
 ) -> Result<()> {
     fn is_sass(path: &std::path::Path) -> bool {
         matches!(
-            path.extension().map(|x| x.to_str()).flatten(),
+            path.extension().and_then(|x| x.to_str().map(|x| x.to_lowercase())).as_deref(),
             Some("sass") | Some("scss")
         )
     }
@@ -351,29 +351,33 @@ fn sass(
     fn should_ignore(path: &std::path::Path) -> bool {
         path
             .file_name()
-            .expect("static file ends by `..`")
+            .expect("static files cannot terminates in `..`")
             .to_str()
             .map(|x| x.starts_with("_"))
             .unwrap_or(false)
     }
 
     log::trace!("Generating dist artifacts");
-    let walker = walkdir::WalkDir::new(&static_dir).into_iter();
+    let walker = walkdir::WalkDir::new(&static_dir);
     for entry in walker {
-        let entry = entry.context(format!("cannot walk into directory `{}`", &static_dir.display()))?;
+        let entry = entry.with_context(|| format!("cannot walk into directory `{}`", &static_dir.display()))?;
         let source = entry.path();
         let dest = dist_dir.join(source.strip_prefix(&static_dir).unwrap());
         let _ = fs::create_dir_all(dest.parent().unwrap());
 
-        if is_sass(source) && !should_ignore(source) {
-            let dest = dest
-                .with_extension("css");
+        if !source.is_file() {
+            continue
+        } else if is_sass(source) {
+            if !should_ignore(source) {
+                let dest = dest
+                    .with_extension("css");
 
-            let css = sass_rs::compile_file(source, options.clone())
-                .expect("could not convert SASS/ file");
-            fs::write(&dest, css).context(format!("could not write CSS to file `{}`", dest.display()))?;
-        } else if source.is_file(){
-            fs::copy(source, &dest).context(format!("cannot move `{}` to `{}`", source.display(), dest.display()))?;
+                let css = sass_rs::compile_file(source, options.clone())
+                    .expect("could not convert SASS/ file");
+                fs::write(&dest, css).with_context(|| format!("could not write CSS to file `{}`", dest.display()))?;
+            }
+        } else {
+            fs::copy(source, &dest).with_context(|| format!("cannot move `{}` to `{}`", source.display(), dest.display()))?;
         }
     }
 
