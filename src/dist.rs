@@ -109,6 +109,10 @@ pub struct Dist {
     /// Set the command's current directory as the workspace root.
     #[clap(skip = true)]
     pub run_in_workspace: bool,
+    /// Output style for SASS/SCSS
+    #[cfg(feature = "sass")]
+    #[clap(skip)]
+    pub sass_options: sass_rs::Options,
 }
 
 impl Dist {
@@ -149,6 +153,13 @@ impl Dist {
         self
     }
 
+    #[cfg(feature = "sass")]
+    /// Set the output style for SCSS/SASS
+    pub fn sass_options(mut self, output_style: sass_rs::Options) -> Self {
+        self.sass_options = output_style;
+        self
+    }
+
     /// Set the example to build.
     pub fn example(mut self, example: impl Into<String>) -> Self {
         self.example = Some(example.into());
@@ -161,7 +172,7 @@ impl Dist {
     /// and copy files from a given static directory if any to finally return
     /// the paths of the generated artifacts with [`DistResult`].
     ///
-    /// WASM optimizations can be achieved using [`crate::WasmOpt`] if the
+    /// Wasm optimizations can be achieved using [`crate::WasmOpt`] if the
     /// feature `wasm-opt` is enabled.
     pub fn run(self, package_name: &str) -> Result<DistResult> {
         log::trace!("Getting package's metadata");
@@ -267,7 +278,7 @@ impl Dist {
 
         let app_name = self.app_name.unwrap_or_else(|| "app".to_string());
 
-        log::trace!("Generating wasm output");
+        log::trace!("Generating Wasm output");
         let mut output = Bindgen::new()
             .input_path(input_path)
             .out_name(&app_name)
@@ -275,7 +286,7 @@ impl Dist {
             .expect("web have panic")
             .debug(!self.release)
             .generate_output()
-            .context("could not generate WASM bindgen file")?;
+            .context("could not generate Wasm bindgen file")?;
 
         let wasm_js = output.js().to_owned();
         let wasm_bin = output.wasm_mut().emit_wasm();
@@ -291,18 +302,27 @@ impl Dist {
         log::trace!("Creating new dist directory");
         fs::create_dir_all(&dist_dir_path).context("cannot create build directory")?;
 
-        log::trace!("Writing files into dist directory");
-        fs::write(&wasm_js_path, wasm_js).with_context(|| "cannot write js file")?;
-        fs::write(&wasm_bin_path, wasm_bin).with_context(|| "cannot write WASM file")?;
-
-        let mut copy_options = fs_extra::dir::CopyOptions::new();
-        copy_options.overwrite = true;
-        copy_options.content_only = true;
+        log::trace!("Writing Wasm output into dist directory");
+        fs::write(&wasm_js_path, wasm_js).context("cannot write js file")?;
+        fs::write(&wasm_bin_path, wasm_bin).context("cannot write Wasm file")?;
 
         if let Some(static_dir) = self.static_dir_path {
-            log::trace!("Copying static directory into dist directory");
-            fs_extra::dir::copy(static_dir, &dist_dir_path, &copy_options)
-                .context("cannot copy static directory")?;
+            #[cfg(feature = "sass")]
+            {
+                log::trace!("Generating CSS files from SASS/SCSS");
+                sass(&static_dir, &dist_dir_path, &self.sass_options)?;
+            }
+
+            #[cfg(not(feature = "sass"))]
+            {
+                let mut copy_options = fs_extra::dir::CopyOptions::new();
+                copy_options.overwrite = true;
+                copy_options.content_only = true;
+
+                log::trace!("Copying static directory into dist directory");
+                fs_extra::dir::copy(static_dir, &dist_dir_path, &copy_options)
+                    .context("cannot copy static directory")?;
+            }
         }
 
         log::info!("Successfully built in {}", dist_dir_path.display());
@@ -315,13 +335,62 @@ impl Dist {
     }
 }
 
+#[cfg(feature = "sass")]
+fn sass(
+    static_dir: &std::path::Path,
+    dist_dir: &std::path::Path,
+    options: &sass_rs::Options
+) -> Result<()> {
+    fn is_sass(path: &std::path::Path) -> bool {
+        matches!(
+            path.extension().and_then(|x| x.to_str().map(|x| x.to_lowercase())).as_deref(),
+            Some("sass") | Some("scss")
+        )
+    }
+
+    fn should_ignore(path: &std::path::Path) -> bool {
+        path
+            .file_name()
+            .expect("WalkDir does not yield paths ending with `..`  or `.`")
+            .to_str()
+            .map(|x| x.starts_with("_"))
+            .unwrap_or(false)
+    }
+
+    log::trace!("Generating dist artifacts");
+    let walker = walkdir::WalkDir::new(&static_dir);
+    for entry in walker {
+        let entry = entry.with_context(|| format!("cannot walk into directory `{}`", &static_dir.display()))?;
+        let source = entry.path();
+        let dest = dist_dir.join(source.strip_prefix(&static_dir).unwrap());
+        let _ = fs::create_dir_all(dest.parent().unwrap());
+
+        if !source.is_file() {
+            continue
+        } else if is_sass(source) {
+            if !should_ignore(source) {
+                let dest = dest
+                    .with_extension("css");
+
+                let css = sass_rs::compile_file(source, options.clone())
+                    .expect("could not convert SASS/ file");
+                fs::write(&dest, css).with_context(|| format!("could not write CSS to file `{}`", dest.display()))?;
+            }
+        } else {
+            fs::copy(source, &dest).with_context(|| format!("cannot move `{}` to `{}`", source.display(), dest.display()))?;
+        }
+    }
+
+    Ok(())
+}
+
 /// Provides paths of the generated dist artifacts.
 pub struct DistResult {
     /// Directory containing the generated artifacts.
     pub dist_dir: PathBuf,
-    /// js output generated by wasm_bindgen.
+    /// JS output generated by wasm-bindgen.
     pub js: PathBuf,
-    /// wasm output generated by wasm_bindgen.
+    /// Wasm output generated by wasm-bindgen.
     pub wasm: PathBuf,
 }
 

@@ -266,6 +266,10 @@ cfg_not_wasm32! {
         pub use wasm_opt::*;
     }
 
+    cfg_sass! {
+        pub use sass_rs;
+    }
+
     /// Get the default command for the build in the dist process.
     ///
     /// This is `cargo build --target wasm32-unknown-unknown`.

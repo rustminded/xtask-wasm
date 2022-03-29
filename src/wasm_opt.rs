@@ -68,7 +68,7 @@ pub struct WasmOpt {
     pub optimization_level: u32,
     /// How much to focus on shrinking code size.
     pub shrink_level: u32,
-    /// Emit names section in wasm binary.
+    /// Emit names section in Wasm binary.
     pub debug_info: bool,
 }
 
@@ -124,7 +124,7 @@ impl WasmOpt {
             command.env("DYLD_LIBRARY_PATH", wasm_opt.parent().unwrap());
         }
 
-        log::info!("Optimizing WASM");
+        log::info!("Optimizing Wasm");
         ensure!(
             command.output()?.status.success(),
             "command `wasm-opt` failed"
@@ -133,7 +133,7 @@ impl WasmOpt {
         fs::remove_file(&input_path)?;
         fs::rename(&output_path, &input_path)?;
 
-        log::info!("WASM optimized");
+        log::info!("Wasm optimized");
         Ok(self)
     }
 }
