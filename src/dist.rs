@@ -351,7 +351,7 @@ fn sass(
     fn should_ignore(path: &std::path::Path) -> bool {
         path
             .file_name()
-            .expect("static files cannot terminates in `..`")
+            .expect("WalkDir does not yield paths ending with `..`  or `.`")
             .to_str()
             .map(|x| x.starts_with("_"))
             .unwrap_or(false)
