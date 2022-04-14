@@ -1,4 +1,5 @@
-use quote::quote;
+use quote::{quote, quote_spanned};
+use syn::spanned::Spanned;
 use syn::{parse, parse_macro_input};
 
 /// This macro helps to run an example in the project's `examples/` directory using a development
@@ -90,7 +91,7 @@ impl RunExample {
         let fn_block = item.block;
 
         let index = if let Some(expr) = &self.index {
-            quote! {
+            quote_spanned! {expr.span()=>
                 std::fs::write(
                     dist_dir.join("index.html"),
                     #expr
@@ -108,13 +109,13 @@ impl RunExample {
         };
 
         let app_name = if let Some(expr) = &self.app_name {
-            quote! { .app_name(#expr) }
+            quote_spanned! {expr.span()=> .app_name(#expr) }
         } else {
             quote! {}
         };
 
         let static_dir = if let Some(expr) = self.static_dir {
-            quote! { .static_dir_path(#expr) }
+            quote_spanned! {expr.span()=> .static_dir_path(#expr) }
         } else {
             quote! {}
         };
