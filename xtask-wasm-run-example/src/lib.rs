@@ -168,7 +168,7 @@ impl RunExample {
                             #static_dir
                             .run(env!("CARGO_PKG_NAME"))?;
 
-                            #index
+                        #index
 
                         Ok(())
                     }
