@@ -40,7 +40,7 @@ fn main() -> Result<()> {
             let dist_result = arg
                 .base
                 .static_dir_path("webapp/static")
-                .app_name("web_app")
+                .app_name("app")
                 .run("webapp")?;
 
             if arg.optimize {
