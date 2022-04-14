@@ -77,7 +77,7 @@ impl RunExample {
             };
         }
 
-        Ok(RunExample { index,  static_dir })
+        Ok(RunExample { index, static_dir })
     }
 
     fn generate(self, item: syn::ItemFn) -> syn::Result<proc_macro2::TokenStream> {
