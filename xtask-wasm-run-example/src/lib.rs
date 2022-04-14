@@ -91,12 +91,7 @@ impl RunExample {
         let fn_block = item.block;
 
         let index = if let Some(expr) = &self.index {
-            quote_spanned! {expr.span()=>
-                std::fs::write(
-                    dist_dir.join("index.html"),
-                    #expr,
-                );
-            }
+            quote_spanned! { expr.span()=> std::fs::write(dist_dir.join("index.html"), #expr); }
         } else if let Some(_) = &self.static_dir {
             quote! {}
         } else {
@@ -109,13 +104,13 @@ impl RunExample {
         };
 
         let app_name = if let Some(expr) = &self.app_name {
-            quote_spanned! {expr.span()=> .app_name(#expr) }
+            quote_spanned! { expr.span()=> .app_name(#expr) }
         } else {
             quote! {}
         };
 
         let static_dir = if let Some(expr) = self.static_dir {
-            quote_spanned! {expr.span()=> .static_dir_path(#expr) }
+            quote_spanned! { expr.span()=> .static_dir_path(#expr) }
         } else {
             quote! {}
         };
