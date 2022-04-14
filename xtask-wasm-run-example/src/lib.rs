@@ -1,5 +1,4 @@
-use quote::{quote, quote_spanned};
-use syn::spanned::Spanned;
+use quote::quote;
 use syn::{parse, parse_macro_input};
 
 /// This macro helps to run an example in the project's `examples/` directory using a development
@@ -90,13 +89,22 @@ impl RunExample {
     fn generate(self, item: syn::ItemFn) -> syn::Result<proc_macro2::TokenStream> {
         let fn_block = item.block;
 
-        let index = if let Some(expr) = self.index {
-            let span = expr.span();
-            quote_spanned! {span=> #expr }
-        } else if let Some(expr) = &self.app_name {
-            quote! { format!(r#"<!DOCTYPE html><html><head><meta charset="utf-8"/><script type="module">import init from "/{}.js";init(new URL('{}.wasm', import.meta.url));</script></head><body></body></html>"#, #expr) }
+        let index = if let Some(expr) = &self.index {
+            quote! {
+                std::fs::write(
+                    dist_dir.join("index.html"),
+                    #expr
+                )
+            }
+        } else if let Some(_) = &self.static_dir {
+            quote! {}
         } else {
-            quote! { r#"<!DOCTYPE html><html><head><meta charset="utf-8"/><script type="module">import init from "/app.js";init(new URL('app.wasm', import.meta.url));</script></head><body></body></html>"# }
+            quote! {
+                std::fs::write(
+                    dist_dir.join("index.html"),
+                    r#"<!DOCTYPE html><html><head><meta charset="utf-8"/><script type="module">import init from "/app.js";init(new URL('app.wasm', import.meta.url));</script></head><body></body></html>"#
+                )
+            }
         };
 
         let app_name = if let Some(expr) = &self.app_name {
@@ -105,27 +113,10 @@ impl RunExample {
             quote! {}
         };
 
-        let dist_command = if let Some(expr) = self.static_dir {
-            quote! {
-                let xtask_wasm::DistResult { dist_dir, .. } = dist
-                    .example(module_path!())
-                    .static_dir_path(#expr)
-                    #app_name
-                    .run(env!("CARGO_PKG_NAME"))?;
-
-                Ok(())
-            }
+        let static_dir = if let Some(expr) = self.static_dir {
+            quote! { .static_dir_path(#expr) }
         } else {
-            quote! {
-                let xtask_wasm::DistResult { dist_dir, .. } = dist
-                    .example(module_path!())
-                    #app_name
-                    .run(env!("CARGO_PKG_NAME"))?;
-
-                std::fs::write(dist_dir.join("index.html"), #index)?;
-
-                Ok(())
-            }
+            quote! {}
         };
 
         Ok(quote! {
@@ -171,7 +162,15 @@ impl RunExample {
 
                 match cli.command {
                     Some(Command::Dist(mut dist)) => {
-                        #dist_command
+                        let xtask_wasm::DistResult { dist_dir, .. } = dist
+                            .example(module_path!())
+                            #app_name
+                            #static_dir
+                            .run(env!("CARGO_PKG_NAME"))?;
+
+                            #index
+
+                        Ok(())
                     }
                     Some(Command::Start(dev_server)) => {
                         let served_path = xtask_wasm::default_dist_dir(false);
