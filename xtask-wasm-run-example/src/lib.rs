@@ -52,12 +52,14 @@ pub fn run_example(
 struct RunExample {
     index: Option<syn::Expr>,
     static_dir: Option<syn::Expr>,
+    app_name: Option<syn::Expr>,
 }
 
 impl RunExample {
     fn parse(input: parse::ParseStream) -> parse::Result<Self> {
         let mut index = None;
         let mut static_dir = None;
+        let mut app_name = None;
 
         while !input.is_empty() {
             let ident: syn::Ident = input.parse()?;
@@ -67,6 +69,7 @@ impl RunExample {
             match ident.to_string().as_str() {
                 "index" => index = Some(expr),
                 "static_dir" => static_dir = Some(expr),
+                "app_name" => app_name = Some(expr),
                 _ => return Err(parse::Error::new(ident.span(), "unrecognized argument")),
             }
 
@@ -77,151 +80,294 @@ impl RunExample {
             };
         }
 
-        Ok(RunExample { index, static_dir })
+        Ok(RunExample { index, static_dir, app_name })
     }
 
     fn generate(self, item: syn::ItemFn) -> syn::Result<proc_macro2::TokenStream> {
         let fn_block = item.block;
+
         let index = if let Some(expr) = self.index {
             let span = expr.span();
             quote_spanned! {span=> #expr }
+        } else if let Some(app_name) = &self.app_name {
+            quote! { format!(r#"<!DOCTYPE html><html><head><meta charset="utf-8"/><script type="module">import init from "/{}.js";init(new URL('{}.wasm', import.meta.url));</script></head><body></body></html>"#, #app_name) }
         } else {
             quote! { r#"<!DOCTYPE html><html><head><meta charset="utf-8"/><script type="module">import init from "/app.js";init(new URL('app.wasm', import.meta.url));</script></head><body></body></html>"# }
         };
 
-        if let Some(static_dir) = self.static_dir {
-            Ok(quote! {
-                #[cfg(target_arch = "wasm32")]
-                pub mod xtask_wasm_run_example {
-                    use super::*;
-                    use xtask_wasm::wasm_bindgen;
+         match self.static_dir {
+            Some(static_dir) if self.app_name.is_some() => {
+                let app_name = self.app_name.expect("app_name is Some");
 
-                    #[xtask_wasm::wasm_bindgen::prelude::wasm_bindgen(start)]
-                    pub fn run_app() -> Result<(), xtask_wasm::wasm_bindgen::JsValue> {
-                        xtask_wasm::console_error_panic_hook::set_once();
+                Ok(quote! {
+                    #[cfg(target_arch = "wasm32")]
+                    pub mod xtask_wasm_run_example {
+                        use super::*;
+                        use xtask_wasm::wasm_bindgen;
 
-                        #fn_block
+                        #[xtask_wasm::wasm_bindgen::prelude::wasm_bindgen(start)]
+                        pub fn run_app() -> Result<(), xtask_wasm::wasm_bindgen::JsValue> {
+                            xtask_wasm::console_error_panic_hook::set_once();
 
-                        Ok(())
-                    }
-                }
-
-                #[cfg(not(target_arch = "wasm32"))]
-                fn main() -> xtask_wasm::anyhow::Result<()> {
-                    use xtask_wasm::{env_logger, log, clap};
-
-                    #[derive(clap::Parser)]
-                    struct Cli {
-                        #[clap(subcommand)]
-                        command: Option<Command>,
-                    }
-
-                    #[derive(clap::Parser)]
-                    enum Command {
-                        Dist(xtask_wasm::Dist),
-                        Start(xtask_wasm::DevServer),
-                    }
-
-                    env_logger::builder()
-                        .filter(Some(module_path!()), log::LevelFilter::Info)
-                        .filter(Some("xtask"), log::LevelFilter::Info)
-                        .init();
-
-                    let cli: Cli = clap::Parser::parse();
-                    let mut dist_command = xtask_wasm::xtask_command();
-                    dist_command.arg("dist");
-
-                    match cli.command {
-                        Some(Command::Dist(mut dist)) => {
-                            let xtask_wasm::DistResult { dist_dir, .. } = dist
-                                .example(module_path!())
-                                .static_dir_path(#static_dir)
-                                .app_name("app")
-                                .run(env!("CARGO_PKG_NAME"))?;
+                            #fn_block
 
                             Ok(())
                         }
-                        Some(Command::Start(dev_server)) => {
-                            let served_path = xtask_wasm::default_dist_dir(false);
-                            dev_server.command(dist_command).start(served_path)
+                    }
+
+                    #[cfg(not(target_arch = "wasm32"))]
+                    fn main() -> xtask_wasm::anyhow::Result<()> {
+                        use xtask_wasm::{env_logger, log, clap};
+
+                        #[derive(clap::Parser)]
+                        struct Cli {
+                            #[clap(subcommand)]
+                            command: Option<Command>,
                         }
-                        None => {
-                            let dev_server: xtask_wasm::DevServer = clap::Parser::parse();
-                            let served_path = xtask_wasm::default_dist_dir(false);
-                            dev_server.command(dist_command).start(served_path)
+
+                        #[derive(clap::Parser)]
+                        enum Command {
+                            Dist(xtask_wasm::Dist),
+                            Start(xtask_wasm::DevServer),
+                        }
+
+                        env_logger::builder()
+                            .filter(Some(module_path!()), log::LevelFilter::Info)
+                            .filter(Some("xtask"), log::LevelFilter::Info)
+                            .init();
+
+                        let cli: Cli = clap::Parser::parse();
+                        let mut dist_command = xtask_wasm::xtask_command();
+                        dist_command.arg("dist");
+
+                        match cli.command {
+                            Some(Command::Dist(mut dist)) => {
+                                let xtask_wasm::DistResult { dist_dir, .. } = dist
+                                    .example(module_path!())
+                                    .static_dir_path(#static_dir)
+                                    .app_name(#app_name)
+                                    .run(env!("CARGO_PKG_NAME"))?;
+
+                                Ok(())
+                            }
+                            Some(Command::Start(dev_server)) => {
+                                let served_path = xtask_wasm::default_dist_dir(false);
+                                dev_server.command(dist_command).start(served_path)
+                            }
+                            None => {
+                                let dev_server: xtask_wasm::DevServer = clap::Parser::parse();
+                                let served_path = xtask_wasm::default_dist_dir(false);
+                                dev_server.command(dist_command).start(served_path)
+                            }
                         }
                     }
-                }
 
-                #[cfg(target_arch = "wasm32")]
-                fn main() {}
-            })
-        } else {
-            Ok(quote! {
-                #[cfg(target_arch = "wasm32")]
-                pub mod xtask_wasm_run_example {
-                    use super::*;
-                    use xtask_wasm::wasm_bindgen;
+                    #[cfg(target_arch = "wasm32")]
+                    fn main() {}
+                })
+            },
+            Some(static_dir) if self.app_name.is_none() => {
+                Ok(quote! {
+                    #[cfg(target_arch = "wasm32")]
+                    pub mod xtask_wasm_run_example {
+                        use super::*;
+                        use xtask_wasm::wasm_bindgen;
 
-                    #[xtask_wasm::wasm_bindgen::prelude::wasm_bindgen(start)]
-                    pub fn run_app() -> Result<(), xtask_wasm::wasm_bindgen::JsValue> {
-                        xtask_wasm::console_error_panic_hook::set_once();
+                        #[xtask_wasm::wasm_bindgen::prelude::wasm_bindgen(start)]
+                        pub fn run_app() -> Result<(), xtask_wasm::wasm_bindgen::JsValue> {
+                            xtask_wasm::console_error_panic_hook::set_once();
 
-                        #fn_block
+                            #fn_block
 
-                        Ok(())
-                    }
-                }
-
-                #[cfg(not(target_arch = "wasm32"))]
-                fn main() -> xtask_wasm::anyhow::Result<()> {
-                    use xtask_wasm::{env_logger, log, clap};
-
-                    #[derive(clap::Parser)]
-                    struct Cli {
-                        #[clap(subcommand)]
-                        command: Option<Command>,
-                    }
-
-                    #[derive(clap::Parser)]
-                    enum Command {
-                        Dist(xtask_wasm::Dist),
-                        Start(xtask_wasm::DevServer),
-                    }
-
-                    env_logger::builder()
-                        .filter(Some(module_path!()), log::LevelFilter::Info)
-                        .filter(Some("xtask"), log::LevelFilter::Info)
-                        .init();
-
-                    let cli: Cli = clap::Parser::parse();
-                    let mut dist_command = xtask_wasm::xtask_command();
-                    dist_command.arg("dist");
-
-                    match cli.command {
-                        Some(Command::Dist(mut dist)) => {
-                            let xtask_wasm::DistResult { dist_dir, .. } = dist
-                                .example(module_path!())
-                                .app_name("app")
-                                .run(env!("CARGO_PKG_NAME"))?;
-                            std::fs::write(dist_dir.join("index.html"), #index)?;
                             Ok(())
                         }
-                        Some(Command::Start(dev_server)) => {
-                            let served_path = xtask_wasm::default_dist_dir(false);
-                            dev_server.command(dist_command).start(served_path)
+                    }
+
+                    #[cfg(not(target_arch = "wasm32"))]
+                    fn main() -> xtask_wasm::anyhow::Result<()> {
+                        use xtask_wasm::{env_logger, log, clap};
+
+                        #[derive(clap::Parser)]
+                        struct Cli {
+                            #[clap(subcommand)]
+                            command: Option<Command>,
                         }
-                        None => {
-                            let dev_server: xtask_wasm::DevServer = clap::Parser::parse();
-                            let served_path = xtask_wasm::default_dist_dir(false);
-                            dev_server.command(dist_command).start(served_path)
+
+                        #[derive(clap::Parser)]
+                        enum Command {
+                            Dist(xtask_wasm::Dist),
+                            Start(xtask_wasm::DevServer),
+                        }
+
+                        env_logger::builder()
+                            .filter(Some(module_path!()), log::LevelFilter::Info)
+                            .filter(Some("xtask"), log::LevelFilter::Info)
+                            .init();
+
+                        let cli: Cli = clap::Parser::parse();
+                        let mut dist_command = xtask_wasm::xtask_command();
+                        dist_command.arg("dist");
+
+                        match cli.command {
+                            Some(Command::Dist(mut dist)) => {
+                                let xtask_wasm::DistResult { dist_dir, .. } = dist
+                                    .example(module_path!())
+                                    .static_dir_path(#static_dir)
+                                    .run(env!("CARGO_PKG_NAME"))?;
+
+                                Ok(())
+                            }
+                            Some(Command::Start(dev_server)) => {
+                                let served_path = xtask_wasm::default_dist_dir(false);
+                                dev_server.command(dist_command).start(served_path)
+                            }
+                            None => {
+                                let dev_server: xtask_wasm::DevServer = clap::Parser::parse();
+                                let served_path = xtask_wasm::default_dist_dir(false);
+                                dev_server.command(dist_command).start(served_path)
+                            }
                         }
                     }
-                }
 
-                #[cfg(target_arch = "wasm32")]
-                fn main() {}
-            })
+                    #[cfg(target_arch = "wasm32")]
+                    fn main() {}
+                })
+            },
+            None if self.app_name.is_some() => {
+                let app_name = self.app_name.expect("app_name is Some");
+
+                Ok(quote! {
+                    #[cfg(target_arch = "wasm32")]
+                    pub mod xtask_wasm_run_example {
+                        use super::*;
+                        use xtask_wasm::wasm_bindgen;
+
+                        #[xtask_wasm::wasm_bindgen::prelude::wasm_bindgen(start)]
+                        pub fn run_app() -> Result<(), xtask_wasm::wasm_bindgen::JsValue> {
+                            xtask_wasm::console_error_panic_hook::set_once();
+
+                            #fn_block
+
+                            Ok(())
+                        }
+                    }
+
+                    #[cfg(not(target_arch = "wasm32"))]
+                    fn main() -> xtask_wasm::anyhow::Result<()> {
+                        use xtask_wasm::{env_logger, log, clap};
+
+                        #[derive(clap::Parser)]
+                        struct Cli {
+                            #[clap(subcommand)]
+                            command: Option<Command>,
+                        }
+
+                        #[derive(clap::Parser)]
+                        enum Command {
+                            Dist(xtask_wasm::Dist),
+                            Start(xtask_wasm::DevServer),
+                        }
+
+                        env_logger::builder()
+                            .filter(Some(module_path!()), log::LevelFilter::Info)
+                            .filter(Some("xtask"), log::LevelFilter::Info)
+                            .init();
+
+                        let cli: Cli = clap::Parser::parse();
+                        let mut dist_command = xtask_wasm::xtask_command();
+                        dist_command.arg("dist");
+
+                        match cli.command {
+                            Some(Command::Dist(mut dist)) => {
+                                let xtask_wasm::DistResult { dist_dir, .. } = dist
+                                    .example(module_path!())
+                                    .app_name(#app_name)
+                                    .run(env!("CARGO_PKG_NAME"))?;
+                                std::fs::write(dist_dir.join("index.html"), #index)?;
+                                Ok(())
+                            }
+                            Some(Command::Start(dev_server)) => {
+                                let served_path = xtask_wasm::default_dist_dir(false);
+                                dev_server.command(dist_command).start(served_path)
+                            }
+                            None => {
+                                let dev_server: xtask_wasm::DevServer = clap::Parser::parse();
+                                let served_path = xtask_wasm::default_dist_dir(false);
+                                dev_server.command(dist_command).start(served_path)
+                            }
+                        }
+                    }
+
+                    #[cfg(target_arch = "wasm32")]
+                    fn main() {}
+                })
+            },
+            _ => {
+                Ok(quote! {
+                    #[cfg(target_arch = "wasm32")]
+                    pub mod xtask_wasm_run_example {
+                        use super::*;
+                        use xtask_wasm::wasm_bindgen;
+
+                        #[xtask_wasm::wasm_bindgen::prelude::wasm_bindgen(start)]
+                        pub fn run_app() -> Result<(), xtask_wasm::wasm_bindgen::JsValue> {
+                            xtask_wasm::console_error_panic_hook::set_once();
+
+                            #fn_block
+
+                            Ok(())
+                        }
+                    }
+
+                    #[cfg(not(target_arch = "wasm32"))]
+                    fn main() -> xtask_wasm::anyhow::Result<()> {
+                        use xtask_wasm::{env_logger, log, clap};
+
+                        #[derive(clap::Parser)]
+                        struct Cli {
+                            #[clap(subcommand)]
+                            command: Option<Command>,
+                        }
+
+                        #[derive(clap::Parser)]
+                        enum Command {
+                            Dist(xtask_wasm::Dist),
+                            Start(xtask_wasm::DevServer),
+                        }
+
+                        env_logger::builder()
+                            .filter(Some(module_path!()), log::LevelFilter::Info)
+                            .filter(Some("xtask"), log::LevelFilter::Info)
+                            .init();
+
+                        let cli: Cli = clap::Parser::parse();
+                        let mut dist_command = xtask_wasm::xtask_command();
+                        dist_command.arg("dist");
+
+                        match cli.command {
+                            Some(Command::Dist(mut dist)) => {
+                                let xtask_wasm::DistResult { dist_dir, .. } = dist
+                                    .example(module_path!())
+                                    .run(env!("CARGO_PKG_NAME"))?;
+                                std::fs::write(dist_dir.join("index.html"), #index)?;
+                                Ok(())
+                            }
+                            Some(Command::Start(dev_server)) => {
+                                let served_path = xtask_wasm::default_dist_dir(false);
+                                dev_server.command(dist_command).start(served_path)
+                            }
+                            None => {
+                                let dev_server: xtask_wasm::DevServer = clap::Parser::parse();
+                                let served_path = xtask_wasm::default_dist_dir(false);
+                                dev_server.command(dist_command).start(served_path)
+                            }
+                        }
+                    }
+
+                    #[cfg(target_arch = "wasm32")]
+                    fn main() {}
+                })
+            },
         }
     }
 }
