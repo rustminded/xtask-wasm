@@ -51,11 +51,15 @@ pub fn run_example(
 
 struct RunExample {
     index: Option<syn::Expr>,
+    static_dir: Option<syn::Expr>,
+    app_name: Option<syn::Expr>,
 }
 
 impl RunExample {
     fn parse(input: parse::ParseStream) -> parse::Result<Self> {
         let mut index = None;
+        let mut static_dir = None;
+        let mut app_name = None;
 
         while !input.is_empty() {
             let ident: syn::Ident = input.parse()?;
@@ -64,6 +68,8 @@ impl RunExample {
 
             match ident.to_string().as_str() {
                 "index" => index = Some(expr),
+                "static_dir" => static_dir = Some(expr),
+                "app_name" => app_name = Some(expr),
                 _ => return Err(parse::Error::new(ident.span(), "unrecognized argument")),
             }
 
@@ -74,16 +80,39 @@ impl RunExample {
             };
         }
 
-        Ok(RunExample { index })
+        Ok(RunExample {
+            index,
+            static_dir,
+            app_name,
+        })
     }
 
     fn generate(self, item: syn::ItemFn) -> syn::Result<proc_macro2::TokenStream> {
         let fn_block = item.block;
-        let index = if let Some(expr) = self.index {
-            let span = expr.span();
-            quote_spanned! {span=> #expr }
+
+        let index = if let Some(expr) = &self.index {
+            quote_spanned! { expr.span()=> std::fs::write(dist_dir.join("index.html"), #expr); }
+        } else if let Some(_) = &self.static_dir {
+            quote! {}
         } else {
-            quote! { r#"<!DOCTYPE html><html><head><meta charset="utf-8"/><script type="module">import init from "/app.js";init(new URL('app.wasm', import.meta.url));</script></head><body></body></html>"# }
+            quote! {
+                std::fs::write(
+                    dist_dir.join("index.html"),
+                    r#"<!DOCTYPE html><html><head><meta charset="utf-8"/><script type="module">import init from "/app.js";init(new URL('app.wasm', import.meta.url));</script></head><body></body></html>"#,
+                );
+            }
+        };
+
+        let app_name = if let Some(expr) = &self.app_name {
+            quote_spanned! { expr.span()=> .app_name(#expr) }
+        } else {
+            quote! {}
+        };
+
+        let static_dir = if let Some(expr) = self.static_dir {
+            quote_spanned! { expr.span()=> .static_dir_path(#expr) }
+        } else {
+            quote! {}
         };
 
         Ok(quote! {
@@ -131,9 +160,12 @@ impl RunExample {
                     Some(Command::Dist(mut dist)) => {
                         let xtask_wasm::DistResult { dist_dir, .. } = dist
                             .example(module_path!())
-                            .app_name("app")
+                            #app_name
+                            #static_dir
                             .run(env!("CARGO_PKG_NAME"))?;
-                        std::fs::write(dist_dir.join("index.html"), #index)?;
+
+                        #index
+
                         Ok(())
                     }
                     Some(Command::Start(dev_server)) => {
