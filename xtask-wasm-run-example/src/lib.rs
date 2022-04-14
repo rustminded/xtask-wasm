@@ -94,8 +94,8 @@ impl RunExample {
             quote_spanned! {expr.span()=>
                 std::fs::write(
                     dist_dir.join("index.html"),
-                    #expr
-                )
+                    #expr,
+                );
             }
         } else if let Some(_) = &self.static_dir {
             quote! {}
@@ -103,8 +103,8 @@ impl RunExample {
             quote! {
                 std::fs::write(
                     dist_dir.join("index.html"),
-                    r#"<!DOCTYPE html><html><head><meta charset="utf-8"/><script type="module">import init from "/app.js";init(new URL('app.wasm', import.meta.url));</script></head><body></body></html>"#
-                )
+                    r#"<!DOCTYPE html><html><head><meta charset="utf-8"/><script type="module">import init from "/app.js";init(new URL('app.wasm', import.meta.url));</script></head><body></body></html>"#,
+                );
             }
         };
 
@@ -172,16 +172,16 @@ impl RunExample {
                         #index
 
                         Ok(())
-                    }
+                    },
                     Some(Command::Start(dev_server)) => {
                         let served_path = xtask_wasm::default_dist_dir(false);
                         dev_server.command(dist_command).start(served_path)
-                    }
+                    },
                     None => {
                         let dev_server: xtask_wasm::DevServer = clap::Parser::parse();
                         let served_path = xtask_wasm::default_dist_dir(false);
                         dev_server.command(dist_command).start(served_path)
-                    }
+                    },
                 }
             }
 
