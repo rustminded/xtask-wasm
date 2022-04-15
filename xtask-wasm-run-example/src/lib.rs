@@ -41,9 +41,9 @@ use syn::{parse, parse_macro_input};
 ///
 /// You can give arguments to the macro to customize the example:
 ///
-/// * `index` - Content of a custom index.html.
+/// * `app_name` - Change the app name.
+/// * `index` - Content of a custom `index.html`.
 /// * `static_dir` - Path to a custom static directory.
-/// * `app_name` - If a custom index or static directory is provided, change the app name.
 #[proc_macro_attribute]
 pub fn run_example(
     attr: proc_macro::TokenStream,
