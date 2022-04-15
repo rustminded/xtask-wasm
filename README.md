@@ -221,6 +221,7 @@ This command will run the code in `examples/run_example` using the development s
     and using [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools) very easily.
 * `run-example`: a helper to run examples from `examples/` directory using a development
     server.
+* `sass`: allow the use of SASS/SCSS to your project.
 
 ## Troubleshooting
 

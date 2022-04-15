@@ -36,6 +36,14 @@ use syn::{parse, parse_macro_input};
 ///     ```console
 ///     cargo run --example my_example
 ///     ```
+///
+/// ## Arguments
+///
+/// You can give arguments to the macro to customize the example:
+///
+/// * `app_name` - Change the app name.
+/// * `index` - Content of a custom `index.html`.
+/// * `static_dir` - Path to a custom static directory.
 #[proc_macro_attribute]
 pub fn run_example(
     attr: proc_macro::TokenStream,
