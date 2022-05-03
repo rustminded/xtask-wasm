@@ -58,7 +58,7 @@ use std::{
 #[clap(
     about = "A simple HTTP server useful during development.",
     long_about = "A simple HTTP server useful during development.\n\
-        It can watch the source code for changes.",
+        It can watch the source code for changes."
 )]
 pub struct DevServer {
     /// IP address to bind. Default to `127.0.0.1`.
@@ -172,6 +172,13 @@ fn respond_to_request(stream: &mut TcpStream, dist_dir_path: impl AsRef<Path>) -
         .nth(1)
         .context("Could not find path in request")?;
 
+    let requested_path = requested_path
+        .split_once('?')
+        .map(|(prefix, _suffix)| prefix)
+        .unwrap_or(requested_path);
+
+    log::debug!("<-- {}", requested_path);
+
     let rel_path = Path::new(requested_path.trim_matches('/'));
     let mut full_path = dist_dir_path.as_ref().join(rel_path);
 
@@ -188,6 +195,7 @@ fn respond_to_request(stream: &mut TcpStream, dist_dir_path: impl AsRef<Path>) -
     let stream = reader.get_mut();
 
     if full_path.is_file() {
+        log::debug!("--> {}", full_path.display());
         let full_path_extension = Utf8Path::from_path(&full_path)
             .context("request path contains non-utf8 characters")?
             .extension();
@@ -213,6 +221,7 @@ fn respond_to_request(stream: &mut TcpStream, dist_dir_path: impl AsRef<Path>) -
 
         std::io::copy(&mut fs::File::open(&full_path)?, stream)?;
     } else {
+        log::debug!("--> {} (404 NOT FOUND)", full_path.display());
         stream
             .write("HTTP/1.1 404 NOT FOUND\r\n\r\n".as_bytes())
             .context("cannot write response")?;
