@@ -175,7 +175,7 @@ fn respond_to_request(stream: &mut TcpStream, dist_dir_path: impl AsRef<Path>) -
     let requested_path = requested_path
         .split_once('?')
         .map(|(prefix, _suffix)| prefix)
-        .unwrap_or(&requested_path);
+        .unwrap_or(requested_path);
 
     log::debug!("<-- {}", requested_path);
 
