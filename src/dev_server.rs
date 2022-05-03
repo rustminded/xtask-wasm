@@ -58,7 +58,7 @@ use std::{
 #[clap(
     about = "A simple HTTP server useful during development.",
     long_about = "A simple HTTP server useful during development.\n\
-        It can watch the source code for changes.",
+        It can watch the source code for changes."
 )]
 pub struct DevServer {
     /// IP address to bind. Default to `127.0.0.1`.
@@ -172,7 +172,10 @@ fn respond_to_request(stream: &mut TcpStream, dist_dir_path: impl AsRef<Path>) -
         .nth(1)
         .context("Could not find path in request")?;
 
-    let requested_path = requested_path.split_once('?').map(|(prefix, _suffix)| prefix).unwrap_or(&requested_path);
+    let requested_path = requested_path
+        .split_once('?')
+        .map(|(prefix, _suffix)| prefix)
+        .unwrap_or(&requested_path);
 
     log::debug!("<-- {}", requested_path);
 
