@@ -7,7 +7,7 @@ use std::{
     ffi, fs,
     io::{prelude::*, BufReader},
     net::{IpAddr, SocketAddr, TcpListener, TcpStream},
-    path::Path,
+    path::{Path, PathBuf},
     process,
 };
 
@@ -68,9 +68,6 @@ pub struct DevServer {
     #[clap(long, default_value = "8000")]
     pub port: u16,
 
-    /// Command executed when a change is detected.
-    #[clap(skip)]
-    pub command: Option<process::Command>,
     /// Watch object for detecting changes.
     ///
     /// # Note
@@ -78,6 +75,14 @@ pub struct DevServer {
     /// Used only if `command` is set.
     #[clap(flatten)]
     pub watch: Watch,
+
+    /// Command executed when a change is detected.
+    #[clap(skip)]
+    pub command: Option<process::Command>,
+
+    /// Use another file path when the URL is not found.
+    #[clap(skip)]
+    pub not_found_path: Option<PathBuf>,
 }
 
 impl DevServer {
@@ -109,6 +114,12 @@ impl DevServer {
         self
     }
 
+    /// Use another file path when the URL is not found.
+    pub fn not_found(mut self, path: impl Into<PathBuf>) -> Self {
+        self.not_found_path.replace(path.into());
+        self
+    }
+
     /// Start the server, serving the files at `served_path`.
     ///
     /// [`crate::default_dist_dir`] should be used to get the dist directory
@@ -128,7 +139,7 @@ impl DevServer {
             None
         };
 
-        serve(self.ip, self.port, served_path)
+        serve(self.ip, self.port, served_path, self.not_found_path.as_deref())
             .context("an error occurred when starting to serve")?;
 
         if let Some(handle) = watch_process {
@@ -146,14 +157,14 @@ impl DevServer {
     }
 }
 
-fn serve(ip: IpAddr, port: u16, served_path: impl AsRef<Path>) -> Result<()> {
+fn serve(ip: IpAddr, port: u16, served_path: impl AsRef<Path>, not_found_path: Option<impl AsRef<Path>>) -> Result<()> {
     let address = SocketAddr::new(ip, port);
     let listener = TcpListener::bind(&address).context("cannot bind to the given address")?;
 
     log::info!("Development server running at: http://{}", &address);
 
     for mut stream in listener.incoming().filter_map(|x| x.ok()) {
-        respond_to_request(&mut stream, &served_path).unwrap_or_else(|e| {
+        respond_to_request(&mut stream, &served_path, not_found_path.as_ref()).unwrap_or_else(|e| {
             let _ = stream.write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes());
             log::error!("an error occurred: {}", e);
         });
@@ -162,7 +173,7 @@ fn serve(ip: IpAddr, port: u16, served_path: impl AsRef<Path>) -> Result<()> {
     Ok(())
 }
 
-fn respond_to_request(stream: &mut TcpStream, dist_dir_path: impl AsRef<Path>) -> Result<()> {
+fn respond_to_request(stream: &mut TcpStream, dist_dir_path: impl AsRef<Path>, not_found_path: Option<impl AsRef<Path>>) -> Result<()> {
     let mut reader = BufReader::new(stream);
     let mut request = String::new();
     reader.read_line(&mut request)?;
@@ -194,6 +205,12 @@ fn respond_to_request(stream: &mut TcpStream, dist_dir_path: impl AsRef<Path>) -
 
     let stream = reader.get_mut();
 
+    if let Some(path) = not_found_path {
+        if !full_path.is_file() {
+            full_path = dist_dir_path.as_ref().join(path);
+        }
+    }
+
     if full_path.is_file() {
         log::debug!("--> {}", full_path.display());
         let full_path_extension = Utf8Path::from_path(&full_path)
@@ -221,7 +238,7 @@ fn respond_to_request(stream: &mut TcpStream, dist_dir_path: impl AsRef<Path>) -
 
         std::io::copy(&mut fs::File::open(&full_path)?, stream)?;
     } else {
-        log::debug!("--> {} (404 NOT FOUND)", full_path.display());
+        log::error!("--> {} (404 NOT FOUND)", full_path.display());
         stream
             .write("HTTP/1.1 404 NOT FOUND\r\n\r\n".as_bytes())
             .context("cannot write response")?;
