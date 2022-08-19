@@ -116,6 +116,32 @@ pub struct Dist {
 }
 
 impl Dist {
+    pub fn new() -> Dist {
+        Dist {
+            quiet: Default::default(),
+            jobs: Default::default(),
+            profile: Default::default(),
+            release: Default::default(),
+            features: Default::default(),
+            all_features: Default::default(),
+            no_default_features: Default::default(),
+            verbose: Default::default(),
+            color: Default::default(),
+            frozen: Default::default(),
+            locked: Default::default(),
+            offline: Default::default(),
+            ignore_rust_version: Default::default(),
+            example: Default::default(),
+            build_command: default_build_command(),
+            dist_dir_path: Default::default(),
+            static_dir_path: Default::default(),
+            app_name: Default::default(),
+            run_in_workspace: Default::default(),
+            #[cfg(feature = "sass")]
+            sass_options: Default::default(),
+        }
+    }
+
     /// Set the command used by the build process.
     ///
     /// The default command is the result of the [`default_build_command`].
@@ -335,6 +361,12 @@ impl Dist {
     }
 }
 
+impl Default for Dist {
+    fn default() -> Dist {
+        Dist::new()
+    }
+}
+
 #[cfg(feature = "sass")]
 fn sass(
     static_dir: &std::path::Path,
@@ -389,6 +421,7 @@ fn sass(
 }
 
 /// Provides paths of the generated dist artifacts.
+#[derive(Debug, Default)]
 pub struct DistResult {
     /// Directory containing the generated artifacts.
     pub dist_dir: PathBuf,

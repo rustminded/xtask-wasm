@@ -6,7 +6,7 @@ use crate::{
 use std::{
     ffi, fs,
     io::{prelude::*, BufReader},
-    net::{IpAddr, SocketAddr, TcpListener, TcpStream},
+    net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream},
     path::{Path, PathBuf},
     process,
 };
@@ -86,6 +86,16 @@ pub struct DevServer {
 }
 
 impl DevServer {
+    pub fn new() -> DevServer {
+        DevServer {
+            ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+            port: 8000,
+            watch: Default::default(),
+            command: None,
+            not_found_path: None,
+        }
+    }
+
     /// Set the command that is executed when a change is detected.
     pub fn command(mut self, command: process::Command) -> Self {
         self.command = Some(command);
@@ -159,6 +169,12 @@ impl DevServer {
             self.command = Some(crate::xtask_command());
         }
         self.command.as_mut().unwrap()
+    }
+}
+
+impl Default for DevServer {
+    fn default() -> DevServer {
+        DevServer::new()
     }
 }
 
