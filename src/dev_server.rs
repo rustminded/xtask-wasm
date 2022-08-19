@@ -139,8 +139,13 @@ impl DevServer {
             None
         };
 
-        serve(self.ip, self.port, served_path, self.not_found_path.as_deref())
-            .context("an error occurred when starting to serve")?;
+        serve(
+            self.ip,
+            self.port,
+            served_path,
+            self.not_found_path.as_deref(),
+        )
+        .context("an error occurred when starting to serve")?;
 
         if let Some(handle) = watch_process {
             handle.join().expect("an error occurred when exiting watch");
@@ -157,23 +162,35 @@ impl DevServer {
     }
 }
 
-fn serve(ip: IpAddr, port: u16, served_path: impl AsRef<Path>, not_found_path: Option<impl AsRef<Path>>) -> Result<()> {
+/// Use the dev-server without watcher and command.
+pub fn serve(
+    ip: IpAddr,
+    port: u16,
+    served_path: impl AsRef<Path>,
+    not_found_path: Option<impl AsRef<Path>>,
+) -> Result<()> {
     let address = SocketAddr::new(ip, port);
     let listener = TcpListener::bind(&address).context("cannot bind to the given address")?;
 
     log::info!("Development server running at: http://{}", &address);
 
     for mut stream in listener.incoming().filter_map(|x| x.ok()) {
-        respond_to_request(&mut stream, &served_path, not_found_path.as_ref()).unwrap_or_else(|e| {
-            let _ = stream.write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes());
-            log::error!("an error occurred: {}", e);
-        });
+        respond_to_request(&mut stream, &served_path, not_found_path.as_ref()).unwrap_or_else(
+            |e| {
+                let _ = stream.write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes());
+                log::error!("an error occurred: {}", e);
+            },
+        );
     }
 
     Ok(())
 }
 
-fn respond_to_request(stream: &mut TcpStream, dist_dir_path: impl AsRef<Path>, not_found_path: Option<impl AsRef<Path>>) -> Result<()> {
+fn respond_to_request(
+    stream: &mut TcpStream,
+    dist_dir_path: impl AsRef<Path>,
+    not_found_path: Option<impl AsRef<Path>>,
+) -> Result<()> {
     let mut reader = BufReader::new(stream);
     let mut request = String::new();
     reader.read_line(&mut request)?;

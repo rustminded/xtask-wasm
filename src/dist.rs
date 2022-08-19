@@ -48,7 +48,7 @@ use wasm_bindgen_cli_support::Bindgen;
 #[clap(
     about = "Generate the distributed package.",
     long_about = "Generate the distributed package.\n\
-        It will build and package the project for WASM.",
+        It will build and package the project for WASM."
 )]
 pub struct Dist {
     /// No output printed to stdout.
@@ -339,18 +339,19 @@ impl Dist {
 fn sass(
     static_dir: &std::path::Path,
     dist_dir: &std::path::Path,
-    options: &sass_rs::Options
+    options: &sass_rs::Options,
 ) -> Result<()> {
     fn is_sass(path: &std::path::Path) -> bool {
         matches!(
-            path.extension().and_then(|x| x.to_str().map(|x| x.to_lowercase())).as_deref(),
+            path.extension()
+                .and_then(|x| x.to_str().map(|x| x.to_lowercase()))
+                .as_deref(),
             Some("sass") | Some("scss")
         )
     }
 
     fn should_ignore(path: &std::path::Path) -> bool {
-        path
-            .file_name()
+        path.file_name()
             .expect("WalkDir does not yield paths ending with `..`  or `.`")
             .to_str()
             .map(|x| x.starts_with("_"))
@@ -360,24 +361,27 @@ fn sass(
     log::trace!("Generating dist artifacts");
     let walker = walkdir::WalkDir::new(&static_dir);
     for entry in walker {
-        let entry = entry.with_context(|| format!("cannot walk into directory `{}`", &static_dir.display()))?;
+        let entry = entry
+            .with_context(|| format!("cannot walk into directory `{}`", &static_dir.display()))?;
         let source = entry.path();
         let dest = dist_dir.join(source.strip_prefix(&static_dir).unwrap());
         let _ = fs::create_dir_all(dest.parent().unwrap());
 
         if !source.is_file() {
-            continue
+            continue;
         } else if is_sass(source) {
             if !should_ignore(source) {
-                let dest = dest
-                    .with_extension("css");
+                let dest = dest.with_extension("css");
 
                 let css = sass_rs::compile_file(source, options.clone())
                     .expect("could not convert SASS/ file");
-                fs::write(&dest, css).with_context(|| format!("could not write CSS to file `{}`", dest.display()))?;
+                fs::write(&dest, css)
+                    .with_context(|| format!("could not write CSS to file `{}`", dest.display()))?;
             }
         } else {
-            fs::copy(source, &dest).with_context(|| format!("cannot move `{}` to `{}`", source.display(), dest.display()))?;
+            fs::copy(source, &dest).with_context(|| {
+                format!("cannot move `{}` to `{}`", source.display(), dest.display())
+            })?;
         }
     }
 
