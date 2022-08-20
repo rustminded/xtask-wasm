@@ -185,10 +185,8 @@ impl Default for DevServer {
     }
 }
 
-/// Use the dev-server without watcher and command.
-///
-/// Note that the `served_path` needs to be a directory that contains the distributed package
-/// compatible with Wasm (See [`crate::Dist`]).
+/// Bind the dev server on the given IP address and port and serve files from the `served_path`
+/// directory. You can also set a path to redirects if the URL can't be found.
 pub fn serve(
     ip: IpAddr,
     port: u16,
