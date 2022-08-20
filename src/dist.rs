@@ -387,7 +387,7 @@ fn sass(
         path.file_name()
             .expect("WalkDir does not yield paths ending with `..`  or `.`")
             .to_str()
-            .map(|x| x.starts_with("_"))
+            .map(|x| x.starts_with('_'))
             .unwrap_or(false)
     }
 
