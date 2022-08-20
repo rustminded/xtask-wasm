@@ -86,10 +86,11 @@ pub struct DevServer {
 }
 
 impl DevServer {
-    pub fn new() -> DevServer {
+    /// Create a new dev-server.
+    pub fn new(ip: IpAddr, port: u16) -> DevServer {
         DevServer {
-            ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-            port: 8000,
+            ip,
+            port,
             watch: Default::default(),
             command: None,
             not_found_path: None,
@@ -174,11 +175,20 @@ impl DevServer {
 
 impl Default for DevServer {
     fn default() -> DevServer {
-        DevServer::new()
+        DevServer {
+            ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+            port: 8000,
+            watch: Default::default(),
+            command: None,
+            not_found_path: None,
+        }
     }
 }
 
 /// Use the dev-server without watcher and command.
+///
+/// Note that the `served_path` needs to be a directory that contains the distributed package
+/// compatible with Wasm (See [`crate::Dist`]).
 pub fn serve(
     ip: IpAddr,
     port: u16,

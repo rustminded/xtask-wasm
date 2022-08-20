@@ -116,6 +116,7 @@ pub struct Dist {
 }
 
 impl Dist {
+    /// Create a new helper for the distributed package.
     pub fn new() -> Dist {
         Dist {
             quiet: Default::default(),
