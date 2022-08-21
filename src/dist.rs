@@ -117,7 +117,7 @@ pub struct Dist {
 
 impl Dist {
     /// Create a new helper for the distributed package.
-    pub fn new() -> Dist {
+    pub fn new(dist_dir_path: Option<PathBuf>, static_dir_path: Option<PathBuf>) -> Dist {
         Dist {
             quiet: Default::default(),
             jobs: Default::default(),
@@ -134,8 +134,8 @@ impl Dist {
             ignore_rust_version: Default::default(),
             example: Default::default(),
             build_command: default_build_command(),
-            dist_dir_path: Default::default(),
-            static_dir_path: Default::default(),
+            dist_dir_path,
+            static_dir_path,
             app_name: Default::default(),
             run_in_workspace: Default::default(),
             #[cfg(feature = "sass")]
@@ -364,7 +364,7 @@ impl Dist {
 
 impl Default for Dist {
     fn default() -> Dist {
-        Dist::new()
+        Dist::new(Default::default(), Default::default())
     }
 }
 

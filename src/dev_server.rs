@@ -185,9 +185,7 @@ impl Default for DevServer {
     }
 }
 
-/// Bind the dev server on the given IP address and port and serve files from the `served_path`
-/// directory. You can also set a path to redirects if the URL can't be found.
-pub fn serve(
+fn serve(
     ip: IpAddr,
     port: u16,
     served_path: impl AsRef<Path>,
