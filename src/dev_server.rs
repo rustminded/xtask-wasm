@@ -86,15 +86,12 @@ pub struct DevServer {
 }
 
 impl DevServer {
-    /// Create a new dev-server.
-    pub fn new(ip: IpAddr, port: u16) -> DevServer {
-        DevServer {
-            ip,
-            port,
-            watch: Default::default(),
-            command: None,
-            not_found_path: None,
-        }
+    /// Set the dev-server binding address.
+    pub fn address(mut self, ip: IpAddr, port: u16) -> Self {
+        self.ip = ip;
+        self.port = port;
+
+        self
     }
 
     /// Set the command that is executed when a change is detected.
