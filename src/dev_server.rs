@@ -6,7 +6,7 @@ use crate::{
 use std::{
     ffi, fs,
     io::{prelude::*, BufReader},
-    net::{IpAddr, SocketAddr, TcpListener, TcpStream},
+    net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream},
     path::{Path, PathBuf},
     process,
 };
@@ -86,6 +86,14 @@ pub struct DevServer {
 }
 
 impl DevServer {
+    /// Set the dev-server binding address.
+    pub fn address(mut self, ip: IpAddr, port: u16) -> Self {
+        self.ip = ip;
+        self.port = port;
+
+        self
+    }
+
     /// Set the command that is executed when a change is detected.
     pub fn command(mut self, command: process::Command) -> Self {
         self.command = Some(command);
@@ -139,8 +147,13 @@ impl DevServer {
             None
         };
 
-        serve(self.ip, self.port, served_path, self.not_found_path.as_deref())
-            .context("an error occurred when starting to serve")?;
+        serve(
+            self.ip,
+            self.port,
+            served_path,
+            self.not_found_path.as_deref(),
+        )
+        .context("an error occurred when starting to serve")?;
 
         if let Some(handle) = watch_process {
             handle.join().expect("an error occurred when exiting watch");
@@ -157,23 +170,46 @@ impl DevServer {
     }
 }
 
-fn serve(ip: IpAddr, port: u16, served_path: impl AsRef<Path>, not_found_path: Option<impl AsRef<Path>>) -> Result<()> {
+impl Default for DevServer {
+    fn default() -> DevServer {
+        DevServer {
+            ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+            port: 8000,
+            watch: Default::default(),
+            command: None,
+            not_found_path: None,
+        }
+    }
+}
+
+fn serve(
+    ip: IpAddr,
+    port: u16,
+    served_path: impl AsRef<Path>,
+    not_found_path: Option<impl AsRef<Path>>,
+) -> Result<()> {
     let address = SocketAddr::new(ip, port);
     let listener = TcpListener::bind(&address).context("cannot bind to the given address")?;
 
     log::info!("Development server running at: http://{}", &address);
 
     for mut stream in listener.incoming().filter_map(|x| x.ok()) {
-        respond_to_request(&mut stream, &served_path, not_found_path.as_ref()).unwrap_or_else(|e| {
-            let _ = stream.write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes());
-            log::error!("an error occurred: {}", e);
-        });
+        respond_to_request(&mut stream, &served_path, not_found_path.as_ref()).unwrap_or_else(
+            |e| {
+                let _ = stream.write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes());
+                log::error!("an error occurred: {}", e);
+            },
+        );
     }
 
     Ok(())
 }
 
-fn respond_to_request(stream: &mut TcpStream, dist_dir_path: impl AsRef<Path>, not_found_path: Option<impl AsRef<Path>>) -> Result<()> {
+fn respond_to_request(
+    stream: &mut TcpStream,
+    dist_dir_path: impl AsRef<Path>,
+    not_found_path: Option<impl AsRef<Path>>,
+) -> Result<()> {
     let mut reader = BufReader::new(stream);
     let mut request = String::new();
     reader.read_line(&mut request)?;
