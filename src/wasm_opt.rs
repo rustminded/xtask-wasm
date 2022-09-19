@@ -8,11 +8,16 @@ use std::{
 
 lazy_static! {
     static ref WASM_OPT_URL: String = {
+        let version = "110";
+
+        let os = std::env::consts::OS;
+        let mut arch = std::env::consts::ARCH;
+        if arch == "aarch64" {
+            arch = "arm64";
+        }
+
         format!(
                 "https://github.com/WebAssembly/binaryen/releases/download/version_{version}/binaryen-version_{version}-{arch}-{os}.tar.gz",
-                version = "105",
-                arch = platforms::TARGET_ARCH,
-                os = platforms::TARGET_OS,
             )
     };
 }

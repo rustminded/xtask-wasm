@@ -18,7 +18,7 @@ include = ["src/**/*.rs", "README.md", "LICENSE.Apache-2.0", "LICENSE.MIT"]
 [features]
 run-example = ["xtask-wasm-run-example", "console_error_panic_hook", "wasm-bindgen", "env_logger"]
 sass = ["sass-rs", "walkdir"]
-wasm-opt = ["binary-install", "platforms"]
+wasm-opt = ["binary-install"]
 
 [dependencies]
 xtask-wasm-run-example = { version = "0.1.2", optional = true }
@@ -33,7 +33,6 @@ env_logger = { version = "0.9.0", optional = true }
 fs_extra = "1.2.0"
 lazy_static = "1.4.0"
 log = "0.4.14"
-platforms = { version = "2.0.0", optional = true }
 sass-rs = { version = "0.2.2", optional = true }
 walkdir = { version = "2.3.2", optional = true }
 # NOTE: we don't depend on this crate but we need to activate this feature otherwise it's super slow
