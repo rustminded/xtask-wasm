@@ -8,6 +8,7 @@ use std::{
 
 lazy_static! {
     static ref WASM_OPT_URL: String = {
+        // Any update on the version needs to be done in the README too.
         let version = "110";
 
         let os = std::env::consts::OS;
