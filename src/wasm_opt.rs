@@ -10,18 +10,11 @@ lazy_static! {
     static ref WASM_OPT_URL: String = {
         let version = "110";
 
-        #[cfg(target_arch = "arm")]
-        let arch = "arm64";
-
-        #[cfg(target_arch = "x86_64")]
-        let arch = "x86_64";
-
-        #[cfg(target_os = "windows")]
-        let os = "windows";
-        #[cfg(target_os = "macos")]
-        let os = "macos";
-        #[cfg(target_os = "linux")]
-        let os = "linux";
+        let os = std::env::consts::OS;
+        let mut arch = std::env::consts::ARCH;
+        if arch == "aarch64" {
+            arch = "arm64";
+        }
 
         format!(
                 "https://github.com/WebAssembly/binaryen/releases/download/version_{version}/binaryen-version_{version}-{arch}-{os}.tar.gz",
