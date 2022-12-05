@@ -189,7 +189,7 @@ fn serve(
     not_found_path: Option<impl AsRef<Path>>,
 ) -> Result<()> {
     let address = SocketAddr::new(ip, port);
-    let listener = TcpListener::bind(&address).context("cannot bind to the given address")?;
+    let listener = TcpListener::bind(address).context("cannot bind to the given address")?;
 
     log::info!("Development server running at: http://{}", &address);
 

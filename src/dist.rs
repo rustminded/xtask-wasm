@@ -387,12 +387,12 @@ fn sass(
     }
 
     log::trace!("Generating dist artifacts");
-    let walker = walkdir::WalkDir::new(&static_dir);
+    let walker = walkdir::WalkDir::new(static_dir);
     for entry in walker {
         let entry = entry
             .with_context(|| format!("cannot walk into directory `{}`", &static_dir.display()))?;
         let source = entry.path();
-        let dest = dist_dir.join(source.strip_prefix(&static_dir).unwrap());
+        let dest = dist_dir.join(source.strip_prefix(static_dir).unwrap());
         let _ = fs::create_dir_all(dest.parent().unwrap());
 
         if !source.is_file() {

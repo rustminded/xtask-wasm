@@ -109,7 +109,7 @@ impl WasmOpt {
         let output_path = input_path.with_extension("opt");
         let wasm_opt = download_wasm_opt()?;
 
-        let mut command = process::Command::new(&wasm_opt);
+        let mut command = process::Command::new(wasm_opt);
         command
             .stderr(process::Stdio::inherit())
             .arg(input_path)
@@ -136,8 +136,8 @@ impl WasmOpt {
             "command `wasm-opt` failed"
         );
 
-        fs::remove_file(&input_path)?;
-        fs::rename(&output_path, &input_path)?;
+        fs::remove_file(input_path)?;
+        fs::rename(&output_path, input_path)?;
 
         log::info!("Wasm optimized");
         Ok(self)
