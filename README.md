@@ -12,7 +12,7 @@
 [crates-url]: https://crates.io/crates/xtask-wasm
 [docs-badge]: https://docs.rs/xtask-wasm/badge.svg
 [docs-url]: https://docs.rs/xtask-wasm/
-[deps-badge]: https://deps.rs/crate/xtask-wasm/0.1.9/status.svg
+[deps-badge]: https://deps.rs/crate/xtask-wasm/0.1.10/status.svg
 [deps-url]: https://deps.rs/crate/xtask-wasm
 [licenses-badge]: https://img.shields.io/crates/l/xtask-wasm
 
