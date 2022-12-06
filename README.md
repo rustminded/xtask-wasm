@@ -115,7 +115,7 @@ This library gives you three structs:
   (using [xtask-watch](https://github.com/rustminded/xtask-watch)).
 * [`DevServer`](https://docs.rs/xtask-wasm/latest/xtask_wasm/dev_server/struct.DevServer.html) - Serve your project at a given IP address.
 
-They all implement [`clap::Parser`](https://docs.rs/clap/3.0.14/clap/trait.Parser.html)
+They all implement [`clap::Parser`](https://docs.rs/clap/latest/clap/trait.Parser.html)
 allowing them to be added easily to an existing CLI implementation and are
 flexible enough to be customized for most use-cases.
 
