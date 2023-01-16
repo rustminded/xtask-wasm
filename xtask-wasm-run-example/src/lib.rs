@@ -99,7 +99,7 @@ impl RunExample {
         let fn_block = item.block;
 
         let index = if let Some(expr) = &self.index {
-            quote_spanned! { expr.span()=> std::fs::write(dist_dir.join("index.html"), #expr); }
+            quote_spanned! { expr.span()=> std::fs::write(dist_dir.join("index.html"), #expr)?; }
         } else if self.static_dir.is_some() {
             quote! {}
         } else {
