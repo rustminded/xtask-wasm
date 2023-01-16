@@ -254,11 +254,11 @@ impl Dist {
         let input_path = if let Some(example) = &self.example {
             build_dir
                 .join("examples")
-                .join(&example.replace('-', "_"))
+                .join(example.replace('-', "_"))
                 .with_extension("wasm")
         } else {
             build_dir
-                .join(&package_name.replace('-', "_"))
+                .join(package_name.replace('-', "_"))
                 .with_extension("wasm")
         };
 
