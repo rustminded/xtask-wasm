@@ -170,11 +170,11 @@ impl Dist {
     ///
     /// This will generate JS bindings via [`wasm-bindgen`](https://docs.rs/wasm-bindgen/latest/wasm_bindgen/)
     /// and copy files from a given static directory if any to finally return
-    /// the paths of the generated artifacts with [`DistResult`].
+    /// the path of the generated artifacts.
     ///
     /// Wasm optimizations can be achieved using [`crate::WasmOpt`] if the
     /// feature `wasm-opt` is enabled.
-    pub fn run(self, package_name: &str) -> Result<DistResult> {
+    pub fn run(self, package_name: &str) -> Result<PathBuf> {
         log::trace!("Getting package's metadata");
         let metadata = metadata();
 
@@ -317,9 +317,7 @@ impl Dist {
 
         log::info!("Successfully built in {}", dist_dir_path.display());
 
-        Ok(DistResult {
-            dist_dir: dist_dir_path,
-        })
+        Ok(dist_dir_path)
     }
 }
 
@@ -402,13 +400,6 @@ fn sass(
     }
 
     Ok(())
-}
-
-/// Provides paths of the generated dist artifacts.
-#[derive(Debug)]
-pub struct DistResult {
-    /// Directory containing the generated artifacts.
-    pub dist_dir: PathBuf,
 }
 
 /// Get the default dist directory.
