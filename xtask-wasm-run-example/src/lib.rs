@@ -166,7 +166,7 @@ impl RunExample {
 
                 match cli.command {
                     Some(Command::Dist(mut dist)) => {
-                        let xtask_wasm::DistResult { dist_dir, .. } = dist
+                        let dist_dir = dist
                             .example(module_path!())
                             #app_name
                             #static_dir
