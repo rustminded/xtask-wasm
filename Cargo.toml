@@ -9,7 +9,7 @@ repository = "https://github.com/rustminded/xtask-wasm"
 documentation = "https://docs.rs/xtask-wasm"
 # Following security advisory since we use `std::fs::remove_dir_all` in `src/dist.rs`
 # (see [cve-2022-21658](https://groups.google.com/g/rustlang-security-announcements/c/R1fZFDhnJVQ))
-rust-version = "1.58.1"
+rust-version = "1.61"
 readme = "README.md"
 categories = ["development-tools::build-utils"]
 keywords = ["wasm", "cli"]
