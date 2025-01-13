@@ -7,9 +7,7 @@ description = "Customizable subcommands to build your Wasm projects using xtask.
 homepage = "https://github.com/rustminded/xtask-wasm"
 repository = "https://github.com/rustminded/xtask-wasm"
 documentation = "https://docs.rs/xtask-wasm"
-# Following security advisory since we use `std::fs::remove_dir_all` in `src/dist.rs`
-# (see [cve-2022-21658](https://groups.google.com/g/rustlang-security-announcements/c/R1fZFDhnJVQ))
-rust-version = "1.61"
+rust-version = "1.71"
 readme = "README.md"
 categories = ["development-tools::build-utils"]
 keywords = ["wasm", "cli"]
