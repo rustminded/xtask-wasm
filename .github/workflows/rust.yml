@@ -50,7 +50,7 @@ jobs:
           ver="${{ matrix.rust }}"
           if [ "$ver" = msrv ]; then
               ver=$(cargo metadata --format-version 1 --no-deps | \
-                  jq -r '.packages[1].rust_version')
+                  jq -r '.packages[] | select(.rust_version != null).rust_version')
           fi
           rustup toolchain install "$ver" --profile minimal --no-self-update
           rustup default "$ver"
