@@ -38,13 +38,11 @@ fn download_wasm_opt() -> Result<&'static Path> {
                 log::info!("Downloading wasm-opt");
                 Ok(cache
                     .download(true, "wasm-opt", binaries, &WASM_OPT_URL)
-                    .map_err(|err| err.compat())
                     .with_context(|| {
                         format!("could not download wasm-opt: {}", &WASM_OPT_URL.as_str())
                     })?
                     .expect("install_permitted is always true; qed")
-                    .binary("wasm-opt")
-                    .map_err(|err| err.compat())?)
+                    .binary("wasm-opt")?)
             }
 
             downloaded_binary_path()

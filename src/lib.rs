@@ -86,7 +86,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! xtask-wasm = "0.2.3"
+//! xtask-wasm = "0.3.0"
 //! ```
 //!
 //! # Usage

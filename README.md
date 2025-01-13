@@ -12,7 +12,7 @@
 [crates-url]: https://crates.io/crates/xtask-wasm
 [docs-badge]: https://docs.rs/xtask-wasm/badge.svg
 [docs-url]: https://docs.rs/xtask-wasm/
-[deps-badge]: https://deps.rs/repo/github/rustminded/xtask-wasm/status.svg
+[deps-badge]: https://deps.rs/crate/xtask-wasm/0.3.0/status.svg
 [deps-url]: https://deps.rs/crate/xtask-wasm
 [licenses-badge]: https://img.shields.io/crates/l/xtask-wasm
 
@@ -103,7 +103,7 @@ Finally, add the following to the xtask package's `Cargo.toml`:
 
 ```toml
 [dependencies]
-xtask-wasm = "0.2.3"
+xtask-wasm = "0.3.0"
 ```
 
 ## Usage
