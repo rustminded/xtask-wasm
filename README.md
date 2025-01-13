@@ -6,7 +6,7 @@
 [![dependencies status][deps-badge]][deps-url]
 ![licenses][licenses-badge]
 
-[actions-badge]: https://github.com/rustminded/xtask-wasm/workflows/main/badge.svg
+[actions-badge]: https://github.com/rustminded/xtask-wasm/actions/workflows/rust.yml/badge.svg
 [actions-url]: https://github.com/rustminded/xtask-wasm/actions
 [crates-version-badge]: https://img.shields.io/crates/v/xtask-wasm
 [crates-url]: https://crates.io/crates/xtask-wasm
