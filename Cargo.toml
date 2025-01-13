@@ -11,7 +11,7 @@ documentation = "https://docs.rs/xtask-wasm"
 # (see [cve-2022-21658](https://groups.google.com/g/rustlang-security-announcements/c/R1fZFDhnJVQ))
 rust-version = "1.58.1"
 readme = "README.md"
-categories = ["development-tools::build_utils"]
+categories = ["development-tools::build-utils"]
 keywords = ["wasm", "cli"]
 include = ["src/**/*.rs", "README.md", "LICENSE.Apache-2.0", "LICENSE.MIT"]
 
