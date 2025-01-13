@@ -14,18 +14,15 @@ jobs:
   check-demo:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - uses: Swatinem/rust-cache@v2
-        working-directory: ./examples/demo
-
-      - name: cargo check
-        uses: actions-rs/cargo@v1
-        working-directory: ./examples/demo
         with:
-          command: check
-          args: -p xtask
+          workspaces: |
+            ./examples/demo
+
+      - run: cargo check -p xtask
+        working-directory: ./examples/demo
 
   test:
     strategy:
