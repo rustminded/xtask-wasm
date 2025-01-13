@@ -44,6 +44,20 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Install toolchain
+        shell: bash
+        run: |
+          ver="${{ matrix.rust }}"
+          if [ "$ver" = msrv ]; then
+              ver=$(cargo metadata --format-version 1 --no-deps | \
+                  jq -r '.packages[0].rust_version')
+          fi
+          rustup toolchain install "$ver" --profile minimal --no-self-update
+          rustup default "$ver"
+          echo "Installed:"
+          cargo --version
+          rustc --version --verbose
+
       - uses: Swatinem/rust-cache@v2
 
       - run: rustup target add wasm32-unknown-unknown
