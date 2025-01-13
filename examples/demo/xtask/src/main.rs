@@ -46,7 +46,7 @@ fn main() -> Result<()> {
             if arg.optimize {
                 xtask_wasm::WasmOpt::level(1)
                     .shrink(2)
-                    .optimize(dist_result.wasm)?;
+                    .optimize(dist_result.join("web_app.wasm"))?;
             }
         }
         Command::Watch(arg) => {
