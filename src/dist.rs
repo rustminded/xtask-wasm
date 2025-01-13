@@ -280,6 +280,7 @@ impl Dist {
 
         log::trace!("Generating Wasm output");
         let mut output = Bindgen::new()
+            .omit_default_module_path(false)
             .input_path(input_path)
             .out_name(&app_name)
             .web(true)
