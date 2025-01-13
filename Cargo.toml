@@ -49,3 +49,4 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [workspace]
 members = ["xtask-wasm-run-example"]
+resolver = "2"

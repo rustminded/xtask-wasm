@@ -1,6 +1,7 @@
 [workspace]
 default-members = ["webapp"]
 members = ["webapp", "xtask"]
+resolver = "2"
 
 [patch.crates-io]
 xtask-wasm-run-example = { path = "../../xtask-wasm-run-example" }
