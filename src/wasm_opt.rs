@@ -37,7 +37,7 @@ fn download_wasm_opt() -> Result<&'static Path> {
 
                 log::info!("Downloading wasm-opt");
                 Ok(
-                    #[allow(clippy::needless-question-mark)]
+                    #[allow(clippy::needless_question_mark)]
                     cache
                         .download(true, "wasm-opt", binaries, &WASM_OPT_URL)
                         .with_context(|| {
