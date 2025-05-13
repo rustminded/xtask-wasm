@@ -23,6 +23,7 @@ lazy_static! {
     };
 }
 
+#[allow(clippy::needless_question_mark)]
 fn download_wasm_opt() -> Result<&'static Path> {
     lazy_static! {
         static ref WASM_OPT_PATH: Result<PathBuf> = {
@@ -37,7 +38,6 @@ fn download_wasm_opt() -> Result<&'static Path> {
 
                 log::info!("Downloading wasm-opt");
                 Ok(
-                    #[allow(clippy::needless_question_mark)]
                     cache
                         .download(true, "wasm-opt", binaries, &WASM_OPT_URL)
                         .with_context(|| {
