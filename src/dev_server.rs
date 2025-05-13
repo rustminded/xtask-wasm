@@ -1,18 +1,22 @@
 use crate::{
-    anyhow::{bail, Context, Result, ensure},
+    anyhow::{bail, ensure, Context, Result},
     camino::Utf8Path,
     clap, Watch,
 };
+use derive_more::Debug;
 use std::{
     ffi, fs,
     io::prelude::*,
     net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream},
     path::{Path, PathBuf},
     process,
-    thread,
     sync::Arc,
+    thread,
 };
-use derive_more::Debug;
+
+type RequestHandler = Arc<
+    dyn Fn(&mut TcpStream, &str, PathBuf, Option<PathBuf>) -> Result<()> + Send + Sync + 'static,
+>;
 
 /// A simple HTTP server useful during development.
 ///
@@ -90,7 +94,7 @@ pub struct DevServer {
     /// Pass a custom request handler.
     #[clap(skip)]
     #[debug(skip)]
-    request_handler: Option<Arc<dyn Fn(&mut TcpStream, &str, PathBuf, Option<PathBuf>) -> Result<()> + Send + Sync + 'static>>,
+    request_handler: Option<RequestHandler>,
 }
 
 impl DevServer {
@@ -139,7 +143,7 @@ impl DevServer {
     /// Pass a custom request handler to the dev server.
     pub fn request_handler<F>(mut self, handler: F) -> Self
     where
-        F: Fn(&mut TcpStream, &str, PathBuf, Option<PathBuf>) -> Result<()> + Send + Sync + 'static
+        F: Fn(&mut TcpStream, &str, PathBuf, Option<PathBuf>) -> Result<()> + Send + Sync + 'static,
     {
         self.request_handler.replace(Arc::new(handler));
         self
@@ -219,7 +223,7 @@ fn serve(
     port: u16,
     served_path: PathBuf,
     not_found_path: Option<PathBuf>,
-    handler: Arc<dyn Fn(&mut TcpStream, &str, PathBuf, Option<PathBuf>) -> Result<()> + Send + Sync + 'static>,
+    handler: RequestHandler,
 ) -> Result<()> {
     let address = SocketAddr::new(ip, port);
     let listener = TcpListener::bind(address).context("cannot bind to the given address")?;

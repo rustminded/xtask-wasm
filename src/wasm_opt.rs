@@ -42,7 +42,7 @@ fn download_wasm_opt() -> Result<&'static Path> {
                         format!("could not download wasm-opt: {}", &WASM_OPT_URL.as_str())
                     })?
                     .expect("install_permitted is always true; qed")
-                    .binary("wasm-opt")?)
+                    .binary("wasm-opt"))
             }
 
             downloaded_binary_path()
