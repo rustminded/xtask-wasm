@@ -27,6 +27,7 @@ wasm-bindgen = { version = "0.2.78", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 binary-install = { version = "0.4.1", optional = true }
+derive_more = { version = "2.0.1", features = ["debug"] }
 env_logger = { version = "0.11.6", optional = true }
 fs_extra = "1.2.0"
 lazy_static = "1.4.0"

@@ -1,15 +1,18 @@
 use crate::{
-    anyhow::{bail, Context, Result},
+    anyhow::{bail, Context, Result, ensure},
     camino::Utf8Path,
     clap, Watch,
 };
 use std::{
     ffi, fs,
-    io::{prelude::*, BufReader},
+    io::prelude::*,
     net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream},
     path::{Path, PathBuf},
     process,
+    thread,
+    sync::Arc,
 };
+use derive_more::Debug;
 
 /// A simple HTTP server useful during development.
 ///
@@ -83,6 +86,11 @@ pub struct DevServer {
     /// Use another file path when the URL is not found.
     #[clap(skip)]
     pub not_found_path: Option<PathBuf>,
+
+    /// Pass a custom request handler.
+    #[clap(skip)]
+    #[debug(skip)]
+    request_handler: Option<Arc<dyn Fn(&mut TcpStream, &str, PathBuf, Option<PathBuf>) -> Result<()> + Send + Sync + 'static>>,
 }
 
 impl DevServer {
@@ -128,11 +136,22 @@ impl DevServer {
         self
     }
 
+    /// Pass a custom request handler to the dev server.
+    pub fn request_handler<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(&mut TcpStream, &str, PathBuf, Option<PathBuf>) -> Result<()> + Send + Sync + 'static
+    {
+        self.request_handler.replace(Arc::new(handler));
+        self
+    }
+
     /// Start the server, serving the files at `served_path`.
     ///
     /// [`crate::default_dist_dir`] should be used to get the dist directory
     /// that needs to be served.
-    pub fn start(self, served_path: impl AsRef<Path>) -> Result<()> {
+    pub fn start(self, served_path: impl Into<PathBuf>) -> Result<()> {
+        let served_path = served_path.into();
+
         let watch_process = if let Some(command) = self.command {
             // NOTE: the path needs to exists in order to be excluded because it is canonicalize
             let _ = std::fs::create_dir_all(&served_path);
@@ -147,13 +166,25 @@ impl DevServer {
             None
         };
 
-        serve(
-            self.ip,
-            self.port,
-            served_path,
-            self.not_found_path.as_deref(),
-        )
-        .context("an error occurred when starting to serve")?;
+        if let Some(handler) = self.request_handler {
+            serve(
+                self.ip,
+                self.port,
+                served_path,
+                self.not_found_path,
+                handler,
+            )
+            .context("an error occurred when starting to serve")?;
+        } else {
+            serve(
+                self.ip,
+                self.port,
+                served_path,
+                self.not_found_path,
+                Arc::new(default_request_handler),
+            )
+            .context("an error occurred when starting to serve")?;
+        }
 
         if let Some(handle) = watch_process {
             handle.join().expect("an error occurred when exiting watch");
@@ -178,6 +209,7 @@ impl Default for DevServer {
             watch: Default::default(),
             command: None,
             not_found_path: None,
+            request_handler: None,
         }
     }
 }
@@ -185,8 +217,9 @@ impl Default for DevServer {
 fn serve(
     ip: IpAddr,
     port: u16,
-    served_path: impl AsRef<Path>,
-    not_found_path: Option<impl AsRef<Path>>,
+    served_path: PathBuf,
+    not_found_path: Option<PathBuf>,
+    handler: Arc<dyn Fn(&mut TcpStream, &str, PathBuf, Option<PathBuf>) -> Result<()> + Send + Sync + 'static>,
 ) -> Result<()> {
     let address = SocketAddr::new(ip, port);
     let listener = TcpListener::bind(address).context("cannot bind to the given address")?;
@@ -194,25 +227,55 @@ fn serve(
     log::info!("Development server running at: http://{}", &address);
 
     for mut stream in listener.incoming().filter_map(|x| x.ok()) {
-        respond_to_request(&mut stream, &served_path, not_found_path.as_ref()).unwrap_or_else(
-            |e| {
-                let _ = stream.write("HTTP/1.1 400 BAD REQUEST\r\n\r\n".as_bytes());
-                log::error!("an error occurred: {}", e);
-            },
-        );
+        let header = read_header(&stream)?;
+        let served_path = served_path.clone();
+        let not_found_path = not_found_path.clone();
+        let handler = handler.clone();
+
+        thread::spawn(move || {
+            (handler)(&mut stream, header.as_ref(), served_path, not_found_path).unwrap_or_else(
+                |e| {
+                    let _ = stream.write("HTTP/1.1 500 INTERNAL SERVER ERROR\r\n\r\n".as_bytes());
+                    log::error!("an error occurred: {}", e);
+                },
+            );
+        });
     }
 
     Ok(())
 }
 
-fn respond_to_request(
+fn read_header(mut stream: &TcpStream) -> Result<String> {
+    let mut header = Vec::with_capacity(64 * 1024);
+    let mut peek_buffer = [0u8; 4096];
+
+    loop {
+        let n = stream.peek(&mut peek_buffer)?;
+        ensure!(n > 0, "Unexpected EOF");
+
+        let data = &mut peek_buffer[..n];
+        if let Some(i) = data.windows(4).position(|x| x == b"\r\n\r\n") {
+            let data = &mut peek_buffer[..(i + 4)];
+            stream.read_exact(data)?;
+            header.extend(&*data);
+            break;
+        } else {
+            stream.read_exact(data)?;
+            header.extend(&*data);
+        }
+    }
+
+    Ok(String::from_utf8(header)?)
+}
+
+/// Default request handler.
+pub fn default_request_handler(
     stream: &mut TcpStream,
-    dist_dir_path: impl AsRef<Path>,
-    not_found_path: Option<impl AsRef<Path>>,
+    header: &str,
+    dist_dir_path: PathBuf,
+    not_found_path: Option<PathBuf>,
 ) -> Result<()> {
-    let mut reader = BufReader::new(stream);
-    let mut request = String::new();
-    reader.read_line(&mut request)?;
+    let request = header.split_whitespace().next().unwrap();
 
     let requested_path = request
         .split_whitespace()
@@ -227,7 +290,7 @@ fn respond_to_request(
     log::debug!("<-- {}", requested_path);
 
     let rel_path = Path::new(requested_path.trim_matches('/'));
-    let mut full_path = dist_dir_path.as_ref().join(rel_path);
+    let mut full_path = dist_dir_path.join(rel_path);
 
     if full_path.is_dir() {
         if full_path.join("index.html").exists() {
@@ -239,11 +302,9 @@ fn respond_to_request(
         }
     }
 
-    let stream = reader.get_mut();
-
     if let Some(path) = not_found_path {
         if !full_path.is_file() {
-            full_path = dist_dir_path.as_ref().join(path);
+            full_path = dist_dir_path.join(path);
         }
     }
 
