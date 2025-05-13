@@ -26,6 +26,7 @@ jobs:
 
   test:
     strategy:
+      fail-fast: false
       matrix:
         os:
           - ubuntu-latest
@@ -36,9 +37,9 @@ jobs:
           - msrv
         include:
           - os: ubuntu-latest
-            rust: stable
+            rust: msrv
             lint: 1
-          - rust: stable
+          - rust: msrv
             rust-args: --all-features
     runs-on: ${{ matrix.os }}
     steps:
@@ -50,9 +51,10 @@ jobs:
           ver="${{ matrix.rust }}"
           if [ "$ver" = msrv ]; then
               ver=$(cargo metadata --format-version 1 --no-deps | \
-                  jq -r '.packages[] | select(.rust_version != null).rust_version')
+                  jq -r 'first(.packages[] | select(.rust_version != null).rust_version)')
+              extra=(-c rustfmt -c clippy)
           fi
-          rustup toolchain install "$ver" --profile minimal --no-self-update
+          rustup toolchain install "$ver" --profile minimal --no-self-update "${extra[@]}"
           rustup default "$ver"
           echo "Installed:"
           cargo --version

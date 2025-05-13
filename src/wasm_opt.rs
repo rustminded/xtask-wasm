@@ -23,6 +23,7 @@ lazy_static! {
     };
 }
 
+#[allow(clippy::needless_question_mark)]
 fn download_wasm_opt() -> Result<&'static Path> {
     lazy_static! {
         static ref WASM_OPT_PATH: Result<PathBuf> = {
@@ -36,13 +37,15 @@ fn download_wasm_opt() -> Result<&'static Path> {
                 let binaries = &["wasm-opt"];
 
                 log::info!("Downloading wasm-opt");
-                Ok(cache
-                    .download(true, "wasm-opt", binaries, &WASM_OPT_URL)
-                    .with_context(|| {
-                        format!("could not download wasm-opt: {}", &WASM_OPT_URL.as_str())
-                    })?
-                    .expect("install_permitted is always true; qed")
-                    .binary("wasm-opt")?)
+                Ok(
+                    cache
+                        .download(true, "wasm-opt", binaries, &WASM_OPT_URL)
+                        .with_context(|| {
+                            format!("could not download wasm-opt: {}", &WASM_OPT_URL.as_str())
+                        })?
+                        .expect("install_permitted is always true; qed")
+                        .binary("wasm-opt")?,
+                )
             }
 
             downloaded_binary_path()
