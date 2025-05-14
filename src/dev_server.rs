@@ -279,7 +279,7 @@ pub fn default_request_handler(
     dist_dir_path: PathBuf,
     not_found_path: Option<PathBuf>,
 ) -> Result<()> {
-    let request = header.split_whitespace().next().unwrap();
+    let request = header.split('\r').next().unwrap();
 
     let requested_path = request
         .split_whitespace()
