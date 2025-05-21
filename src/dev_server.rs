@@ -147,17 +147,17 @@ impl DevServer {
         self
     }
 
-    /// Start the server, serving the files at `served_path`.
+    /// Start the server, serving the files at `dist_dir_path`.
     ///
     /// [`crate::default_dist_dir`] should be used to get the dist directory
     /// that needs to be served.
-    pub fn start(self, served_path: impl Into<PathBuf>) -> Result<()> {
-        let served_path = served_path.into();
+    pub fn start(self, dist_dir_path: impl Into<PathBuf>) -> Result<()> {
+        let dist_dir_path = dist_dir_path.into();
 
         let watch_process = if let Some(command) = self.command {
             // NOTE: the path needs to exists in order to be excluded because it is canonicalize
-            let _ = std::fs::create_dir_all(&served_path);
-            let watch = self.watch.exclude_path(&served_path);
+            let _ = std::fs::create_dir_all(&dist_dir_path);
+            let watch = self.watch.exclude_path(&dist_dir_path);
             let handle = std::thread::spawn(|| match watch.run(command) {
                 Ok(()) => log::trace!("Starting to watch"),
                 Err(err) => log::error!("an error occurred when starting to watch: {}", err),
@@ -172,7 +172,7 @@ impl DevServer {
             serve(
                 self.ip,
                 self.port,
-                served_path,
+                dist_dir_path,
                 self.not_found_path,
                 handler,
             )
@@ -181,7 +181,7 @@ impl DevServer {
             serve(
                 self.ip,
                 self.port,
-                served_path,
+                dist_dir_path,
                 self.not_found_path,
                 Arc::new(default_request_handler),
             )
@@ -219,7 +219,7 @@ impl Default for DevServer {
 fn serve(
     ip: IpAddr,
     port: u16,
-    served_path: PathBuf,
+    dist_dir_path: PathBuf,
     not_found_path: Option<PathBuf>,
     handler: RequestHandler,
 ) -> Result<()> {
@@ -237,15 +237,15 @@ fn serve(
                 continue;
             }
         };
-        let dist_dir_path = served_path.clone();
+        let dist_dir_path = dist_dir_path.clone();
         let not_found_path = not_found_path.clone();
 
         thread::spawn(move || {
             let request = Request {
-                header,
+                header: header.as_ref(),
                 stream: &mut stream,
-                dist_dir_path,
-                not_found_path,
+                dist_dir_path: dist_dir_path.as_ref(),
+                not_found_path: not_found_path.as_deref(),
             };
 
             (handler)(request).unwrap_or_else(|e| {
@@ -283,10 +283,15 @@ fn read_header(mut stream: &TcpStream) -> Result<String> {
 
 /// Abstraction over an HTTP request.
 pub struct Request<'a> {
-    stream: &'a mut TcpStream,
-    header: String,
-    dist_dir_path: PathBuf,
-    not_found_path: Option<PathBuf>,
+    /// TCP stream of the request.
+    pub stream: &'a mut TcpStream,
+    /// Request header.
+    pub header: &'a str,
+    /// Path to the distributed directory.
+    pub dist_dir_path: &'a Path,
+    /// Path to the file used when the requested file cannot be found for the default request
+    /// handler.
+    pub not_found_path: Option<&'a Path>,
 }
 
 /// Default request handler
