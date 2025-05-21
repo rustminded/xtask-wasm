@@ -14,9 +14,7 @@ use std::{
     thread,
 };
 
-type RequestHandler = Arc<
-    dyn Fn(&mut TcpStream, &str, PathBuf, Option<PathBuf>) -> Result<()> + Send + Sync + 'static,
->;
+type RequestHandler = Arc<dyn Fn(Request) -> Result<()> + Send + Sync + 'static>;
 
 /// A simple HTTP server useful during development.
 ///
@@ -143,23 +141,23 @@ impl DevServer {
     /// Pass a custom request handler to the dev server.
     pub fn request_handler<F>(mut self, handler: F) -> Self
     where
-        F: Fn(&mut TcpStream, &str, PathBuf, Option<PathBuf>) -> Result<()> + Send + Sync + 'static,
+        F: Fn(Request) -> Result<()> + Send + Sync + 'static,
     {
         self.request_handler.replace(Arc::new(handler));
         self
     }
 
-    /// Start the server, serving the files at `served_path`.
+    /// Start the server, serving the files at `dist_dir_path`.
     ///
     /// [`crate::default_dist_dir`] should be used to get the dist directory
     /// that needs to be served.
-    pub fn start(self, served_path: impl Into<PathBuf>) -> Result<()> {
-        let served_path = served_path.into();
+    pub fn start(self, dist_dir_path: impl Into<PathBuf>) -> Result<()> {
+        let dist_dir_path = dist_dir_path.into();
 
         let watch_process = if let Some(command) = self.command {
             // NOTE: the path needs to exists in order to be excluded because it is canonicalize
-            let _ = std::fs::create_dir_all(&served_path);
-            let watch = self.watch.exclude_path(&served_path);
+            let _ = std::fs::create_dir_all(&dist_dir_path);
+            let watch = self.watch.exclude_path(&dist_dir_path);
             let handle = std::thread::spawn(|| match watch.run(command) {
                 Ok(()) => log::trace!("Starting to watch"),
                 Err(err) => log::error!("an error occurred when starting to watch: {}", err),
@@ -174,7 +172,7 @@ impl DevServer {
             serve(
                 self.ip,
                 self.port,
-                served_path,
+                dist_dir_path,
                 self.not_found_path,
                 handler,
             )
@@ -183,7 +181,7 @@ impl DevServer {
             serve(
                 self.ip,
                 self.port,
-                served_path,
+                dist_dir_path,
                 self.not_found_path,
                 Arc::new(default_request_handler),
             )
@@ -221,7 +219,7 @@ impl Default for DevServer {
 fn serve(
     ip: IpAddr,
     port: u16,
-    served_path: PathBuf,
+    dist_dir_path: PathBuf,
     not_found_path: Option<PathBuf>,
     handler: RequestHandler,
 ) -> Result<()> {
@@ -231,18 +229,29 @@ fn serve(
     log::info!("Development server running at: http://{}", &address);
 
     for mut stream in listener.incoming().filter_map(|x| x.ok()) {
-        let header = read_header(&stream)?;
-        let served_path = served_path.clone();
-        let not_found_path = not_found_path.clone();
         let handler = handler.clone();
+        let header = match read_header(&stream) {
+            Ok(header) => header,
+            Err(err) => {
+                log::warn!("Malformed request's header: {}", err);
+                continue;
+            }
+        };
+        let dist_dir_path = dist_dir_path.clone();
+        let not_found_path = not_found_path.clone();
 
         thread::spawn(move || {
-            (handler)(&mut stream, header.as_ref(), served_path, not_found_path).unwrap_or_else(
-                |e| {
-                    let _ = stream.write("HTTP/1.1 500 INTERNAL SERVER ERROR\r\n\r\n".as_bytes());
-                    log::error!("an error occurred: {}", e);
-                },
-            );
+            let request = Request {
+                header: header.as_ref(),
+                stream: &mut stream,
+                dist_dir_path: dist_dir_path.as_ref(),
+                not_found_path: not_found_path.as_deref(),
+            };
+
+            (handler)(request).unwrap_or_else(|e| {
+                let _ = stream.write("HTTP/1.1 500 INTERNAL SERVER ERROR\r\n\r\n".as_bytes());
+                log::error!("an error occurred: {}", e);
+            });
         });
     }
 
@@ -272,16 +281,24 @@ fn read_header(mut stream: &TcpStream) -> Result<String> {
     Ok(String::from_utf8(header)?)
 }
 
-/// Default request handler.
-pub fn default_request_handler(
-    stream: &mut TcpStream,
-    header: &str,
-    dist_dir_path: PathBuf,
-    not_found_path: Option<PathBuf>,
-) -> Result<()> {
-    let request = header.split('\r').next().unwrap();
+/// Abstraction over an HTTP request.
+pub struct Request<'a> {
+    /// TCP stream of the request.
+    pub stream: &'a mut TcpStream,
+    /// Request header.
+    pub header: &'a str,
+    /// Path to the distributed directory.
+    pub dist_dir_path: &'a Path,
+    /// Path to the file used when the requested file cannot be found for the default request
+    /// handler.
+    pub not_found_path: Option<&'a Path>,
+}
 
-    let requested_path = request
+/// Default request handler
+fn default_request_handler(request: Request) -> Result<()> {
+    let content = request.header.split('\r').next().unwrap();
+
+    let requested_path = content
         .split_whitespace()
         .nth(1)
         .context("Could not find path in request")?;
@@ -294,7 +311,7 @@ pub fn default_request_handler(
     log::debug!("<-- {}", requested_path);
 
     let rel_path = Path::new(requested_path.trim_matches('/'));
-    let mut full_path = dist_dir_path.join(rel_path);
+    let mut full_path = request.dist_dir_path.join(rel_path);
 
     if full_path.is_dir() {
         if full_path.join("index.html").exists() {
@@ -306,9 +323,9 @@ pub fn default_request_handler(
         }
     }
 
-    if let Some(path) = not_found_path {
+    if let Some(path) = request.not_found_path {
         if !full_path.is_file() {
-            full_path = dist_dir_path.join(path);
+            full_path = request.dist_dir_path.join(path);
         }
     }
 
@@ -326,7 +343,8 @@ pub fn default_request_handler(
             _ => "application/octet-stream",
         };
 
-        stream
+        request
+            .stream
             .write(
                 format!(
                     "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nContent-Type: {}\r\n\r\n",
@@ -337,10 +355,11 @@ pub fn default_request_handler(
             )
             .context("cannot write response")?;
 
-        std::io::copy(&mut fs::File::open(&full_path)?, stream)?;
+        std::io::copy(&mut fs::File::open(&full_path)?, request.stream)?;
     } else {
         log::error!("--> {} (404 NOT FOUND)", full_path.display());
-        stream
+        request
+            .stream
             .write("HTTP/1.1 404 NOT FOUND\r\n\r\n".as_bytes())
             .context("cannot write response")?;
     }
