@@ -14,9 +14,7 @@ use std::{
     thread,
 };
 
-type RequestHandler = Arc<
-    dyn Fn(&mut TcpStream, &str, PathBuf, Option<PathBuf>) -> Result<()> + Send + Sync + 'static,
->;
+type RequestHandler = Arc<dyn Fn(&mut TcpStream, Request) -> Result<()> + Send + Sync + 'static>;
 
 /// A simple HTTP server useful during development.
 ///
@@ -143,7 +141,7 @@ impl DevServer {
     /// Pass a custom request handler to the dev server.
     pub fn request_handler<F>(mut self, handler: F) -> Self
     where
-        F: Fn(&mut TcpStream, &str, PathBuf, Option<PathBuf>) -> Result<()> + Send + Sync + 'static,
+        F: Fn(&mut TcpStream, Request) -> Result<()> + Send + Sync + 'static,
     {
         self.request_handler.replace(Arc::new(handler));
         self
@@ -231,18 +229,19 @@ fn serve(
     log::info!("Development server running at: http://{}", &address);
 
     for mut stream in listener.incoming().filter_map(|x| x.ok()) {
-        let header = read_header(&stream)?;
-        let served_path = served_path.clone();
-        let not_found_path = not_found_path.clone();
+        let request = Request {
+            header: read_header(&stream)?,
+            dist_dir_path: served_path.clone(),
+            not_found_path: not_found_path.clone(),
+        };
+
         let handler = handler.clone();
 
         thread::spawn(move || {
-            (handler)(&mut stream, header.as_ref(), served_path, not_found_path).unwrap_or_else(
-                |e| {
-                    let _ = stream.write("HTTP/1.1 500 INTERNAL SERVER ERROR\r\n\r\n".as_bytes());
-                    log::error!("an error occurred: {}", e);
-                },
-            );
+            (handler)(&mut stream, request).unwrap_or_else(|e| {
+                let _ = stream.write("HTTP/1.1 500 INTERNAL SERVER ERROR\r\n\r\n".as_bytes());
+                log::error!("an error occurred: {}", e);
+            });
         });
     }
 
@@ -272,16 +271,18 @@ fn read_header(mut stream: &TcpStream) -> Result<String> {
     Ok(String::from_utf8(header)?)
 }
 
-/// Default request handler.
-pub fn default_request_handler(
-    stream: &mut TcpStream,
-    header: &str,
+/// Abstraction over an HTTP request.
+pub struct Request {
+    header: String,
     dist_dir_path: PathBuf,
     not_found_path: Option<PathBuf>,
-) -> Result<()> {
-    let request = header.split('\r').next().unwrap();
+}
 
-    let requested_path = request
+/// Default request handler
+fn default_request_handler(stream: &mut TcpStream, request: Request) -> Result<()> {
+    let content = request.header.split('\r').next().unwrap();
+
+    let requested_path = content
         .split_whitespace()
         .nth(1)
         .context("Could not find path in request")?;
@@ -294,7 +295,7 @@ pub fn default_request_handler(
     log::debug!("<-- {}", requested_path);
 
     let rel_path = Path::new(requested_path.trim_matches('/'));
-    let mut full_path = dist_dir_path.join(rel_path);
+    let mut full_path = request.dist_dir_path.join(rel_path);
 
     if full_path.is_dir() {
         if full_path.join("index.html").exists() {
@@ -306,9 +307,9 @@ pub fn default_request_handler(
         }
     }
 
-    if let Some(path) = not_found_path {
+    if let Some(path) = request.not_found_path {
         if !full_path.is_file() {
-            full_path = dist_dir_path.join(path);
+            full_path = request.dist_dir_path.join(path);
         }
     }
 
