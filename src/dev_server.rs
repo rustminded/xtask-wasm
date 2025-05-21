@@ -14,7 +14,7 @@ use std::{
     thread,
 };
 
-type RequestHandler = Arc<dyn Fn(&mut TcpStream, Request) -> Result<()> + Send + Sync + 'static>;
+type RequestHandler = Arc<dyn Fn(Request) -> Result<()> + Send + Sync + 'static>;
 
 /// A simple HTTP server useful during development.
 ///
@@ -141,7 +141,7 @@ impl DevServer {
     /// Pass a custom request handler to the dev server.
     pub fn request_handler<F>(mut self, handler: F) -> Self
     where
-        F: Fn(&mut TcpStream, Request) -> Result<()> + Send + Sync + 'static,
+        F: Fn(Request) -> Result<()> + Send + Sync + 'static,
     {
         self.request_handler.replace(Arc::new(handler));
         self
@@ -229,16 +229,26 @@ fn serve(
     log::info!("Development server running at: http://{}", &address);
 
     for mut stream in listener.incoming().filter_map(|x| x.ok()) {
-        let request = Request {
-            header: read_header(&stream)?,
-            dist_dir_path: served_path.clone(),
-            not_found_path: not_found_path.clone(),
-        };
-
         let handler = handler.clone();
+        let header = match read_header(&stream) {
+            Ok(header) => header,
+            Err(err) => {
+                log::warn!("Malformed request's header: {}", err);
+                continue;
+            }
+        };
+        let dist_dir_path = served_path.clone();
+        let not_found_path = not_found_path.clone();
 
         thread::spawn(move || {
-            (handler)(&mut stream, request).unwrap_or_else(|e| {
+            let request = Request {
+                header,
+                stream: &mut stream,
+                dist_dir_path,
+                not_found_path,
+            };
+
+            (handler)(request).unwrap_or_else(|e| {
                 let _ = stream.write("HTTP/1.1 500 INTERNAL SERVER ERROR\r\n\r\n".as_bytes());
                 log::error!("an error occurred: {}", e);
             });
@@ -272,14 +282,15 @@ fn read_header(mut stream: &TcpStream) -> Result<String> {
 }
 
 /// Abstraction over an HTTP request.
-pub struct Request {
+pub struct Request<'a> {
+    stream: &'a mut TcpStream,
     header: String,
     dist_dir_path: PathBuf,
     not_found_path: Option<PathBuf>,
 }
 
 /// Default request handler
-fn default_request_handler(stream: &mut TcpStream, request: Request) -> Result<()> {
+fn default_request_handler(request: Request) -> Result<()> {
     let content = request.header.split('\r').next().unwrap();
 
     let requested_path = content
@@ -327,7 +338,8 @@ fn default_request_handler(stream: &mut TcpStream, request: Request) -> Result<(
             _ => "application/octet-stream",
         };
 
-        stream
+        request
+            .stream
             .write(
                 format!(
                     "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nContent-Type: {}\r\n\r\n",
@@ -338,10 +350,11 @@ fn default_request_handler(stream: &mut TcpStream, request: Request) -> Result<(
             )
             .context("cannot write response")?;
 
-        std::io::copy(&mut fs::File::open(&full_path)?, stream)?;
+        std::io::copy(&mut fs::File::open(&full_path)?, request.stream)?;
     } else {
         log::error!("--> {} (404 NOT FOUND)", full_path.display());
-        stream
+        request
+            .stream
             .write("HTTP/1.1 404 NOT FOUND\r\n\r\n".as_bytes())
             .context("cannot write response")?;
     }
