@@ -16,6 +16,22 @@ use std::{
 
 type RequestHandler = Arc<dyn Fn(Request) -> Result<()> + Send + Sync + 'static>;
 
+/// Abstraction over an HTTP request.
+#[non_exhaustive]
+pub struct Request<'a> {
+    /// TCP stream of the request.
+    pub stream: &'a mut TcpStream,
+    /// Path of the request.
+    pub path: &'a str,
+    /// Request header.
+    pub header: &'a str,
+    /// Path to the distributed directory.
+    pub dist_dir_path: &'a Path,
+    /// Path to the file used when the requested file cannot be found for the default request
+    /// handler.
+    pub not_found_path: Option<&'a Path>,
+}
+
 /// A simple HTTP server useful during development.
 ///
 /// It can watch the source code for changes and restart a provided command.
@@ -228,22 +244,28 @@ fn serve(
 
     log::info!("Development server running at: http://{}", &address);
 
-    for mut stream in listener.incoming().filter_map(|x| x.ok()) {
-        let handler = handler.clone();
-        let header = match read_header(&stream) {
-            Ok(header) => header,
-            Err(err) => {
-                log::warn!("Malformed request's header: {}", err);
-                continue;
+    macro_rules! warn_not_fail {
+        ($expr:expr) => {{
+            match $expr {
+                Ok(res) => res,
+                Err(err) => {
+                    log::warn!("Malformed request's header: {}", err);
+                    return;
+                }
             }
-        };
+        }};
+    }
+
+    for mut stream in listener.incoming().filter_map(Result::ok) {
+        let handler = handler.clone();
         let dist_dir_path = dist_dir_path.clone();
         let not_found_path = not_found_path.clone();
-
         thread::spawn(move || {
+            let header = warn_not_fail!(read_header(&stream));
             let request = Request {
-                header: header.as_ref(),
                 stream: &mut stream,
+                header: header.as_ref(),
+                path: warn_not_fail!(parse_request_path(&header)),
                 dist_dir_path: dist_dir_path.as_ref(),
                 not_found_path: not_found_path.as_deref(),
             };
@@ -281,32 +303,21 @@ fn read_header(mut stream: &TcpStream) -> Result<String> {
     Ok(String::from_utf8(header)?)
 }
 
-/// Abstraction over an HTTP request.
-pub struct Request<'a> {
-    /// TCP stream of the request.
-    pub stream: &'a mut TcpStream,
-    /// Request header.
-    pub header: &'a str,
-    /// Path to the distributed directory.
-    pub dist_dir_path: &'a Path,
-    /// Path to the file used when the requested file cannot be found for the default request
-    /// handler.
-    pub not_found_path: Option<&'a Path>,
+fn parse_request_path(header: &str) -> Result<&str> {
+    let content = header.split('\r').next().unwrap();
+    let requested_path = content
+        .split_whitespace()
+        .nth(1)
+        .context("could not find path in request")?;
+    Ok(requested_path
+        .split_once('?')
+        .map(|(prefix, _suffix)| prefix)
+        .unwrap_or(requested_path))
 }
 
 /// Default request handler
 pub fn default_request_handler(request: Request) -> Result<()> {
-    let content = request.header.split('\r').next().unwrap();
-
-    let requested_path = content
-        .split_whitespace()
-        .nth(1)
-        .context("Could not find path in request")?;
-
-    let requested_path = requested_path
-        .split_once('?')
-        .map(|(prefix, _suffix)| prefix)
-        .unwrap_or(requested_path);
+    let requested_path = request.path;
 
     log::debug!("<-- {}", requested_path);
 
