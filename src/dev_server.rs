@@ -295,7 +295,7 @@ pub struct Request<'a> {
 }
 
 /// Default request handler
-fn default_request_handler(request: Request) -> Result<()> {
+pub fn default_request_handler(request: Request) -> Result<()> {
     let content = request.header.split('\r').next().unwrap();
 
     let requested_path = content
