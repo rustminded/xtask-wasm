@@ -93,11 +93,10 @@ You can find more informations about xtask
 
 ### Use xtask-wasm as a dependency
 
-Finally, add the following to the xtask package's `Cargo.toml`:
+Finally, add `xtask-wasm` to your dependencies:
 
-```toml
-[dependencies]
-xtask-wasm = "0.5.0"
+```console
+cargo add -p xtask xtask-wasm
 ```
 
 ## Usage
