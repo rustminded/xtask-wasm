@@ -1,6 +1,6 @@
 [package]
 name = "xtask-wasm"
-version = "0.5.2"
+version = "0.5.3"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Customizable subcommands to build your Wasm projects using xtask."
