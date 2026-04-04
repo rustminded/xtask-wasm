@@ -197,11 +197,11 @@
 //! # Features
 //!
 //! * `wasm-opt`: enable the
-//!    [`WasmOpt`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.WasmOpt.html) struct that helps
-//!    downloading and using [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools) very
-//!    easily.
+//!   [`WasmOpt`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.WasmOpt.html) struct that helps
+//!   downloading and using [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools) very
+//!   easily.
 //! * `run-example`: a helper to run examples from `examples/` directory using a development
-//!    server.
+//!   server.
 //! * `sass`: allow the use of SASS/SCSS in your project.
 //!
 //! # Troubleshooting
