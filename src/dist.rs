@@ -180,7 +180,13 @@ impl Dist {
 
         let dist_dir_path = self
             .dist_dir_path
-            .unwrap_or_else(|| default_dist_dir(self.release).as_std_path().to_path_buf());
+            .unwrap_or_else(|| {
+                if self.release {
+                    default_dist_dir_release().as_std_path().to_path_buf()
+                } else {
+                    default_dist_dir_debug().as_std_path().to_path_buf()
+                }
+            });
 
         log::trace!("Initializing dist process");
         let mut build_command = self.build_command;
@@ -403,10 +409,30 @@ fn sass(
     Ok(())
 }
 
-/// Get the default dist directory.
+/// Get the default dist directory for debug builds.
+pub fn default_dist_dir_debug() -> &'static camino::Utf8Path {
+    lazy_static! {
+        static ref DEFAULT_DEBUG_PATH: camino::Utf8PathBuf =
+            metadata().target_directory.join("debug").join("dist");
+    }
+
+    &DEFAULT_DEBUG_PATH
+}
+
+/// Get the default dist directory for release builds.
+pub fn default_dist_dir_release() -> &'static camino::Utf8Path {
+    lazy_static! {
+        static ref DEFAULT_RELEASE_PATH: camino::Utf8PathBuf =
+            metadata().target_directory.join("release").join("dist");
+        }
+
+    &DEFAULT_RELEASE_PATH
+}
+
+/// Get the default dist directory (deprecated).
 ///
-/// The default for debug build is `target/debug/dist` and `target/release/dist`
-/// for the release build.
+/// Use [`default_dist_dir_debug`] or [`default_dist_dir_release`] instead.
+#[deprecated(note = "use `default_dist_dir_debug` or `default_dist_dir_release()`")]
 pub fn default_dist_dir(release: bool) -> &'static camino::Utf8Path {
     lazy_static! {
         static ref DEFAULT_RELEASE_PATH: camino::Utf8PathBuf =

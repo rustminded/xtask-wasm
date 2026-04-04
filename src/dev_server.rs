@@ -2,6 +2,7 @@ use crate::{
     anyhow::{bail, ensure, Context, Result},
     camino::Utf8Path,
     clap, Watch,
+    default_dist_dir_debug,
 };
 use derive_more::Debug;
 use std::{
@@ -47,7 +48,6 @@ pub struct Request<'a> {
 /// use xtask_wasm::{
 ///     anyhow::Result,
 ///     clap,
-///     default_dist_dir,
 /// };
 ///
 /// #[derive(clap::Parser)]
@@ -62,7 +62,7 @@ pub struct Request<'a> {
 ///     match opt {
 ///         Opt::Start(mut dev_server) => {
 ///             log::info!("Starting the development server...");
-///             dev_server.arg("dist").start(default_dist_dir(false))?;
+///             dev_server.arg("dist").start()?;
 ///         }
 ///         Opt::Dist => todo!("build project"),
 ///     }
@@ -97,6 +97,10 @@ pub struct DevServer {
     #[clap(flatten)]
     pub watch: Watch,
 
+    /// Directory of all generated artifacts.
+    #[clap(skip)]
+    pub dist_dir_path: Option<PathBuf>,
+
     /// Command executed when a change is detected.
     #[clap(skip)]
     pub command: Option<process::Command>,
@@ -117,6 +121,14 @@ impl DevServer {
         self.ip = ip;
         self.port = port;
 
+        self
+    }
+
+    /// Set the directory for the generated artifacts.
+    ///
+    /// The default is `target/debug/dist`.
+    pub fn dist_dir_path(mut self, path: impl Into<PathBuf>) -> Self {
+        self.dist_dir_path = Some(path.into());
         self
     }
 
@@ -163,12 +175,15 @@ impl DevServer {
         self
     }
 
-    /// Start the server, serving the files at `dist_dir_path`.
+    /// Start the server, serving the files at [`dist_dir_path`].
     ///
-    /// [`crate::default_dist_dir`] should be used to get the dist directory
-    /// that needs to be served.
-    pub fn start(self, dist_dir_path: impl Into<PathBuf>) -> Result<()> {
-        let dist_dir_path = dist_dir_path.into();
+    /// If `dist_dir_path` has not been provided, [`default_dist_dir_debug`] will be used.
+    pub fn start(self) -> Result<()> {
+        let dist_dir_path = self
+            .dist_dir_path
+            .unwrap_or_else(|| {
+                default_dist_dir_debug().as_std_path().to_path_buf()
+            });
 
         let watch_process = if let Some(command) = self.command {
             // NOTE: the path needs to exists in order to be excluded because it is canonicalize
@@ -225,6 +240,7 @@ impl Default for DevServer {
             ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
             port: 8000,
             watch: Default::default(),
+            dist_dir_path: None,
             command: None,
             not_found_path: None,
             request_handler: None,

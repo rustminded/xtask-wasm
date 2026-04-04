@@ -104,7 +104,7 @@
 //!
 //! ```rust,no_run
 //! use std::process::Command;
-//! use xtask_wasm::{anyhow::Result, clap, default_dist_dir};
+//! use xtask_wasm::{anyhow::Result, clap};
 //!
 //! #[derive(clap::Parser)]
 //! enum Opt {
@@ -122,7 +122,6 @@
 //!             log::info!("Generating package...");
 //!
 //!             dist
-//!                 .dist_dir_path(default_dist_dir(false))
 //!                 .static_dir_path("my-project/static")
 //!                 .app_name("my-project")
 //!                 .run_in_workspace(true)
@@ -139,7 +138,7 @@
 //!         Opt::Start(dev_server) => {
 //!             log::info!("Starting the development server...");
 //!
-//!             dev_server.arg("dist").start(default_dist_dir(false))?;
+//!             dev_server.arg("dist").start()?;
 //!         }
 //!     }
 //!
