@@ -136,7 +136,7 @@
 //!
 //!             watch.run(command)?;
 //!         }
-//!         Opt::Start(mut dev_server) => {
+//!         Opt::Start(dev_server) => {
 //!             log::info!("Starting the development server...");
 //!
 //!             dev_server.arg("dist").start(default_dist_dir(false))?;
