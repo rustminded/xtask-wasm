@@ -29,7 +29,6 @@ use wasm_bindgen_cli_support::Bindgen;
 ///             dist
 ///                 .static_dir_path("my-project/static")
 ///                 .app_name("my-project")
-///                 .run_in_workspace(true)
 ///                 .run("my-project")?;
 ///         }
 ///     }
@@ -107,6 +106,8 @@ pub struct Dist {
     #[clap(skip)]
     pub app_name: Option<String>,
     /// Set the command's current directory as the workspace root.
+    ///
+    /// Default to `true`.
     #[clap(skip = true)]
     pub run_in_workspace: bool,
     /// Output style for SASS/SCSS
@@ -148,6 +149,26 @@ impl Dist {
     }
 
     /// Set the dist process current directory as the workspace root.
+    ///
+    /// This is the default. See [`use_in_current_dir`] if you want to use the current directory
+    /// instead.
+    pub fn use_workspace_root(mut self) -> Self {
+        self.run_in_workspace = true;
+        self
+    }
+
+    /// Set the dist process current directory as the current directory.
+    ///
+    /// See [`use_workspace_root`] if you want to use the workspace root instead.
+    pub fn use_current_dir(mut self) -> Self {
+        self.run_in_workspace = true;
+        self
+    }
+
+    /// Set the dist process current directory as the workspace root.
+    ///
+    /// Use [`use_current_dir`] instead if you want.
+    #[deprecated(note = "use `use_workspace_root` or `use_current_dir()`")]
     pub fn run_in_workspace(mut self, res: bool) -> Self {
         self.run_in_workspace = res;
         self
@@ -349,7 +370,7 @@ impl Default for Dist {
             dist_dir_path: Default::default(),
             static_dir_path: Default::default(),
             app_name: Default::default(),
-            run_in_workspace: Default::default(),
+            run_in_workspace: true,
             #[cfg(feature = "sass")]
             sass_options: Default::default(),
         }

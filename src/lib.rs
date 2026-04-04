@@ -124,7 +124,6 @@
 //!             dist
 //!                 .static_dir_path("my-project/static")
 //!                 .app_name("my-project")
-//!                 .run_in_workspace(true)
 //!                 .run("my-project")?;
 //!         }
 //!         Opt::Watch(watch) => {
