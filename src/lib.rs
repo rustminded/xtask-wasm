@@ -122,7 +122,7 @@
 //!             log::info!("Generating package...");
 //!
 //!             dist
-//!                 .dist_dir_path("dist")
+//!                 .dist_dir_path(default_dist_dir(false))
 //!                 .static_dir_path("my-project/static")
 //!                 .app_name("my-project")
 //!                 .run_in_workspace(true)
