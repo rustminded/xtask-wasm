@@ -105,11 +105,6 @@ pub struct Dist {
     /// Set the resulting app name, default to `app`.
     #[clap(skip)]
     pub app_name: Option<String>,
-    /// Set the command's current directory as the workspace root.
-    ///
-    /// Default to `true`.
-    #[clap(skip = true)]
-    pub run_in_workspace: bool,
     /// Output style for SASS/SCSS
     #[cfg(feature = "sass")]
     #[clap(skip)]
@@ -145,24 +140,6 @@ impl Dist {
     /// The default is `app`.
     pub fn app_name(mut self, app_name: impl Into<String>) -> Self {
         self.app_name = Some(app_name.into());
-        self
-    }
-
-    /// Set the dist process current directory as the workspace root.
-    ///
-    /// This is the default. See [`use_current_dir`](Self::use_current_dir) if you want to use the
-    /// current directory instead.
-    pub fn use_workspace_root(mut self) -> Self {
-        self.run_in_workspace = true;
-        self
-    }
-
-    /// Set the dist process current directory as the current directory.
-    ///
-    /// See [`use_workspace_root`](Self::use_workspace_root) if you want to use the workspace root
-    /// instead.
-    pub fn use_current_dir(mut self) -> Self {
-        self.run_in_workspace = false;
         self
     }
 
@@ -210,9 +187,7 @@ impl Dist {
         log::trace!("Initializing dist process");
         let mut build_command = self.build_command;
 
-        if self.run_in_workspace {
-            build_command.current_dir(&metadata.workspace_root);
-        }
+        build_command.current_dir(&metadata.workspace_root);
 
         if self.quiet {
             build_command.arg("--quiet");
@@ -368,7 +343,6 @@ impl Default for Dist {
             dist_dir_path: Default::default(),
             static_dir_path: Default::default(),
             app_name: Default::default(),
-            run_in_workspace: true,
             #[cfg(feature = "sass")]
             sass_options: Default::default(),
         }
