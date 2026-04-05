@@ -165,15 +165,6 @@ impl Dist {
         self
     }
 
-    /// Set the dist process current directory as the workspace root.
-    ///
-    /// Use [`use_current_dir`] instead if you want.
-    #[deprecated(note = "use `use_workspace_root` or `use_current_dir()`")]
-    pub fn run_in_workspace(mut self, res: bool) -> Self {
-        self.run_in_workspace = res;
-        self
-    }
-
     #[cfg(feature = "sass")]
     /// Set the output style for SCSS/SASS
     pub fn sass_options(mut self, output_style: sass_rs::Options) -> Self {
@@ -448,23 +439,4 @@ pub fn default_dist_dir_release() -> &'static camino::Utf8Path {
         }
 
     &DEFAULT_RELEASE_PATH
-}
-
-/// Get the default dist directory (deprecated).
-///
-/// Use [`default_dist_dir_debug`] or [`default_dist_dir_release`] instead.
-#[deprecated(note = "use `default_dist_dir_debug` or `default_dist_dir_release()`")]
-pub fn default_dist_dir(release: bool) -> &'static camino::Utf8Path {
-    lazy_static! {
-        static ref DEFAULT_RELEASE_PATH: camino::Utf8PathBuf =
-            metadata().target_directory.join("release").join("dist");
-        static ref DEFAULT_DEBUG_PATH: camino::Utf8PathBuf =
-            metadata().target_directory.join("debug").join("dist");
-    }
-
-    if release {
-        &DEFAULT_RELEASE_PATH
-    } else {
-        &DEFAULT_DEBUG_PATH
-    }
 }
