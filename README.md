@@ -121,7 +121,7 @@ You can find further information for each type at their documentation level.
 
 ```rust
 use std::process::Command;
-use xtask_wasm::{anyhow::Result, clap, xtask_command};
+use xtask_wasm::{anyhow::Result, clap};
 
 #[derive(clap::Parser)]
 enum Opt {
@@ -145,7 +145,7 @@ fn main() -> Result<()> {
             dist
                 .static_dir_path("my-project/static")
                 .app_name("my-project")
-                .run("my-project")?;
+                .build("my-project")?;
         }
         Opt::Watch(watch) => {
             log::info!("Watching for changes and check...");
@@ -159,8 +159,7 @@ fn main() -> Result<()> {
             log::info!("Starting the development server...");
 
             dev_server
-                .command(xtask_command())
-                .arg("dist")
+                .xtask("dist")
                 .start()?;
         }
     }
