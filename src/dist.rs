@@ -150,8 +150,8 @@ impl Dist {
 
     /// Set the dist process current directory as the workspace root.
     ///
-    /// This is the default. See [`use_current_dir`] if you want to use the current directory
-    /// instead.
+    /// This is the default. See [`use_current_dir`](Self::use_current_dir) if you want to use the
+    /// current directory instead.
     pub fn use_workspace_root(mut self) -> Self {
         self.run_in_workspace = true;
         self
@@ -159,7 +159,8 @@ impl Dist {
 
     /// Set the dist process current directory as the current directory.
     ///
-    /// See [`use_workspace_root`] if you want to use the workspace root instead.
+    /// See [`use_workspace_root`](Self::use_workspace_root) if you want to use the workspace root
+    /// instead.
     pub fn use_current_dir(mut self) -> Self {
         self.run_in_workspace = false;
         self
@@ -184,8 +185,14 @@ impl Dist {
     /// and copy files from a given static directory if any to finally return
     /// the path of the generated artifacts.
     ///
-    /// Wasm optimizations can be achieved using [`crate::WasmOpt`] if the
-    /// feature `wasm-opt` is enabled.
+    #[cfg_attr(
+        feature = "wasm-opt",
+        doc = "Wasm optimizations can be achieved using [`WasmOpt`](crate::WasmOpt) if the feature `wasm-opt` is enabled."
+    )]
+    #[cfg_attr(
+        not(feature = "wasm-opt"),
+        doc = "Wasm optimizations can be achieved using `WasmOpt` if the feature `wasm-opt` is enabled."
+    )]
     pub fn run(self, package_name: &str) -> Result<PathBuf> {
         log::trace!("Getting package's metadata");
         let metadata = metadata();

@@ -35,9 +35,9 @@ pub struct Request<'a> {
 
 /// A simple HTTP server useful during development.
 ///
-/// It can watch the source code for changes and restart a provided [`DevServer::command`].
+/// It can watch the source code for changes and restart a provided [`command`](Self::command).
 ///
-/// Serve the file from the provided [`DevServer::dist_dir_path`] at a given IP address
+/// Serve the file from the provided [`dist_dir_path`](Self::dist_dir_path) at a given IP address
 /// (127.0.0.1:8000 by default). An optional command can be provided to restart the build when
 /// changes are detected.
 ///
@@ -141,10 +141,10 @@ impl DevServer {
         self
     }
 
-    /// Adds an argument to pass to the [`command`] executed when changes are
+    /// Adds an argument to pass to the [`command`](Self::command) executed when changes are
     /// detected.
     ///
-    /// This is no-op unless a [`command`] is provided.
+    /// This is no-op unless a [`command`](Self::command) is provided.
     pub fn arg<S: AsRef<ffi::OsStr>>(mut self, arg: S) -> Self {
         if let Some(command) = self.command.as_mut() {
             command.arg(arg);
@@ -152,10 +152,10 @@ impl DevServer {
         self
     }
 
-    /// Adds multiple arguments to pass to the [`command`] executed when changes are
+    /// Adds multiple arguments to pass to the [`command`](Self::command) executed when changes are
     /// detected.
     ///
-    /// This is no-op unless a [`command`] is provided.
+    /// This is no-op unless a [`command`](Self::command) is provided.
     pub fn args<I, S>(mut self, args: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -182,7 +182,7 @@ impl DevServer {
         self
     }
 
-    /// Start the server, serving the files at [`dist_dir_path`].
+    /// Start the server, serving the files at [`dist_dir_path`](Self::dist_dir_path).
     ///
     /// If `dist_dir_path` has not been provided, [`default_dist_dir_debug`] will be used.
     pub fn start(self) -> Result<()> {
