@@ -27,7 +27,7 @@ pub struct Request<'a> {
     /// Request header.
     pub header: &'a str,
     /// Path to the distributed directory.
-    pub dist_dir_path: &'a Path,
+    pub dist_dir: &'a Path,
     /// Path to the file used when the requested file cannot be found for the default request
     /// handler.
     pub not_found_path: Option<&'a Path>,
@@ -37,7 +37,7 @@ pub struct Request<'a> {
 ///
 /// It can watch the source code for changes and restart a provided [`command`](Self::command).
 ///
-/// Serve the file from the provided [`dist_dir_path`](Self::dist_dir_path) at a given IP address
+/// Serve the file from the provided [`dist_dir`](Self::dist_dir) at a given IP address
 /// (127.0.0.1:8000 by default). An optional command can be provided to restart the build when
 /// changes are detected.
 ///
@@ -102,7 +102,7 @@ pub struct DevServer {
 
     /// Directory of all generated artifacts.
     #[clap(skip)]
-    pub dist_dir_path: Option<PathBuf>,
+    pub dist_dir: Option<PathBuf>,
 
     /// Command executed when a change is detected.
     #[clap(skip)]
@@ -130,8 +130,8 @@ impl DevServer {
     /// Set the directory for the generated artifacts.
     ///
     /// The default is `target/debug/dist`.
-    pub fn dist_dir_path(mut self, path: impl Into<PathBuf>) -> Self {
-        self.dist_dir_path = Some(path.into());
+    pub fn dist_dir(mut self, path: impl Into<PathBuf>) -> Self {
+        self.dist_dir = Some(path.into());
         self
     }
 
@@ -182,20 +182,20 @@ impl DevServer {
         self
     }
 
-    /// Start the server, serving the files at [`dist_dir_path`](Self::dist_dir_path).
+    /// Start the server, serving the files at [`dist_dir`](Self::dist_dir).
     ///
-    /// If `dist_dir_path` has not been provided, [`default_dist_dir_debug`] will be used.
+    /// If `dist_dir` has not been provided, [`default_dist_dir_debug`] will be used.
     pub fn start(self) -> Result<()> {
-        let dist_dir_path = self
-            .dist_dir_path
+        let dist_dir = self
+            .dist_dir
             .unwrap_or_else(|| {
                 default_dist_dir_debug().as_std_path().to_path_buf()
             });
 
         let watch_process = if let Some(command) = self.command {
             // NOTE: the path needs to exists in order to be excluded because it is canonicalize
-            let _ = std::fs::create_dir_all(&dist_dir_path);
-            let watch = self.watch.exclude_path(&dist_dir_path);
+            let _ = std::fs::create_dir_all(&dist_dir);
+            let watch = self.watch.exclude_path(&dist_dir);
             let handle = std::thread::spawn(|| match watch.run(command) {
                 Ok(()) => log::trace!("Starting to watch"),
                 Err(err) => log::error!("an error occurred when starting to watch: {err}"),
@@ -210,7 +210,7 @@ impl DevServer {
             serve(
                 self.ip,
                 self.port,
-                dist_dir_path,
+                dist_dir,
                 self.not_found_path,
                 handler,
             )
@@ -219,7 +219,7 @@ impl DevServer {
             serve(
                 self.ip,
                 self.port,
-                dist_dir_path,
+                dist_dir,
                 self.not_found_path,
                 Arc::new(default_request_handler),
             )
@@ -240,7 +240,7 @@ impl Default for DevServer {
             ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
             port: 8000,
             watch: Default::default(),
-            dist_dir_path: None,
+            dist_dir: None,
             command: None,
             not_found_path: None,
             request_handler: None,
@@ -251,7 +251,7 @@ impl Default for DevServer {
 fn serve(
     ip: IpAddr,
     port: u16,
-    dist_dir_path: PathBuf,
+    dist_dir: PathBuf,
     not_found_path: Option<PathBuf>,
     handler: RequestHandler,
 ) -> Result<()> {
@@ -274,7 +274,7 @@ fn serve(
 
     for mut stream in listener.incoming().filter_map(Result::ok) {
         let handler = handler.clone();
-        let dist_dir_path = dist_dir_path.clone();
+        let dist_dir = dist_dir.clone();
         let not_found_path = not_found_path.clone();
         thread::spawn(move || {
             let header = warn_not_fail!(read_header(&stream));
@@ -282,7 +282,7 @@ fn serve(
                 stream: &mut stream,
                 header: header.as_ref(),
                 path: warn_not_fail!(parse_request_path(&header)),
-                dist_dir_path: dist_dir_path.as_ref(),
+                dist_dir: dist_dir.as_ref(),
                 not_found_path: not_found_path.as_deref(),
             };
 
@@ -338,7 +338,7 @@ pub fn default_request_handler(request: Request) -> Result<()> {
     log::debug!("<-- {requested_path}");
 
     let rel_path = Path::new(requested_path.trim_matches('/'));
-    let mut full_path = request.dist_dir_path.join(rel_path);
+    let mut full_path = request.dist_dir.join(rel_path);
 
     if full_path.is_dir() {
         if full_path.join("index.html").exists() {
@@ -352,7 +352,7 @@ pub fn default_request_handler(request: Request) -> Result<()> {
 
     if let Some(path) = request.not_found_path {
         if !full_path.is_file() {
-            full_path = request.dist_dir_path.join(path);
+            full_path = request.dist_dir.join(path);
         }
     }
 
