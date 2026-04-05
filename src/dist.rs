@@ -98,7 +98,7 @@ pub struct Dist {
     pub build_command: process::Command,
     /// Directory of all generated artifacts.
     #[clap(skip)]
-    pub dist_dir_path: Option<PathBuf>,
+    pub dist_dir: Option<PathBuf>,
     /// Directory of all static artifacts.
     #[clap(skip)]
     pub static_dir_path: Option<PathBuf>,
@@ -124,8 +124,8 @@ impl Dist {
     ///
     /// The default for debug build is `target/debug/dist` and
     /// `target/release/dist` for the release build.
-    pub fn dist_dir_path(mut self, path: impl Into<PathBuf>) -> Self {
-        self.dist_dir_path = Some(path.into());
+    pub fn dist_dir(mut self, path: impl Into<PathBuf>) -> Self {
+        self.dist_dir = Some(path.into());
         self
     }
 
@@ -174,8 +174,8 @@ impl Dist {
         log::trace!("Getting package's metadata");
         let metadata = metadata();
 
-        let dist_dir_path = self
-            .dist_dir_path
+        let dist_dir = self
+            .dist_dir
             .unwrap_or_else(|| {
                 if self.release {
                     default_dist_dir_release().as_std_path().to_path_buf()
@@ -289,19 +289,19 @@ impl Dist {
             .generate_output()
             .context("could not generate Wasm bindgen file")?;
 
-        if dist_dir_path.exists() {
+        if dist_dir.exists() {
             log::trace!("Removing already existing dist directory");
-            fs::remove_dir_all(&dist_dir_path)?;
+            fs::remove_dir_all(&dist_dir)?;
         }
 
         log::trace!("Writing outputs to dist directory");
-        output.emit(&dist_dir_path)?;
+        output.emit(&dist_dir)?;
 
         if let Some(static_dir) = self.static_dir_path {
             #[cfg(feature = "sass")]
             {
                 log::trace!("Generating CSS files from SASS/SCSS");
-                sass(&static_dir, &dist_dir_path, &self.sass_options)?;
+                sass(&static_dir, &dist_dir, &self.sass_options)?;
             }
 
             #[cfg(not(feature = "sass"))]
@@ -311,14 +311,14 @@ impl Dist {
                 copy_options.content_only = true;
 
                 log::trace!("Copying static directory into dist directory");
-                fs_extra::dir::copy(static_dir, &dist_dir_path, &copy_options)
+                fs_extra::dir::copy(static_dir, &dist_dir, &copy_options)
                     .context("cannot copy static directory")?;
             }
         }
 
-        log::info!("Successfully built in {}", dist_dir_path.display());
+        log::info!("Successfully built in {}", dist_dir.display());
 
-        Ok(dist_dir_path)
+        Ok(dist_dir)
     }
 }
 
@@ -340,7 +340,7 @@ impl Default for Dist {
             ignore_rust_version: Default::default(),
             example: Default::default(),
             build_command: default_build_command(),
-            dist_dir_path: Default::default(),
+            dist_dir: Default::default(),
             static_dir_path: Default::default(),
             app_name: Default::default(),
             #[cfg(feature = "sass")]
