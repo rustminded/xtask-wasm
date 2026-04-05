@@ -35,11 +35,11 @@ pub struct Request<'a> {
 
 /// A simple HTTP server useful during development.
 ///
-/// It can watch the source code for changes and restart a provided command.
+/// It can watch the source code for changes and restart a provided [`DevServer::command`].
 ///
-/// Get the files at `watch_path` and serve them at a given IP address
-/// (127.0.0.1:8000 by default). An optional command can be provided to restart
-/// the build when changes are detected.
+/// Serve the file from the provided [`DevServer::dist_dir_path`] at a given IP address
+/// (127.0.0.1:8000 by default). An optional command can be provided to restart the build when
+/// changes are detected.
 ///
 /// # Usage
 ///
@@ -74,9 +74,9 @@ pub struct Request<'a> {
 /// }
 /// ```
 ///
-/// Add a `start` subcommand that will run `cargo xtask dist`, watching for
+/// This adds a `start` subcommand that will run `cargo xtask dist`, watching for
 /// changes in the workspace and serve the files in the default dist directory
-/// (`target/debug/dist` for non-release) at a given IP address.
+/// (`target/debug/dist` for non-release) at the default IP address.
 #[non_exhaustive]
 #[derive(Debug, clap::Parser)]
 #[clap(

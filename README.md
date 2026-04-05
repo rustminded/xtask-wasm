@@ -121,7 +121,7 @@ You can find further information for each type at their documentation level.
 
 ```rust
 use std::process::Command;
-use xtask_wasm::{anyhow::Result, clap};
+use xtask_wasm::{anyhow::Result, clap, xtask_command};
 
 #[derive(clap::Parser)]
 enum Opt {
@@ -158,7 +158,10 @@ fn main() -> Result<()> {
         Opt::Start(dev_server) => {
             log::info!("Starting the development server...");
 
-            dev_server.start()?;
+            dev_server
+                .command(xtask_command())
+                .arg("dist")
+                .start()?;
         }
     }
 
