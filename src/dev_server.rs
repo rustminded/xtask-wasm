@@ -3,6 +3,7 @@ use crate::{
     camino::Utf8Path,
     clap, Watch,
     default_dist_dir_debug,
+    xtask_command,
 };
 use derive_more::Debug;
 use std::{
@@ -63,8 +64,7 @@ pub struct Request<'a> {
 ///         Opt::Start(mut dev_server) => {
 ///             log::info!("Starting the development server...");
 ///             dev_server
-///                 .command(xtask_wasm::xtask_command())
-///                 .arg("dist")
+///                 .xtask("dist")
 ///                 .start()?;
 ///         }
 ///         Opt::Dist => todo!("build project"),
@@ -135,8 +135,17 @@ impl DevServer {
         self
     }
 
-    /// Set the command that is executed when a change is detected.
-    pub fn command(mut self, command: process::Command) -> Self {
+    /// Program of the command that is executed when a change is detected.
+    pub fn command(mut self, program: impl AsRef<str>) -> Self {
+        let command = std::process::Command::new(program.as_ref());
+        self.command = Some(command);
+        self
+    }
+
+    /// Name of the xtask command that is executed when a change is detected.
+    pub fn xtask(mut self, name: impl AsRef<str>) -> Self {
+        let mut command = xtask_command();
+        command.arg(name.as_ref());
         self.command = Some(command);
         self
     }

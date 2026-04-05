@@ -161,8 +161,6 @@ impl RunExample {
                     .init();
 
                 let cli: Cli = clap::Parser::parse();
-                let mut dist_command = xtask_wasm::xtask_command();
-                dist_command.arg("dist");
 
                 match cli.command {
                     Some(Command::Dist(mut dist)) => {
@@ -177,11 +175,11 @@ impl RunExample {
                         Ok(())
                     }
                     Some(Command::Start(dev_server)) => {
-                        dev_server.command(dist_command).start()
+                        dev_server.xtask("dist").start()
                     }
                     None => {
                         let dev_server: xtask_wasm::DevServer = clap::Parser::parse();
-                        dev_server.command(dist_command).start()
+                        dev_server.xtask("dist").start()
                     }
                 }
             }

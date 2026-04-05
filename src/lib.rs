@@ -104,7 +104,7 @@
 //!
 //! ```rust,no_run
 //! use std::process::Command;
-//! use xtask_wasm::{anyhow::Result, clap, xtask_command};
+//! use xtask_wasm::{anyhow::Result, clap};
 //!
 //! #[derive(clap::Parser)]
 //! enum Opt {
@@ -142,8 +142,7 @@
 //!             log::info!("Starting the development server...");
 //!
 //!             dev_server
-//!                 .command(xtask_command())
-//!                 .arg("dist")
+//!                 .xtask("dist")
 //!                 .start()?;
 //!         }
 //!     }
