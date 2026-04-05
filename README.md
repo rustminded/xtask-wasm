@@ -121,7 +121,7 @@ You can find further information for each type at their documentation level.
 
 ```rust
 use std::process::Command;
-use xtask_wasm::{anyhow::Result, clap, default_dist_dir};
+use xtask_wasm::{anyhow::Result, clap};
 
 #[derive(clap::Parser)]
 enum Opt {
@@ -132,6 +132,10 @@ enum Opt {
 
 
 fn main() -> Result<()> {
+    env_logger::builder()
+        .filter_level(log::LevelFilter::Info)
+        .init();
+
     let opt: Opt = clap::Parser::parse();
 
     match opt {
@@ -139,10 +143,8 @@ fn main() -> Result<()> {
             log::info!("Generating package...");
 
             dist
-                .dist_dir_path(default_dist_dir(false))
                 .static_dir_path("my-project/static")
                 .app_name("my-project")
-                .run_in_workspace(true)
                 .run("my-project")?;
         }
         Opt::Watch(watch) => {
@@ -156,7 +158,7 @@ fn main() -> Result<()> {
         Opt::Start(dev_server) => {
             log::info!("Starting the development server...");
 
-            dev_server.arg("dist").start(default_dist_dir(false))?;
+            dev_server.start()?;
         }
     }
 
@@ -214,11 +216,11 @@ This command will run the code in `examples/run_example` using the development s
 ## Features
 
 * `wasm-opt`: enable the
-   [`WasmOpt`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.WasmOpt.html) struct that helps
-   downloading and using [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools) very
-   easily.
+  [`WasmOpt`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.WasmOpt.html) struct that helps
+  downloading and using [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools) very
+  easily.
 * `run-example`: a helper to run examples from `examples/` directory using a development
-   server.
+  server.
 * `sass`: allow the use of SASS/SCSS in your project.
 
 ## Troubleshooting
