@@ -198,7 +198,7 @@ impl DevServer {
             let watch = self.watch.exclude_path(&dist_dir_path);
             let handle = std::thread::spawn(|| match watch.run(command) {
                 Ok(()) => log::trace!("Starting to watch"),
-                Err(err) => log::error!("an error occurred when starting to watch: {}", err),
+                Err(err) => log::error!("an error occurred when starting to watch: {err}"),
             });
 
             Some(handle)
@@ -288,7 +288,7 @@ fn serve(
 
             (handler)(request).unwrap_or_else(|e| {
                 let _ = stream.write("HTTP/1.1 500 INTERNAL SERVER ERROR\r\n\r\n".as_bytes());
-                log::error!("an error occurred: {}", e);
+                log::error!("an error occurred: {e}");
             });
         });
     }
@@ -335,7 +335,7 @@ fn parse_request_path(header: &str) -> Result<&str> {
 pub fn default_request_handler(request: Request) -> Result<()> {
     let requested_path = request.path;
 
-    log::debug!("<-- {}", requested_path);
+    log::debug!("<-- {requested_path}");
 
     let rel_path = Path::new(requested_path.trim_matches('/'));
     let mut full_path = request.dist_dir_path.join(rel_path);

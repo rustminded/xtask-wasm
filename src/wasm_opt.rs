@@ -50,7 +50,7 @@ fn download_wasm_opt() -> Result<&'static Path> {
         };
     }
 
-    WASM_OPT_PATH.as_deref().map_err(|err| anyhow!("{}", err))
+    WASM_OPT_PATH.as_deref().map_err(|err| anyhow!("{err}"))
 }
 
 /// Helper Abstracting the `wasm-opt` binary from

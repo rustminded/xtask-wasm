@@ -7,7 +7,7 @@ description = "Customizable subcommands to build your Wasm projects using xtask.
 homepage = "https://github.com/rustminded/xtask-wasm"
 repository = "https://github.com/rustminded/xtask-wasm"
 documentation = "https://docs.rs/xtask-wasm"
-rust-version = "1.82"
+rust-version = "1.88"
 readme = "README.md"
 categories = ["development-tools::build-utils"]
 keywords = ["wasm", "cli"]
@@ -41,6 +41,9 @@ xtask-watch = "0.3.2"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.112"
+
+[dev-dependencies]
+env_logger = { version = "0.11.6" }
 
 [package.metadata.docs.rs]
 all-features = true
