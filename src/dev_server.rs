@@ -62,7 +62,7 @@ pub struct Request<'a> {
 ///     match opt {
 ///         Opt::Start(mut dev_server) => {
 ///             log::info!("Starting the development server...");
-///             dev_server.arg("dist").start()?;
+///             dev_server.start()?;
 ///         }
 ///         Opt::Dist => todo!("build project"),
 ///     }
@@ -138,25 +138,25 @@ impl DevServer {
         self
     }
 
-    /// Adds an argument to pass to the command executed when changes are
+    /// Adds an argument to pass to the [`command`] executed when changes are
     /// detected.
-    ///
-    /// This will use the xtask command by default.
     pub fn arg<S: AsRef<ffi::OsStr>>(mut self, arg: S) -> Self {
-        self.set_xtask_command().arg(arg);
+        if let Some(command) = self.command.as_mut() {
+            command.arg(arg);
+        }
         self
     }
 
-    /// Adds multiple arguments to pass to the command executed when changes are
+    /// Adds multiple arguments to pass to the [`command`] executed when changes are
     /// detected.
-    ///
-    /// This will use the xtask command by default.
     pub fn args<I, S>(mut self, args: I) -> Self
     where
         I: IntoIterator<Item = S>,
         S: AsRef<ffi::OsStr>,
     {
-        self.set_xtask_command().args(args);
+        if let Some(command) = self.command.as_mut() {
+            command.args(args);
+        }
         self
     }
 
@@ -224,13 +224,6 @@ impl DevServer {
         }
 
         Ok(())
-    }
-
-    fn set_xtask_command(&mut self) -> &mut process::Command {
-        if self.command.is_none() {
-            self.command = Some(crate::xtask_command());
-        }
-        self.command.as_mut().unwrap()
     }
 }
 

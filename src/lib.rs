@@ -141,7 +141,7 @@
 //!         Opt::Start(dev_server) => {
 //!             log::info!("Starting the development server...");
 //!
-//!             dev_server.arg("dist").start()?;
+//!             dev_server.start()?;
 //!         }
 //!     }
 //!

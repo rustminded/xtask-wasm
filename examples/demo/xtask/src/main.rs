@@ -60,7 +60,7 @@ fn main() -> Result<()> {
         Command::Start(arg) => {
             log::info!("Starting the development server...");
 
-            arg.arg("dist").start(xtask_wasm::default_dist_dir(false))?;
+            arg.start()?;
         }
     }
 

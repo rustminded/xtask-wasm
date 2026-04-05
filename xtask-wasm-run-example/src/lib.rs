@@ -177,13 +177,11 @@ impl RunExample {
                         Ok(())
                     }
                     Some(Command::Start(dev_server)) => {
-                        let served_path = xtask_wasm::default_dist_dir(false);
-                        dev_server.command(dist_command).start(served_path)
+                        dev_server.command(dist_command).start()
                     }
                     None => {
                         let dev_server: xtask_wasm::DevServer = clap::Parser::parse();
-                        let served_path = xtask_wasm::default_dist_dir(false);
-                        dev_server.command(dist_command).start(served_path)
+                        dev_server.command(dist_command).start()
                     }
                 }
             }
