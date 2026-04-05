@@ -62,7 +62,10 @@ pub struct Request<'a> {
 ///     match opt {
 ///         Opt::Start(mut dev_server) => {
 ///             log::info!("Starting the development server...");
-///             dev_server.start()?;
+///             dev_server
+///                 .command(xtask_wasm::xtask_command())
+///                 .arg("dist")
+///                 .start()?;
 ///         }
 ///         Opt::Dist => todo!("build project"),
 ///     }
@@ -140,6 +143,8 @@ impl DevServer {
 
     /// Adds an argument to pass to the [`command`] executed when changes are
     /// detected.
+    ///
+    /// This is no-op unless a [`command`] is provided.
     pub fn arg<S: AsRef<ffi::OsStr>>(mut self, arg: S) -> Self {
         if let Some(command) = self.command.as_mut() {
             command.arg(arg);
@@ -149,6 +154,8 @@ impl DevServer {
 
     /// Adds multiple arguments to pass to the [`command`] executed when changes are
     /// detected.
+    ///
+    /// This is no-op unless a [`command`] is provided.
     pub fn args<I, S>(mut self, args: I) -> Self
     where
         I: IntoIterator<Item = S>,

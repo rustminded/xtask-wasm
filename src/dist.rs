@@ -150,7 +150,7 @@ impl Dist {
 
     /// Set the dist process current directory as the workspace root.
     ///
-    /// This is the default. See [`use_in_current_dir`] if you want to use the current directory
+    /// This is the default. See [`use_current_dir`] if you want to use the current directory
     /// instead.
     pub fn use_workspace_root(mut self) -> Self {
         self.run_in_workspace = true;
@@ -161,7 +161,7 @@ impl Dist {
     ///
     /// See [`use_workspace_root`] if you want to use the workspace root instead.
     pub fn use_current_dir(mut self) -> Self {
-        self.run_in_workspace = true;
+        self.run_in_workspace = false;
         self
     }
 
