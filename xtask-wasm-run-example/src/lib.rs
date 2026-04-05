@@ -168,7 +168,7 @@ impl RunExample {
                             .example(module_path!())
                             #app_name
                             #static_dir
-                            .run(env!("CARGO_PKG_NAME"))?;
+                            .build(env!("CARGO_PKG_NAME"))?;
 
                         #index
 

@@ -41,7 +41,7 @@ fn main() -> Result<()> {
                 .base
                 .static_dir_path("webapp/static")
                 .app_name("web_app")
-                .run("webapp")?;
+                .build("webapp")?;
 
             if arg.optimize {
                 xtask_wasm::WasmOpt::level(1)

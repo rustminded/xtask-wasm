@@ -128,7 +128,7 @@
 //!             dist
 //!                 .static_dir_path("my-project/static")
 //!                 .app_name("my-project")
-//!                 .run("my-project")?;
+//!                 .build("my-project")?;
 //!         }
 //!         Opt::Watch(watch) => {
 //!             log::info!("Watching for changes and check...");

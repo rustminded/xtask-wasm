@@ -29,7 +29,7 @@ use wasm_bindgen_cli_support::Bindgen;
 ///             dist
 ///                 .static_dir_path("my-project/static")
 ///                 .app_name("my-project")
-///                 .run("my-project")?;
+///                 .build("my-project")?;
 ///         }
 ///     }
 ///
@@ -170,7 +170,7 @@ impl Dist {
         not(feature = "wasm-opt"),
         doc = "Wasm optimizations can be achieved using `WasmOpt` if the feature `wasm-opt` is enabled."
     )]
-    pub fn run(self, package_name: &str) -> Result<PathBuf> {
+    pub fn build(self, package_name: &str) -> Result<PathBuf> {
         log::trace!("Getting package's metadata");
         let metadata = metadata();
 
