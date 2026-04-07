@@ -2,8 +2,8 @@ use crate::{
     anyhow::{bail, ensure, Context, Result},
     camino::Utf8Path,
     clap, Watch,
-    default_dist_dir_debug,
     xtask_command,
+    Dist,
 };
 use derive_more::Debug;
 use std::{
@@ -198,7 +198,7 @@ impl DevServer {
         let dist_dir = self
             .dist_dir
             .unwrap_or_else(|| {
-                default_dist_dir_debug().as_std_path().to_path_buf()
+                Dist::default_debug_dir().as_std_path().to_path_buf()
             });
 
         let watch_process = if let Some(command) = self.command {

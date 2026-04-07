@@ -160,6 +160,26 @@ impl Dist {
         self
     }
 
+    /// Get the default dist directory for debug builds.
+    pub fn default_debug_dir() -> &'static camino::Utf8Path {
+        lazy_static! {
+            static ref DEFAULT_DEBUG_PATH: camino::Utf8PathBuf =
+                metadata().target_directory.join("debug").join("dist");
+        }
+
+        &DEFAULT_DEBUG_PATH
+    }
+
+    /// Get the default dist directory for release builds.
+    pub fn default_release_dir() -> &'static camino::Utf8Path {
+        lazy_static! {
+            static ref DEFAULT_RELEASE_PATH: camino::Utf8PathBuf =
+                metadata().target_directory.join("release").join("dist");
+        }
+
+        &DEFAULT_RELEASE_PATH
+    }
+
     /// Build the given package for Wasm.
     ///
     /// This will generate JS bindings via [`wasm-bindgen`](https://docs.rs/wasm-bindgen/latest/wasm_bindgen/)
@@ -182,9 +202,9 @@ impl Dist {
             .dist_dir
             .unwrap_or_else(|| {
                 if self.release {
-                    default_dist_dir_release().as_std_path().to_path_buf()
+                    Self::default_release_dir().as_std_path().to_path_buf()
                 } else {
-                    default_dist_dir_debug().as_std_path().to_path_buf()
+                    Self::default_debug_dir().as_std_path().to_path_buf()
                 }
             });
 
@@ -410,24 +430,4 @@ fn sass(
     }
 
     Ok(())
-}
-
-/// Get the default dist directory for debug builds.
-pub fn default_dist_dir_debug() -> &'static camino::Utf8Path {
-    lazy_static! {
-        static ref DEFAULT_DEBUG_PATH: camino::Utf8PathBuf =
-            metadata().target_directory.join("debug").join("dist");
-    }
-
-    &DEFAULT_DEBUG_PATH
-}
-
-/// Get the default dist directory for release builds.
-pub fn default_dist_dir_release() -> &'static camino::Utf8Path {
-    lazy_static! {
-        static ref DEFAULT_RELEASE_PATH: camino::Utf8PathBuf =
-            metadata().target_directory.join("release").join("dist");
-        }
-
-    &DEFAULT_RELEASE_PATH
 }
