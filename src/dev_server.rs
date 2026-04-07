@@ -176,6 +176,33 @@ impl DevServer {
         self
     }
 
+    /// Inserts or updates an explicit environment variable to the [`command`](Self::command)
+    /// executed when changes are detected.
+    pub fn env<K, V>(mut self, key: K, val: V) -> Self
+    where
+        K: AsRef<ffi::OsStr>,
+        V: AsRef<ffi::OsStr>,
+    {
+        if let Some(command) = self.command.as_mut() {
+            command.env(key, val);
+        }
+        self
+    }
+
+    /// Inserts or updates multiple explicit environment variables to the
+    /// [`command`](Self::command) executed when changes are detected.
+    pub fn envs<I, K, V>(mut self, vars: I) -> Self
+    where
+        I: IntoIterator<Item = (K, V)>,
+        K: AsRef<ffi::OsStr>,
+        V: AsRef<ffi::OsStr>,
+    {
+        if let Some(command) = self.command.as_mut() {
+            command.envs(vars);
+        }
+        self
+    }
+
     /// Use another file path when the URL is not found.
     pub fn not_found(mut self, path: impl Into<PathBuf>) -> Self {
         self.not_found_path.replace(path.into());
