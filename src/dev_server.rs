@@ -7,7 +7,6 @@ use crate::{
 };
 use derive_more::Debug;
 use std::{
-    process::Command,
     ffi, fs,
     io::prelude::*,
     net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream},
@@ -152,7 +151,7 @@ impl DevServer {
 
     /// Program of the command that is executed when a change is detected.
     pub fn command(mut self, program: impl AsRef<str>) -> Self {
-        let command = std::process::Command::new(program.as_ref());
+        let command = process::Command::new(program.as_ref());
         self.command = Some(command);
         self
     }
