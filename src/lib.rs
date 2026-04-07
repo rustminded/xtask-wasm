@@ -126,7 +126,7 @@
 //!             log::info!("Generating package...");
 //!
 //!             dist
-//!                 .static_dir_path("my-project/static")
+//!                 .assets_dir("my-project/static")
 //!                 .app_name("my-project")
 //!                 .build("my-project")?;
 //!         }

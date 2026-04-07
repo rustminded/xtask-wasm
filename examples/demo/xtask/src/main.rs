@@ -39,7 +39,7 @@ fn main() -> Result<()> {
 
             let dist_result = arg
                 .base
-                .static_dir_path("webapp/static")
+                .assets_dir("webapp/assets")
                 .app_name("web_app")
                 .build("webapp")?;
 

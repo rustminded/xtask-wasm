@@ -27,7 +27,7 @@ use wasm_bindgen_cli_support::Bindgen;
 ///             log::info!("Generating package...");
 ///
 ///             dist
-///                 .static_dir_path("my-project/static")
+///                 .assets_dir("my-project/assets")
 ///                 .app_name("my-project")
 ///                 .build("my-project")?;
 ///         }
@@ -39,7 +39,7 @@ use wasm_bindgen_cli_support::Bindgen;
 ///
 /// In this example, we added a `dist` subcommand to build and package the
 /// `my-project` crate. It will run the [`default_build_command`](crate::default_build_command)
-/// at the workspace root, copy the content of the `project/static` directory,
+/// at the workspace root, copy the content of the `project/assets` directory,
 /// generate JS bindings and output two files: `project.js` and `project.wasm`
 /// into the dist directory.
 #[non_exhaustive]
@@ -99,9 +99,11 @@ pub struct Dist {
     /// Directory of all generated artifacts.
     #[clap(skip)]
     pub dist_dir: Option<PathBuf>,
-    /// Directory of all static artifacts.
+    /// Directory of all static assets artifacts.
+    ///
+    /// Default to `public` at crate level if it exists.
     #[clap(skip)]
-    pub static_dir_path: Option<PathBuf>,
+    pub assets_dir: Option<PathBuf>,
     /// Set the resulting app name, default to `app`.
     #[clap(skip)]
     pub app_name: Option<String>,
@@ -129,9 +131,11 @@ impl Dist {
         self
     }
 
-    /// Set the directory for the static artifacts (like `index.html`).
-    pub fn static_dir_path(mut self, path: impl Into<PathBuf>) -> Self {
-        self.static_dir_path = Some(path.into());
+    /// Set the directory for the static assets artifacts (like `index.html`).
+    ///
+    /// Default to `public` at crate level if it exists.
+    pub fn assets_dir(mut self, path: impl Into<PathBuf>) -> Self {
+        self.assets_dir = Some(path.into());
         self
     }
 
@@ -159,7 +163,7 @@ impl Dist {
     /// Build the given package for Wasm.
     ///
     /// This will generate JS bindings via [`wasm-bindgen`](https://docs.rs/wasm-bindgen/latest/wasm_bindgen/)
-    /// and copy files from a given static directory if any to finally return
+    /// and copy files from a given assets directory if any to finally return
     /// the path of the generated artifacts.
     ///
     #[cfg_attr(
@@ -297,11 +301,17 @@ impl Dist {
         log::trace!("Writing outputs to dist directory");
         output.emit(&dist_dir)?;
 
-        if let Some(static_dir) = self.static_dir_path {
+        let assets_dir = if let Some(assets_dir) = self.assets_dir {
+            assets_dir
+        } else {
+            metadata.workspace_root.join("public").as_std_path().to_path_buf()
+        };
+
+        if assets_dir.exists() {
             #[cfg(feature = "sass")]
             {
                 log::trace!("Generating CSS files from SASS/SCSS");
-                sass(&static_dir, &dist_dir, &self.sass_options)?;
+                sass(&assets_dir, &dist_dir, &self.sass_options)?;
             }
 
             #[cfg(not(feature = "sass"))]
@@ -310,9 +320,9 @@ impl Dist {
                 copy_options.overwrite = true;
                 copy_options.content_only = true;
 
-                log::trace!("Copying static directory into dist directory");
-                fs_extra::dir::copy(static_dir, &dist_dir, &copy_options)
-                    .context("cannot copy static directory")?;
+                log::trace!("Copying assets directory into dist directory");
+                fs_extra::dir::copy(assets_dir, &dist_dir, &copy_options)
+                    .context("cannot copy assets directory")?;
             }
         }
 
@@ -341,7 +351,7 @@ impl Default for Dist {
             example: Default::default(),
             build_command: default_build_command(),
             dist_dir: Default::default(),
-            static_dir_path: Default::default(),
+            assets_dir: Default::default(),
             app_name: Default::default(),
             #[cfg(feature = "sass")]
             sass_options: Default::default(),
@@ -351,7 +361,7 @@ impl Default for Dist {
 
 #[cfg(feature = "sass")]
 fn sass(
-    static_dir: &std::path::Path,
+    assets_dir: &std::path::Path,
     dist_dir: &std::path::Path,
     options: &sass_rs::Options,
 ) -> Result<()> {
@@ -373,12 +383,12 @@ fn sass(
     }
 
     log::trace!("Generating dist artifacts");
-    let walker = walkdir::WalkDir::new(static_dir);
+    let walker = walkdir::WalkDir::new(assets_dir);
     for entry in walker {
         let entry = entry
-            .with_context(|| format!("cannot walk into directory `{}`", &static_dir.display()))?;
+            .with_context(|| format!("cannot walk into directory `{}`", &assets_dir.display()))?;
         let source = entry.path();
-        let dest = dist_dir.join(source.strip_prefix(static_dir).unwrap());
+        let dest = dist_dir.join(source.strip_prefix(assets_dir).unwrap());
         let _ = fs::create_dir_all(dest.parent().unwrap());
 
         if !source.is_file() {
