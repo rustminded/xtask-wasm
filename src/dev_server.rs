@@ -7,6 +7,7 @@ use crate::{
 };
 use derive_more::Debug;
 use std::{
+    process::Command,
     ffi, fs,
     io::prelude::*,
     net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream},
@@ -104,9 +105,17 @@ pub struct DevServer {
     #[clap(skip)]
     pub dist_dir: Option<PathBuf>,
 
-    /// Command executed when a change is detected.
+    /// Command executed before the main command when a change is detected.
+    #[clap(skip)]
+    pub pre_commands: Vec<process::Command>,
+
+    /// Main command executed when a change is detected.
     #[clap(skip)]
     pub command: Option<process::Command>,
+
+    /// Command executed after the main command when a change is detected.
+    #[clap(skip)]
+    pub post_commands: Vec<process::Command>,
 
     /// Use another file path when the URL is not found.
     #[clap(skip)]
@@ -132,6 +141,12 @@ impl DevServer {
     /// The default is `target/debug/dist`.
     pub fn dist_dir(mut self, path: impl Into<PathBuf>) -> Self {
         self.dist_dir = Some(path.into());
+        self
+    }
+
+    /// Command executed before the main command when a change is detected.
+    pub fn pre(mut self, command: process::Command) -> Self {
+        self.pre_commands.push(command);
         self
     }
 
@@ -228,18 +243,26 @@ impl DevServer {
                 Dist::default_debug_dir().as_std_path().to_path_buf()
             });
 
-        let watch_process = if let Some(command) = self.command {
-            // NOTE: the path needs to exists in order to be excluded because it is canonicalize
-            let _ = std::fs::create_dir_all(&dist_dir);
-            let watch = self.watch.exclude_path(&dist_dir);
-            let handle = std::thread::spawn(|| match watch.run(command) {
-                Ok(()) => log::trace!("Starting to watch"),
-                Err(err) => log::error!("an error occurred when starting to watch: {err}"),
-            });
+        let watch_process = {
+            let mut commands = self.pre_commands;
+            if let Some(command) = self.command {
+                commands.push(command);
+            }
+            commands.extend(self.post_commands);
 
-            Some(handle)
-        } else {
-            None
+            if !commands.is_empty() {
+                // NOTE: the path needs to exists in order to be excluded because it is canonicalize
+                let _ = std::fs::create_dir_all(&dist_dir);
+                let watch = self.watch.exclude_path(&dist_dir);
+                let handle = std::thread::spawn(|| match watch.run(commands) {
+                    Ok(()) => log::trace!("Starting to watch"),
+                    Err(err) => log::error!("an error occurred when starting to watch: {err}"),
+                });
+
+                Some(handle)
+            } else {
+                None
+            }
         };
 
         if let Some(handler) = self.request_handler {
@@ -277,7 +300,9 @@ impl Default for DevServer {
             port: 8000,
             watch: Default::default(),
             dist_dir: None,
+            pre_commands: Default::default(),
             command: None,
+            post_commands: Default::default(),
             not_found_path: None,
             request_handler: None,
         }
