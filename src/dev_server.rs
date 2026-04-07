@@ -75,8 +75,8 @@ pub struct Request<'a> {
 /// ```
 ///
 /// This adds a `start` subcommand that will run `cargo xtask dist`, watching for
-/// changes in the workspace and serve the files in the default dist directory
-/// (`target/debug/dist` for non-release) at the default IP address.
+/// changes in the workspace and serve the files in the provided dist directory
+/// (`target/debug/dist` by default) at the provided IP address (default to `127.0.0.1).
 #[non_exhaustive]
 #[derive(Debug, clap::Parser)]
 #[clap(
