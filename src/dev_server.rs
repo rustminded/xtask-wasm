@@ -40,7 +40,7 @@ pub struct Request<'a> {
 ///
 /// Serve the file from the provided [`dist_dir`](Self::dist_dir) at a given IP address
 /// (127.0.0.1:8000 by default). An optional command can be provided to restart the build when
-/// changes are detected.
+/// changes are detected using [`command`](Self::command) or [`xtask`](Self::xtask).
 ///
 /// # Usage
 ///
@@ -75,8 +75,8 @@ pub struct Request<'a> {
 /// ```
 ///
 /// This adds a `start` subcommand that will run `cargo xtask dist`, watching for
-/// changes in the workspace and serve the files in the provided dist directory
-/// (`target/debug/dist` by default) at the provided IP address (default to `127.0.0.1).
+/// changes in the workspace and serve the files in the default dist directory
+/// (`target/debug/dist`) at the default IP address.
 #[non_exhaustive]
 #[derive(Debug, clap::Parser)]
 #[clap(
@@ -150,6 +150,8 @@ impl DevServer {
     }
 
     /// Program of the command that is executed when a change is detected.
+    ///
+    /// See [`xtask`](Self::xtask) if you want to use an `xtask` command.
     pub fn command(mut self, program: impl AsRef<str>) -> Self {
         let command = process::Command::new(program.as_ref());
         self.command = Some(command);
@@ -157,6 +159,8 @@ impl DevServer {
     }
 
     /// Name of the xtask command that is executed when a change is detected.
+    ///
+    /// See [`command`] to use an arbitrary command.
     pub fn xtask(mut self, name: impl AsRef<str>) -> Self {
         let mut command = xtask_command();
         command.arg(name.as_ref());
@@ -167,7 +171,7 @@ impl DevServer {
     /// Adds an argument to pass to the [`command`](Self::command) executed when changes are
     /// detected.
     ///
-    /// This is no-op unless a [`command`](Self::command) is provided.
+    /// This is no-op unless a [`command`](Self::command) or an [`xtask`](Self::xtask) is provided.
     pub fn arg<S: AsRef<ffi::OsStr>>(mut self, arg: S) -> Self {
         if let Some(command) = self.command.as_mut() {
             command.arg(arg);
@@ -178,7 +182,7 @@ impl DevServer {
     /// Adds multiple arguments to pass to the [`command`](Self::command) executed when changes are
     /// detected.
     ///
-    /// This is no-op unless a [`command`](Self::command) is provided.
+    /// This is no-op unless a [`command`](Self::command) or an [`xtask`](Self::xtask) is provided.
     pub fn args<I, S>(mut self, args: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -192,6 +196,8 @@ impl DevServer {
 
     /// Inserts or updates an explicit environment variable to the [`command`](Self::command)
     /// executed when changes are detected.
+    ///
+    /// This is no-op unless a [`command`](Self::command) or an [`xtask`](Self::xtask) is provided.
     pub fn env<K, V>(mut self, key: K, val: V) -> Self
     where
         K: AsRef<ffi::OsStr>,
@@ -205,6 +211,8 @@ impl DevServer {
 
     /// Inserts or updates multiple explicit environment variables to the
     /// [`command`](Self::command) executed when changes are detected.
+    ///
+    /// This is no-op unless a [`command`](Self::command) or an [`xtask`](Self::xtask) is provided.
     pub fn envs<I, K, V>(mut self, vars: I) -> Self
     where
         I: IntoIterator<Item = (K, V)>,

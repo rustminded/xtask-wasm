@@ -60,7 +60,7 @@ fn main() -> Result<()> {
         Command::Start(arg) => {
             log::info!("Starting the development server...");
 
-            arg.start()?;
+            arg.xtask("dist").start()?;
         }
     }
 

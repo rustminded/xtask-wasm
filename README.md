@@ -143,7 +143,7 @@ fn main() -> Result<()> {
             log::info!("Generating package...");
 
             dist
-                .static_dir_path("my-project/static")
+                .assets_dir("my-project/assets")
                 .app_name("my-project")
                 .build("my-project")?;
         }
