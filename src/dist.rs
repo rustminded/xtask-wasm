@@ -335,10 +335,7 @@ impl Dist {
                 .as_std_path()
                 .to_path_buf()
         } else {
-            bail!(
-                "failed to determine assets directory path: package `{}` not found",
-                package_name
-            );
+            bail!("failed to determine assets directory path: package `{package_name}` not found");
         };
 
         if assets_dir.exists() {
