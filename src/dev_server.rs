@@ -96,7 +96,8 @@ pub struct DevServer {
     ///
     /// # Note
     ///
-    /// Used only if `command` is set.
+    /// Used when at least one of `pre_commands`, `command` or `post_commands` is set.
+    /// If no commands are provided, watching is disabled.
     #[clap(flatten)]
     pub watch: Watch,
 
@@ -273,7 +274,9 @@ impl DevServer {
 
             if !commands.is_empty() {
                 // NOTE: the path needs to exists in order to be excluded because it is canonicalize
-                let _ = std::fs::create_dir_all(&dist_dir);
+                std::fs::create_dir_all(&dist_dir).with_context(|| {
+                    format!("cannot create dist directory `{}`", dist_dir.display())
+                })?;
                 let watch = self.watch.exclude_path(&dist_dir);
                 let handle = std::thread::spawn(|| match watch.run(commands) {
                     Ok(()) => log::trace!("Starting to watch"),
