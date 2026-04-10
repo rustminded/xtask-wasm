@@ -168,61 +168,75 @@ impl DevServer {
         self
     }
 
-    /// Adds an argument to pass to the [`command`](Self::command) executed when changes are
-    /// detected.
+    /// Adds an argument to pass to the main command executed when changes are detected.
     ///
-    /// This is no-op unless a [`command`](Self::command) or an [`xtask`](Self::xtask) is provided.
-    pub fn arg<S: AsRef<ffi::OsStr>>(mut self, arg: S) -> Self {
-        if let Some(command) = self.command.as_mut() {
-            command.arg(arg);
-        }
-        self
+    /// Returns an error if no [`command`](Self::command) or [`xtask`](Self::xtask) has been
+    /// provided.
+    pub fn arg<S: AsRef<ffi::OsStr>>(mut self, arg: S) -> Result<Self> {
+        let command = self
+            .command
+            .as_mut()
+            .context("`arg` used without command, call `command` or `xtask` first")?;
+        command.arg(arg);
+
+        Ok(self)
     }
 
-    /// Adds multiple arguments to pass to the [`command`](Self::command) executed when changes are
-    /// detected.
+    /// Adds multiple arguments to pass to the main command executed when changes are detected.
     ///
-    /// This is no-op unless a [`command`](Self::command) or an [`xtask`](Self::xtask) is provided.
-    pub fn args<I, S>(mut self, args: I) -> Self
+    /// Returns an error if no [`command`](Self::command) or [`xtask`](Self::xtask) has been
+    /// provided.
+    pub fn args<I, S>(mut self, args: I) -> Result<Self>
     where
         I: IntoIterator<Item = S>,
         S: AsRef<ffi::OsStr>,
     {
-        if let Some(command) = self.command.as_mut() {
-            command.args(args);
-        }
-        self
+        let command = self
+            .command
+            .as_mut()
+            .context("`args` used without command, call `command` or `xtask` first")?;
+        command.args(args);
+
+        Ok(self)
     }
 
-    /// Inserts or updates an explicit environment variable to the [`command`](Self::command)
-    /// executed when changes are detected.
+    /// Inserts or updates an explicit environment variable to the main command executed when
+    /// changes are detected.
     ///
-    /// This is no-op unless a [`command`](Self::command) or an [`xtask`](Self::xtask) is provided.
-    pub fn env<K, V>(mut self, key: K, val: V) -> Self
+    /// Returns an error if no [`command`](Self::command) or [`xtask`](Self::xtask) has been
+    /// provided.
+    pub fn env<K, V>(mut self, key: K, val: V) -> Result<Self>
     where
         K: AsRef<ffi::OsStr>,
         V: AsRef<ffi::OsStr>,
     {
-        if let Some(command) = self.command.as_mut() {
-            command.env(key, val);
-        }
-        self
+        let command = self
+            .command
+            .as_mut()
+            .context("`env` used without command, call `command` or `xtask` first")?;
+        command.env(key, val);
+
+        Ok(self)
     }
 
-    /// Inserts or updates multiple explicit environment variables to the
-    /// [`command`](Self::command) executed when changes are detected.
+    /// Inserts or updates multiple explicit environment variables to the main command executed when
+    /// changes are detected.
     ///
-    /// This is no-op unless a [`command`](Self::command) or an [`xtask`](Self::xtask) is provided.
-    pub fn envs<I, K, V>(mut self, vars: I) -> Self
+    /// Returns an error if no [`command`](Self::command) or [`xtask`](Self::xtask) has been
+    /// provided.
+    pub fn envs<I, K, V>(mut self, vars: I) -> Result<Self>
     where
         I: IntoIterator<Item = (K, V)>,
         K: AsRef<ffi::OsStr>,
         V: AsRef<ffi::OsStr>,
     {
-        if let Some(command) = self.command.as_mut() {
-            command.envs(vars);
-        }
-        self
+        let command = self
+            .command
+            .as_mut()
+            .context("`envs` used without command, call `command` or `xtask` first")?;
+        command.envs(vars);
+
+        Ok(self)
     }
 
     /// Use another file path when the URL is not found.
