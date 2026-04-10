@@ -1,5 +1,5 @@
 use crate::{
-    anyhow::{ensure, Context, Result},
+    anyhow::{ensure, Context, Result, bail},
     camino, clap, default_build_command, metadata,
 };
 use lazy_static::lazy_static;
@@ -39,8 +39,8 @@ use wasm_bindgen_cli_support::Bindgen;
 ///
 /// In this example, we added a `dist` subcommand to build and package the
 /// `my-project` crate. It will run the [`default_build_command`](crate::default_build_command)
-/// at the workspace root, copy the content of the `project/assets` directory,
-/// generate JS bindings and output two files: `project.js` and `project.wasm`
+/// at the workspace root, copy the content of the `my-project/assets` directory,
+/// generate JS bindings and output two files: `my-project.js` and `my-project.wasm`
 /// into the dist directory.
 #[non_exhaustive]
 #[derive(Debug, clap::Parser)]
@@ -101,7 +101,7 @@ pub struct Dist {
     pub dist_dir: Option<PathBuf>,
     /// Directory of all static assets artifacts.
     ///
-    /// Default to `public` at crate level if it exists.
+    /// Default to `public` at the provided package root if it exists.
     #[clap(skip)]
     pub assets_dir: Option<PathBuf>,
     /// Set the resulting app name, default to `app`.
@@ -133,7 +133,7 @@ impl Dist {
 
     /// Set the directory for the static assets artifacts (like `index.html`).
     ///
-    /// Default to `public` at crate level if it exists.
+    /// Default to `public` at the package root if it exists.
     pub fn assets_dir(mut self, path: impl Into<PathBuf>) -> Self {
         self.assets_dir = Some(path.into());
         self
@@ -185,7 +185,6 @@ impl Dist {
     /// This will generate JS bindings via [`wasm-bindgen`](https://docs.rs/wasm-bindgen/latest/wasm_bindgen/)
     /// and copy files from a given assets directory if any to finally return
     /// the path of the generated artifacts.
-    ///
     #[cfg_attr(
         feature = "wasm-opt",
         doc = "Wasm optimizations can be achieved using [`WasmOpt`](crate::WasmOpt) if the feature `wasm-opt` is enabled."
@@ -323,8 +322,23 @@ impl Dist {
 
         let assets_dir = if let Some(assets_dir) = self.assets_dir {
             assets_dir
+        } else if let Some(package) = metadata
+            .packages
+            .iter()
+            .find(|package| package.name == package_name)
+        {
+            package
+                .manifest_path
+                .parent()
+                .context("package manifest has no parent directory")?
+                .join("public")
+                .as_std_path()
+                .to_path_buf()
         } else {
-            metadata.workspace_root.join("public").as_std_path().to_path_buf()
+            bail!(
+                "failed to determine assets directory path: package `{}` not found",
+                package_name
+            );
         };
 
         if assets_dir.exists() {
