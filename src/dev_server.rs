@@ -61,13 +61,13 @@ pub struct Request<'a> {
 ///     let opt: Opt = clap::Parser::parse();
 ///
 ///     match opt {
+///         Opt::Dist => todo!("build project"),
 ///         Opt::Start(mut dev_server) => {
 ///             log::info!("Starting the development server...");
 ///             dev_server
 ///                 .xtask("dist")
 ///                 .start()?;
 ///         }
-///         Opt::Dist => todo!("build project"),
 ///     }
 ///
 ///     Ok(())
@@ -149,7 +149,7 @@ impl DevServer {
         self
     }
 
-    /// Program of the command that is executed when a change is detected.
+    /// Main Program of the command that is executed when a change is detected.
     ///
     /// See [`xtask`](Self::xtask) if you want to use an `xtask` command.
     pub fn command(mut self, program: impl AsRef<str>) -> Self {
@@ -158,9 +158,9 @@ impl DevServer {
         self
     }
 
-    /// Name of the xtask command that is executed when a change is detected.
+    /// Name of the main xtask command that is executed when a change is detected.
     ///
-    /// See [`command`] to use an arbitrary command.
+    /// See [`command`](Self::command) to use an arbitrary command.
     pub fn xtask(mut self, name: impl AsRef<str>) -> Self {
         let mut command = xtask_command();
         command.arg(name.as_ref());
@@ -242,7 +242,7 @@ impl DevServer {
 
     /// Start the server, serving the files at [`dist_dir`](Self::dist_dir).
     ///
-    /// If `dist_dir` has not been provided, [`default_dist_dir_debug`] will be used.
+    /// If `dist_dir` has not been provided, [`Dist::default_debug_dir`] will be used.
     pub fn start(self) -> Result<()> {
         let dist_dir = self
             .dist_dir
