@@ -144,9 +144,15 @@ impl DevServer {
         self
     }
 
-    /// Command executed before the main command when a change is detected.
+    /// Command(s) executed before the main command when a change is detected.
     pub fn pre(mut self, command: process::Command) -> Self {
         self.pre_commands.push(command);
+        self
+    }
+
+    /// Command(s) executed after the main command when a change is detected.
+    pub fn post(mut self, command: process::Command) -> Self {
+        self.post_commands.push(command);
         self
     }
 
