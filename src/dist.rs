@@ -101,7 +101,7 @@ pub struct Dist {
     pub dist_dir: Option<PathBuf>,
     /// Directory of all static assets artifacts.
     ///
-    /// Default to `public` at the provided package root if it exists.
+    /// Default to `public` in the package root when it exists.
     #[clap(skip)]
     pub assets_dir: Option<PathBuf>,
     /// Set the resulting app name, default to `app`.
@@ -133,7 +133,7 @@ impl Dist {
 
     /// Set the directory for the static assets artifacts (like `index.html`).
     ///
-    /// Default to `public` at the package root if it exists.
+    /// Default to `public` in the package root when it exists.
     pub fn assets_dir(mut self, path: impl Into<PathBuf>) -> Self {
         self.assets_dir = Some(path.into());
         self

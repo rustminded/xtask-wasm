@@ -168,6 +168,9 @@ fn main() -> Result<()> {
 }
 ```
 
+Note: this basic implementation uses `env_logger` and `log`. Add them to the `Cargo.toml` of
+your `xtask` (or use your preferred logger).
+
 ### [`examples/demo`](https://github.com/rustminded/xtask-wasm/tree/main/examples/demo)
 
 Provides a basic implementation of xtask-wasm to generate the web app

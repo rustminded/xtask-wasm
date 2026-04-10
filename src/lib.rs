@@ -151,6 +151,9 @@
 //! }
 //! ```
 //!
+//! Note: this basic implementation uses `env_logger` and `log`. Add them to the `Cargo.toml` of
+//! your `xtask` (or use your preferred logger).
+//!
 //! ## [`examples/demo`](https://github.com/rustminded/xtask-wasm/tree/main/examples/demo)
 //!
 //! Provides a basic implementation of xtask-wasm to generate the web app
@@ -250,7 +253,7 @@ cfg_not_wasm32! {
 
     pub use xtask_watch::{
         anyhow, cargo_metadata, cargo_metadata::camino, clap, metadata, package, xtask_command,
-        Watch,
+        Watch
     };
 
     mod dev_server;
