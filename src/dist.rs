@@ -1,5 +1,5 @@
 use crate::{
-    anyhow::{ensure, Context, Result, bail},
+    anyhow::{bail, ensure, Context, Result},
     camino, clap, default_build_command, metadata,
 };
 use lazy_static::lazy_static;
@@ -147,8 +147,8 @@ impl Dist {
         self
     }
 
-    #[cfg(feature = "sass")]
     /// Set the output style for SCSS/SASS
+    #[cfg(feature = "sass")]
     pub fn sass_options(mut self, output_style: sass_rs::Options) -> Self {
         self.sass_options = output_style;
         self
@@ -197,15 +197,13 @@ impl Dist {
         log::trace!("Getting package's metadata");
         let metadata = metadata();
 
-        let dist_dir = self
-            .dist_dir
-            .unwrap_or_else(|| {
-                if self.release {
-                    Self::default_release_dir().as_std_path().to_path_buf()
-                } else {
-                    Self::default_debug_dir().as_std_path().to_path_buf()
-                }
-            });
+        let dist_dir = self.dist_dir.unwrap_or_else(|| {
+            if self.release {
+                Self::default_release_dir().as_std_path().to_path_buf()
+            } else {
+                Self::default_debug_dir().as_std_path().to_path_buf()
+            }
+        });
 
         log::trace!("Initializing dist process");
         let mut build_command = self.build_command;
