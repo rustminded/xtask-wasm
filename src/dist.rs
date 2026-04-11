@@ -186,6 +186,13 @@ pub struct Dist {
     #[clap(skip)]
     #[debug(skip)]
     pub transformers: Vec<Box<dyn Transformer>>,
+
+    /// Optional `wasm-opt` pass to run on the generated Wasm binary after bindgen.
+    ///
+    /// Set via [`Dist::optimize_wasm`]. Only available when the `wasm-opt` feature is enabled.
+    #[cfg(feature = "wasm-opt")]
+    #[clap(skip)]
+    pub wasm_opt: Option<crate::WasmOpt>,
 }
 
 impl Dist {
@@ -227,6 +234,44 @@ impl Dist {
     /// Transformers are called in the order they are added. See [`Transformer`] for details.
     pub fn transformer(mut self, transformer: impl Transformer + 'static) -> Self {
         self.transformers.push(Box::new(transformer));
+        self
+    }
+
+    /// Run [`WasmOpt`](crate::WasmOpt) on the generated Wasm binary after the bindgen step.
+    ///
+    /// This is the recommended way to integrate `wasm-opt`: it runs automatically at the
+    /// end of [`build`](Self::build) using the resolved output path, so you do not need to
+    /// wrap [`Dist`] in a custom struct or compute the path manually.
+    ///
+    /// Requires the `wasm-opt` feature.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use xtask_wasm::{anyhow::Result, clap, WasmOpt};
+    ///
+    /// #[derive(clap::Parser)]
+    /// enum Opt {
+    ///     Dist(xtask_wasm::Dist),
+    /// }
+    ///
+    /// fn main() -> Result<()> {
+    ///     let opt: Opt = clap::Parser::parse();
+    ///
+    ///     match opt {
+    ///         Opt::Dist(dist) => {
+    ///             dist.optimize_wasm(WasmOpt::level(1).shrink(2))
+    ///                 .build("my-project")?;
+    ///         }
+    ///     }
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    #[cfg(feature = "wasm-opt")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "wasm-opt")))]
+    pub fn optimize_wasm(mut self, wasm_opt: crate::WasmOpt) -> Self {
+        self.wasm_opt = Some(wasm_opt);
         self
     }
 
@@ -407,6 +452,12 @@ impl Dist {
             copy_assets(&assets_dir, &dist_dir, &self.transformers)?;
         }
 
+        #[cfg(feature = "wasm-opt")]
+        if let Some(wasm_opt) = self.wasm_opt {
+            let wasm_path = dist_dir.join(format!("{app_name}_bg.wasm"));
+            wasm_opt.optimize(&wasm_path)?;
+        }
+
         log::info!("Successfully built in {}", dist_dir.display());
 
         Ok(dist_dir)
@@ -435,6 +486,8 @@ impl Default for Dist {
             assets_dir: Default::default(),
             app_name: Default::default(),
             transformers: vec![],
+            #[cfg(feature = "wasm-opt")]
+            wasm_opt: None,
         }
     }
 }
