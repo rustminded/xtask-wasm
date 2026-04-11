@@ -420,11 +420,16 @@ fn sass(
             .with_context(|| format!("cannot walk into directory `{}`", &assets_dir.display()))?;
         let source = entry.path();
         let dest = dist_dir.join(source.strip_prefix(assets_dir).unwrap());
-        let _ = fs::create_dir_all(dest.parent().unwrap());
 
         if !source.is_file() {
             continue;
-        } else if is_sass(source) {
+        }
+
+        if let Some(parent) = dest.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+
+        if is_sass(source) {
             if !should_ignore(source) {
                 let dest = dest.with_extension("css");
 
