@@ -149,11 +149,19 @@ flexible enough to be customized for most use-cases.
 
 The pre and post hooks of [`DevServer`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.DevServer.html)
 accept any type implementing the
-[`Processor`](https://docs.rs/xtask-wasm/latest/xtask_wasm/trait.Processor.html) trait.
+[`Hook`](https://docs.rs/xtask-wasm/latest/xtask_wasm/trait.Hook.html) trait.
 This lets you construct a [`process::Command`](https://doc.rust-lang.org/std/process/struct.Command.html) based on the server's final configuration
 — for example, to pass the resolved `dist_dir` or `port` as arguments to an external tool.
 A blanket implementation is provided for [`process::Command`](https://doc.rust-lang.org/std/process/struct.Command.html) itself, so no changes are
 needed for simple use-cases.
+
+Asset files copied by [`Dist`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.Dist.html)
+can be processed by types implementing the
+[`Transformer`](https://docs.rs/xtask-wasm/latest/xtask_wasm/trait.Transformer.html) trait.
+Transformers are tried in order for each file; the first to return `Ok(true)` claims the file,
+while unclaimed files are copied verbatim. When the `sass` feature is enabled, a
+[`SassTransformer`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.SassTransformer.html)
+is included automatically.
 
 You can find further information for each type at their documentation level.
 
@@ -268,7 +276,8 @@ This command will run the code in `examples/run_example` using the development s
   easily.
 * `run-example`: a helper to run examples from `examples/` directory using a development
   server.
-* `sass`: allow the use of SASS/SCSS in your project.
+* `sass`: enable SASS/SCSS compilation via [`SassTransformer`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.SassTransformer.html),
+  which is automatically added to [`Dist::default`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.Dist.html#method.default).
 
 ## Troubleshooting
 
