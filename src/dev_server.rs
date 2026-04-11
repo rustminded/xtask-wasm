@@ -136,7 +136,7 @@ pub struct DevServer {
     ///
     /// # Note
     ///
-    /// Used when at least one of `pre_commands`, `command` or `post_commands` is set.
+    /// Used when at least one of `pre_processors`, `command` or `post_processors` is set.
     /// If no commands are provided, watching is disabled.
     #[clap(flatten)]
     pub watch: Watch,
@@ -148,7 +148,7 @@ pub struct DevServer {
     /// Commands executed before the main command when a change is detected.
     #[clap(skip)]
     #[debug(skip)]
-    pub pre_commands: Vec<Box<dyn Processor>>,
+    pub pre_processors: Vec<Box<dyn Processor>>,
 
     /// Main command executed when a change is detected.
     #[clap(skip)]
@@ -157,7 +157,7 @@ pub struct DevServer {
     /// Commands executed after the main command when a change is detected.
     #[clap(skip)]
     #[debug(skip)]
-    pub post_commands: Vec<Box<dyn Processor>>,
+    pub post_processors: Vec<Box<dyn Processor>>,
 
     /// Use another file path when the URL is not found.
     #[clap(skip)]
@@ -188,13 +188,13 @@ impl DevServer {
 
     /// Add a command to execute before the main command when a change is detected.
     pub fn pre(mut self, command: impl Processor + 'static) -> Self {
-        self.pre_commands.push(Box::new(command));
+        self.pre_processors.push(Box::new(command));
         self
     }
 
     /// Add multiple commands to execute before the main command when a change is detected.
     pub fn pres(mut self, commands: impl IntoIterator<Item = impl Processor + 'static>) -> Self {
-        self.pre_commands.extend(
+        self.pre_processors.extend(
             commands
                 .into_iter()
                 .map(|c| Box::new(c) as Box<dyn Processor>),
@@ -204,13 +204,13 @@ impl DevServer {
 
     /// Add a command to execute after the main command when a change is detected.
     pub fn post(mut self, command: impl Processor + 'static) -> Self {
-        self.post_commands.push(Box::new(command));
+        self.post_processors.push(Box::new(command));
         self
     }
 
     /// Add multiple commands to execute after the main command when a change is detected.
     pub fn posts(mut self, commands: impl IntoIterator<Item = impl Processor + 'static>) -> Self {
-        self.post_commands.extend(
+        self.post_processors.extend(
             commands
                 .into_iter()
                 .map(|c| Box::new(c) as Box<dyn Processor>),
@@ -345,8 +345,8 @@ impl DevServer {
 
         let watch_process = {
             // mem::take so we can pass &self to build_command while the fields are empty.
-            let pre_processors = std::mem::take(&mut self.pre_commands);
-            let post_processors = std::mem::take(&mut self.post_commands);
+            let pre_processors = std::mem::take(&mut self.pre_processors);
+            let post_processors = std::mem::take(&mut self.post_processors);
             let main_command = self.command.take();
 
             let mut commands: Vec<process::Command> = pre_processors
@@ -404,9 +404,9 @@ impl Default for DevServer {
             port: 8000,
             watch: Default::default(),
             dist_dir: None,
-            pre_commands: Default::default(),
+            pre_processors: Default::default(),
             command: None,
-            post_commands: Default::default(),
+            post_processors: Default::default(),
             not_found_path: None,
             request_handler: None,
         }
