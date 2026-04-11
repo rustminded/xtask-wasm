@@ -23,6 +23,40 @@ Wasm projects by extending them with custom subcommands, based on the
 [`xtask` concept](https://github.com/matklad/cargo-xtask/), instead of using
 external tooling like [`wasm-pack`](https://github.com/rustwasm/wasm-pack).
 
+## Why xtask-wasm?
+
+### No external tools to install
+
+`wasm-pack` and `trunk` are separate binaries that must be installed outside
+of Cargo — via `cargo install`, a shell script, or a system package manager.
+This means every contributor and every CI machine needs an extra installation
+step, and there is no built-in guarantee that everyone is running the same
+version.
+
+With xtask-wasm, `cargo xtask` is all you need. The build tooling is a
+regular Cargo dependency, versioned in your `Cargo.lock` and reproduced
+exactly like every other dependency in your project.
+
+### `wasm-bindgen` version is always in sync
+
+This is the most common source of pain with `wasm-pack` and `trunk`: the
+`wasm-bindgen` CLI tool version must exactly match the `wasm-bindgen` library
+version declared in your `Cargo.toml`. When they drift — after a `cargo
+update`, a fresh clone, or a CI cache invalidation — you get a cryptic error
+at runtime rather than a clear compile-time failure.
+
+xtask-wasm uses [`wasm-bindgen-cli-support`](https://crates.io/crates/wasm-bindgen-cli-support)
+as a library dependency. The version is pinned in your `Cargo.lock` alongside
+your `wasm-bindgen` library dependency and kept in sync automatically — no
+manual version matching required.
+
+### Fully customizable
+
+Because the build process is plain Rust code living inside your workspace,
+you can extend, replace or wrap any step. `wasm-pack` and `trunk` are
+opaque binaries driven by configuration files; xtask-wasm gives you the full
+build logic as code, under your control.
+
 ## Setup
 
 The best way to add xtask-wasm to your project is to create a workspace
