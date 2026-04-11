@@ -1,5 +1,3 @@
-#[cfg(feature = "sass")]
-use crate::sass::SassTransformer;
 use crate::{
     anyhow::{bail, ensure, Context, Result},
     camino, clap, default_build_command, metadata,
