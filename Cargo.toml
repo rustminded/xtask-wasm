@@ -11,7 +11,7 @@ rust-version = "1.88"
 readme = "README.md"
 categories = ["development-tools::build-utils"]
 keywords = ["wasm", "cli"]
-include = ["src/**/*.rs", "README.md", "LICENSE.Apache-2.0", "LICENSE.MIT"]
+include = ["src/**/*.rs", "README.md", "CHANGELOG.md", "LICENSE.Apache-2.0", "LICENSE.MIT"]
 
 [features]
 run-example = ["xtask-wasm-run-example", "console_error_panic_hook", "wasm-bindgen", "env_logger"]
