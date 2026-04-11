@@ -28,11 +28,11 @@ type RequestHandler = Arc<dyn Fn(Request) -> Result<()> + Send + Sync + 'static>
 ///
 /// ```rust,no_run
 /// use std::process;
-/// use xtask_wasm::{DevServer, Processor};
+/// use xtask_wasm::{DevServer, Hook};
 ///
 /// struct NotifyOnPort;
 ///
-/// impl Processor for NotifyOnPort {
+/// impl Hook for NotifyOnPort {
 ///     fn build_command(self: Box<Self>, server: &DevServer) -> process::Command {
 ///         let mut cmd = process::Command::new("notify-send");
 ///         cmd.arg(format!("dev server on port {}", server.port));
@@ -46,12 +46,12 @@ type RequestHandler = Arc<dyn Fn(Request) -> Result<()> + Send + Sync + 'static>
 ///     .start()
 ///     .unwrap();
 /// ```
-pub trait Processor {
+pub trait Hook {
     /// Construct the [`process::Command`] to run, using `server` as context.
     fn build_command(self: Box<Self>, server: &DevServer) -> process::Command;
 }
 
-impl Processor for process::Command {
+impl Hook for process::Command {
     fn build_command(self: Box<Self>, _server: &DevServer) -> process::Command {
         *self
     }
@@ -136,7 +136,7 @@ pub struct DevServer {
     ///
     /// # Note
     ///
-    /// Used when at least one of `pre_processors`, `command` or `post_processors` is set.
+    /// Used when at least one of `pre_hooks`, `command` or `post_hooks` is set.
     /// If no commands are provided, watching is disabled.
     #[clap(flatten)]
     pub watch: Watch,
@@ -148,7 +148,7 @@ pub struct DevServer {
     /// Commands executed before the main command when a change is detected.
     #[clap(skip)]
     #[debug(skip)]
-    pub pre_processors: Vec<Box<dyn Processor>>,
+    pub pre_hooks: Vec<Box<dyn Hook>>,
 
     /// Main command executed when a change is detected.
     #[clap(skip)]
@@ -157,7 +157,7 @@ pub struct DevServer {
     /// Commands executed after the main command when a change is detected.
     #[clap(skip)]
     #[debug(skip)]
-    pub post_processors: Vec<Box<dyn Processor>>,
+    pub post_hooks: Vec<Box<dyn Hook>>,
 
     /// Use another file path when the URL is not found.
     #[clap(skip)]
@@ -187,34 +187,28 @@ impl DevServer {
     }
 
     /// Add a command to execute before the main command when a change is detected.
-    pub fn pre(mut self, command: impl Processor + 'static) -> Self {
-        self.pre_processors.push(Box::new(command));
+    pub fn pre(mut self, command: impl Hook + 'static) -> Self {
+        self.pre_hooks.push(Box::new(command));
         self
     }
 
     /// Add multiple commands to execute before the main command when a change is detected.
-    pub fn pres(mut self, commands: impl IntoIterator<Item = impl Processor + 'static>) -> Self {
-        self.pre_processors.extend(
-            commands
-                .into_iter()
-                .map(|c| Box::new(c) as Box<dyn Processor>),
-        );
+    pub fn pres(mut self, commands: impl IntoIterator<Item = impl Hook + 'static>) -> Self {
+        self.pre_hooks
+            .extend(commands.into_iter().map(|c| Box::new(c) as Box<dyn Hook>));
         self
     }
 
     /// Add a command to execute after the main command when a change is detected.
-    pub fn post(mut self, command: impl Processor + 'static) -> Self {
-        self.post_processors.push(Box::new(command));
+    pub fn post(mut self, command: impl Hook + 'static) -> Self {
+        self.post_hooks.push(Box::new(command));
         self
     }
 
     /// Add multiple commands to execute after the main command when a change is detected.
-    pub fn posts(mut self, commands: impl IntoIterator<Item = impl Processor + 'static>) -> Self {
-        self.post_processors.extend(
-            commands
-                .into_iter()
-                .map(|c| Box::new(c) as Box<dyn Processor>),
-        );
+    pub fn posts(mut self, commands: impl IntoIterator<Item = impl Hook + 'static>) -> Self {
+        self.post_hooks
+            .extend(commands.into_iter().map(|c| Box::new(c) as Box<dyn Hook>));
         self
     }
 
@@ -337,7 +331,7 @@ impl DevServer {
     ///
     /// If `dist_dir` has not been provided, [`Dist::default_debug_dir`] will be used.
     pub fn start(mut self) -> Result<()> {
-        // Resolve dist_dir early so Processors can observe the final value via &self.
+        // Resolve dist_dir early so Hooks can observe the final value via &self.
         if self.dist_dir.is_none() {
             self.dist_dir = Some(Dist::default_debug_dir().into());
         }
@@ -345,18 +339,18 @@ impl DevServer {
 
         let watch_process = {
             // mem::take so we can pass &self to build_command while the fields are empty.
-            let pre_processors = std::mem::take(&mut self.pre_processors);
-            let post_processors = std::mem::take(&mut self.post_processors);
+            let pre_hooks = std::mem::take(&mut self.pre_hooks);
+            let post_hooks = std::mem::take(&mut self.post_hooks);
             let main_command = self.command.take();
 
-            let mut commands: Vec<process::Command> = pre_processors
+            let mut commands: Vec<process::Command> = pre_hooks
                 .into_iter()
                 .map(|p| p.build_command(&self))
                 .collect();
             if let Some(command) = main_command {
                 commands.push(command);
             }
-            commands.extend(post_processors.into_iter().map(|p| p.build_command(&self)));
+            commands.extend(post_hooks.into_iter().map(|p| p.build_command(&self)));
 
             if !commands.is_empty() {
                 // NOTE: the path needs to exists in order to be excluded because it is canonicalize
@@ -404,9 +398,9 @@ impl Default for DevServer {
             port: 8000,
             watch: Default::default(),
             dist_dir: None,
-            pre_processors: Default::default(),
+            pre_hooks: Default::default(),
             command: None,
-            post_processors: Default::default(),
+            post_hooks: Default::default(),
             not_found_path: None,
             request_handler: None,
         }
