@@ -105,8 +105,9 @@ impl Transformer for SassTransformer {
         }
 
         let dest = dest.with_extension("css");
-        let css = sass_rs::compile_file(source, self.options.clone())
-            .expect("could not compile SASS file");
+        let css = sass_rs::compile_file(source, self.options.clone()).map_err(|e| {
+            crate::anyhow::anyhow!("could not compile SASS file `{}`: {}", source.display(), e)
+        })?;
         fs::write(&dest, css)
             .with_context(|| format!("could not write CSS to `{}`", dest.display()))?;
 
