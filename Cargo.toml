@@ -35,7 +35,7 @@ log = "0.4.14"
 sass-rs = { version = "0.2.2", optional = true }
 walkdir = "2.3.2"
 # NOTE: we don't depend on this crate but we need to activate this feature otherwise it's super slow
-walrus = { version = "0.23.0", features = ["parallel"] }
+walrus = { version = "0.26.1", features = ["parallel"] }
 wasm-bindgen-cli-support = "0.2.100"
 xtask-watch = "0.3.2"
 
