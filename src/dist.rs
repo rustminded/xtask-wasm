@@ -243,6 +243,9 @@ impl Dist {
     /// end of [`build`](Self::build) using the resolved output path, so you do not need to
     /// wrap [`Dist`] in a custom struct or compute the path manually.
     ///
+    /// The optimization is skipped for debug builds — it only runs when [`release`](Self::release)
+    /// is `true`. A `log::debug!` message is emitted when it is skipped.
+    ///
     /// Requires the `wasm-opt` feature.
     ///
     /// # Examples
@@ -454,8 +457,12 @@ impl Dist {
 
         #[cfg(feature = "wasm-opt")]
         if let Some(wasm_opt) = self.wasm_opt {
-            let wasm_path = dist_dir.join(format!("{app_name}_bg.wasm"));
-            wasm_opt.optimize(&wasm_path)?;
+            if self.release {
+                let wasm_path = dist_dir.join(format!("{app_name}_bg.wasm"));
+                wasm_opt.optimize(&wasm_path)?;
+            } else {
+                log::debug!("skipping wasm-opt: not a release build");
+            }
         }
 
         log::info!("Successfully built in {}", dist_dir.display());
