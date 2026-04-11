@@ -6,6 +6,8 @@
 //! [`xtask` concept](https://github.com/matklad/cargo-xtask/), instead of using
 //! external tooling like [`wasm-pack`](https://github.com/rustwasm/wasm-pack).
 //!
+//! **[Changelog](https://github.com/rustminded/xtask-wasm/blob/main/CHANGELOG.md)**
+//!
 //! # Why xtask-wasm?
 //!
 //! ## No external tools to install

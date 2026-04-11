@@ -16,12 +16,16 @@
 [deps-url]: https://deps.rs/repo/github/rustminded/xtask-wasm
 [licenses-badge]: https://img.shields.io/crates/l/xtask-wasm
 
+**[Changelog](CHANGELOG.md)**
+
 <!-- cargo-rdme start -->
 
 This crate aims to provide an easy and customizable way to help you build
 Wasm projects by extending them with custom subcommands, based on the
 [`xtask` concept](https://github.com/matklad/cargo-xtask/), instead of using
 external tooling like [`wasm-pack`](https://github.com/rustwasm/wasm-pack).
+
+**[Changelog](https://github.com/rustminded/xtask-wasm/blob/main/CHANGELOG.md)**
 
 ## Why xtask-wasm?
 
