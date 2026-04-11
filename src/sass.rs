@@ -11,28 +11,54 @@ use std::{fs, path::Path};
 /// Add this transformer to [`Dist`] to enable SASS/SCSS compilation:
 ///
 /// ```rust,no_run
-/// use xtask_wasm::{Dist, SassTransformer};
+/// use xtask_wasm::{anyhow::Result, clap, SassTransformer};
 ///
-/// Dist::default()
-///     .transformer(SassTransformer::default())
-///     .build("my-project")
-///     .unwrap();
+/// #[derive(clap::Parser)]
+/// enum Opt {
+///     Dist(xtask_wasm::Dist),
+/// }
+///
+/// fn main() -> Result<()> {
+///     let opt: Opt = clap::Parser::parse();
+///
+///     match opt {
+///         Opt::Dist(dist) => {
+///             dist.transformer(SassTransformer::default())
+///                 .build("my-project")?;
+///         }
+///     }
+///
+///     Ok(())
+/// }
 /// ```
 ///
 /// To customise the compilation options, construct `SassTransformer` directly:
 ///
 /// ```rust,no_run
-/// use xtask_wasm::{Dist, SassTransformer};
+/// use xtask_wasm::{anyhow::Result, clap, SassTransformer};
 ///
-/// Dist::default()
-///     .transformer(SassTransformer {
-///         options: sass_rs::Options {
-///             output_style: sass_rs::OutputStyle::Compressed,
-///             ..Default::default()
-///         },
-///     })
-///     .build("my-project")
-///     .unwrap();
+/// #[derive(clap::Parser)]
+/// enum Opt {
+///     Dist(xtask_wasm::Dist),
+/// }
+///
+/// fn main() -> Result<()> {
+///     let opt: Opt = clap::Parser::parse();
+///
+///     match opt {
+///         Opt::Dist(dist) => {
+///             dist.transformer(SassTransformer {
+///                     options: sass_rs::Options {
+///                         output_style: sass_rs::OutputStyle::Compressed,
+///                         ..Default::default()
+///                     },
+///                 })
+///                 .build("my-project")?;
+///         }
+///     }
+///
+///     Ok(())
+/// }
 /// ```
 ///
 /// [`Dist`]: crate::Dist
