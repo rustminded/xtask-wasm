@@ -265,6 +265,17 @@ cargo run --example run_example
 
 This command will run the code in `examples/run_example` using the development server.
 
+### [egui-screensaver-mystify](https://github.com/cecton/egui-screensaver-mystify)
+
+A Mystify screensaver built with [egui](https://github.com/emilk/egui). Demonstrates how to use
+the `run-example` feature to run examples locally and how to set up GitHub Actions to release the
+Wasm app automatically.
+
+### [egui-screensaver-fractal-clock](https://github.com/cecton/egui-screensaver-fractal-clock)
+
+A fractal clock screensaver built with [egui](https://github.com/emilk/egui). Also demonstrates
+the `run-example` feature and automated GitHub releases.
+
 ## Features
 
 * `wasm-opt`: enable the
