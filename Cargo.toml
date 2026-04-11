@@ -16,7 +16,7 @@ include = ["src/**/*.rs", "README.md", "CHANGELOG.md", "LICENSE.Apache-2.0", "LI
 [features]
 run-example = ["xtask-wasm-run-example", "console_error_panic_hook", "wasm-bindgen", "env_logger"]
 sass = ["sass-rs"]
-wasm-opt = ["binary-install"]
+wasm-opt = ["binary-install", "xtask-wasm-run-example?/wasm-opt"]
 
 [dependencies]
 xtask-wasm-run-example = { version = "0.6", path = "xtask-wasm-run-example", optional = true }

@@ -13,6 +13,9 @@ include = ["src/**/*.rs", "LICENSE.Apache-2.0", "LICENSE.MIT"]
 [lib]
 proc-macro = true
 
+[features]
+wasm-opt = []
+
 [dependencies]
 proc-macro2 = "1.0.36"
 quote = "1.0.15"

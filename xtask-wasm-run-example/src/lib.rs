@@ -123,6 +123,11 @@ impl RunExample {
             quote! {}
         };
 
+        #[cfg(feature = "wasm-opt")]
+        let optimize_wasm = quote! { .optimize_wasm(xtask_wasm::WasmOpt::level(1).shrink(2)) };
+        #[cfg(not(feature = "wasm-opt"))]
+        let optimize_wasm = quote! {};
+
         Ok(quote! {
             #[cfg(target_arch = "wasm32")]
             pub mod xtask_wasm_run_example {
@@ -164,13 +169,12 @@ impl RunExample {
 
                 match cli.command {
                     Some(Command::Dist(mut dist)) => {
-                        let dist = dist
+                        let dist_dir = dist
                             .example(module_path!())
                             #app_name
-                            #assets_dir;
-                        #[cfg(feature = "wasm-opt")]
-                        let dist = dist.optimize_wasm(xtask_wasm::WasmOpt::level(1).shrink(2));
-                        let dist_dir = dist.build(env!("CARGO_PKG_NAME"))?;
+                            #assets_dir
+                            #optimize_wasm
+                            .build(env!("CARGO_PKG_NAME"))?;
 
                         #index
 
