@@ -1,3 +1,5 @@
+#[cfg(feature = "sass")]
+use crate::sass::SassTransformer;
 use crate::{
     anyhow::{bail, ensure, Context, Result},
     camino, clap, default_build_command, metadata,
@@ -465,85 +467,4 @@ fn copy_assets(
     }
 
     Ok(())
-}
-
-/// A [`Transformer`] that compiles SASS/SCSS files to CSS.
-///
-/// Files whose names begin with `_` are treated as partials and skipped (not emitted
-/// to the dist directory). All other `.sass` and `.scss` files are compiled to `.css`.
-/// Non-SASS files are not claimed and fall through to the default plain-copy behaviour.
-///
-/// `SassTransformer` is included automatically in [`Dist::default`] when the `sass`
-/// feature is enabled. To customise the compilation options, replace the default
-/// transformer:
-///
-/// ```rust,no_run
-/// # #[cfg(feature = "sass")]
-/// # {
-/// use xtask_wasm::{Dist, SassTransformer};
-///
-/// Dist::default()
-///     .transformer(SassTransformer {
-///         options: sass_rs::Options {
-///             output_style: sass_rs::OutputStyle::Compressed,
-///             ..Default::default()
-///         },
-///     })
-///     .build("my-project")
-///     .unwrap();
-/// # }
-/// ```
-#[cfg(feature = "sass")]
-pub struct SassTransformer {
-    /// Options forwarded to [`sass_rs::compile_file`].
-    pub options: sass_rs::Options,
-}
-
-#[cfg(feature = "sass")]
-impl Default for SassTransformer {
-    fn default() -> Self {
-        SassTransformer {
-            options: sass_rs::Options::default(),
-        }
-    }
-}
-
-#[cfg(feature = "sass")]
-impl Transformer for SassTransformer {
-    fn transform(&self, source: &Path, dest: &Path) -> Result<bool> {
-        fn is_sass(path: &Path) -> bool {
-            matches!(
-                path.extension()
-                    .and_then(|x| x.to_str().map(|x| x.to_lowercase()))
-                    .as_deref(),
-                Some("sass") | Some("scss")
-            )
-        }
-
-        fn is_partial(path: &Path) -> bool {
-            path.file_name()
-                .expect("WalkDir does not yield paths ending with `..` or `.`")
-                .to_str()
-                .map(|x| x.starts_with('_'))
-                .unwrap_or(false)
-        }
-
-        if !is_sass(source) {
-            return Ok(false);
-        }
-
-        // Partials are silently skipped — claiming the file prevents the plain-copy
-        // fallback from copying the raw .scss into dist.
-        if is_partial(source) {
-            return Ok(true);
-        }
-
-        let dest = dest.with_extension("css");
-        let css = sass_rs::compile_file(source, self.options.clone())
-            .expect("could not compile SASS file");
-        fs::write(&dest, css)
-            .with_context(|| format!("could not write CSS to `{}`", dest.display()))?;
-
-        Ok(true)
-    }
 }

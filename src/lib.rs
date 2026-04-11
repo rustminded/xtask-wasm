@@ -308,6 +308,8 @@ pub use xtask_watch::{
 mod dev_server;
 #[cfg(not(target_arch = "wasm32"))]
 mod dist;
+#[cfg(all(not(target_arch = "wasm32"), feature = "sass"))]
+mod sass;
 #[cfg(all(not(target_arch = "wasm32"), feature = "wasm-opt"))]
 mod wasm_opt;
 
@@ -315,6 +317,9 @@ mod wasm_opt;
 pub use dev_server::*;
 #[cfg(not(target_arch = "wasm32"))]
 pub use dist::*;
+#[cfg(all(not(target_arch = "wasm32"), feature = "sass"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "sass")))]
+pub use sass::*;
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "wasm-opt"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "wasm-opt")))]
