@@ -5,7 +5,7 @@ use crate::{
 };
 use derive_more::Debug;
 use std::{
-    fs,
+    ffi, fs,
     io::prelude::*,
     net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream},
     path::{Path, PathBuf},
@@ -38,7 +38,8 @@ pub struct Request<'a> {
 ///
 /// Serve the file from the provided [`dist_dir`](Self::dist_dir) at a given IP address
 /// (127.0.0.1:8000 by default). An optional command can be provided to restart the build when
-/// changes are detected using [`command`](Self::command) or [`xtask`](Self::xtask).
+/// changes are detected using [`command`](Self::command), [`xtask`](Self::xtask) or
+/// [`cargo`](Self::cargo).
 ///
 /// # Usage
 ///
@@ -169,6 +170,88 @@ impl DevServer {
         let mut command = xtask_command();
         command.arg(name.as_ref());
         self.command = Some(command);
+        self
+    }
+
+    /// Cargo subcommand executed as the main command when a change is detected.
+    ///
+    /// See [`xtask`](Self::xtask) for xtask commands or [`command`](Self::command) for arbitrary
+    /// commands.
+    pub fn cargo(mut self, subcommand: impl AsRef<str>) -> Self {
+        let mut command = process::Command::new("cargo");
+        command.arg(subcommand.as_ref());
+        self.command = Some(command);
+        self
+    }
+
+    /// Adds an argument to the main command executed when changes are detected.
+    ///
+    /// # Panics
+    ///
+    /// Panics if called before [`command`](Self::command), [`xtask`](Self::xtask) or
+    /// [`cargo`](Self::cargo).
+    pub fn arg<S: AsRef<ffi::OsStr>>(mut self, arg: S) -> Self {
+        self.command
+            .as_mut()
+            .expect("`arg` called without a command set; call `command`, `xtask` or `cargo` first")
+            .arg(arg);
+        self
+    }
+
+    /// Adds multiple arguments to the main command executed when changes are detected.
+    ///
+    /// # Panics
+    ///
+    /// Panics if called before [`command`](Self::command), [`xtask`](Self::xtask) or
+    /// [`cargo`](Self::cargo).
+    pub fn args<I, S>(mut self, args: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<ffi::OsStr>,
+    {
+        self.command
+            .as_mut()
+            .expect("`args` called without a command set; call `command`, `xtask` or `cargo` first")
+            .args(args);
+        self
+    }
+
+    /// Inserts or updates an environment variable for the main command executed when changes are
+    /// detected.
+    ///
+    /// # Panics
+    ///
+    /// Panics if called before [`command`](Self::command), [`xtask`](Self::xtask) or
+    /// [`cargo`](Self::cargo).
+    pub fn env<K, V>(mut self, key: K, val: V) -> Self
+    where
+        K: AsRef<ffi::OsStr>,
+        V: AsRef<ffi::OsStr>,
+    {
+        self.command
+            .as_mut()
+            .expect("`env` called without a command set; call `command`, `xtask` or `cargo` first")
+            .env(key, val);
+        self
+    }
+
+    /// Inserts or updates multiple environment variables for the main command executed when
+    /// changes are detected.
+    ///
+    /// # Panics
+    ///
+    /// Panics if called before [`command`](Self::command), [`xtask`](Self::xtask) or
+    /// [`cargo`](Self::cargo).
+    pub fn envs<I, K, V>(mut self, vars: I) -> Self
+    where
+        I: IntoIterator<Item = (K, V)>,
+        K: AsRef<ffi::OsStr>,
+        V: AsRef<ffi::OsStr>,
+    {
+        self.command
+            .as_mut()
+            .expect("`envs` called without a command set; call `command`, `xtask` or `cargo` first")
+            .envs(vars);
         self
     }
 
