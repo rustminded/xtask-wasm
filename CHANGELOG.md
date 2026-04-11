@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-04-11
+
+### Fixed
+
+- Re-release to activate the `xtask-wasm-run-example?/wasm-opt` feature
+  forwarding introduced in v0.6.1 of `xtask-wasm-run-example`. The
+  previously published `xtask-wasm v0.6.1` predated that fix so users
+  enabling the `wasm-opt` feature would still get a proc-macro compiled
+  without it.
+
 ## [0.6.1] - 2026-04-11
 
 ### Changed
