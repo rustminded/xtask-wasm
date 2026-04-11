@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [xtask-wasm-run-example 0.6.2] - 2026-04-11
+
+### Fixed
+
+- Default generated `index.html` now imports `app.js` via a relative path
+  (`./app.js` instead of `/app.js`), fixing deployments on hosts where the
+  app is served under a subpath (e.g. GitHub Pages).
+
 ## [0.6.2] - 2026-04-11
 
 ### Fixed
