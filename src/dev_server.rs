@@ -245,7 +245,7 @@ impl DevServer {
     }
 
     /// Use another file path when the URL is not found.
-    pub fn not_found(mut self, path: impl Into<PathBuf>) -> Self {
+    pub fn not_found_path(mut self, path: impl Into<PathBuf>) -> Self {
         self.not_found_path.replace(path.into());
         self
     }
