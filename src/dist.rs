@@ -2,7 +2,6 @@ use crate::{
     anyhow::{bail, ensure, Context, Result},
     camino, clap, default_build_command, metadata,
 };
-use lazy_static::lazy_static;
 use std::{fs, path::PathBuf, process};
 use wasm_bindgen_cli_support::Bindgen;
 
@@ -161,23 +160,13 @@ impl Dist {
     }
 
     /// Get the default dist directory for debug builds.
-    pub fn default_debug_dir() -> &'static camino::Utf8Path {
-        lazy_static! {
-            static ref DEFAULT_DEBUG_PATH: camino::Utf8PathBuf =
-                metadata().target_directory.join("debug").join("dist");
-        }
-
-        &DEFAULT_DEBUG_PATH
+    pub fn default_debug_dir() -> camino::Utf8PathBuf {
+        metadata().target_directory.join("debug").join("dist")
     }
 
     /// Get the default dist directory for release builds.
-    pub fn default_release_dir() -> &'static camino::Utf8Path {
-        lazy_static! {
-            static ref DEFAULT_RELEASE_PATH: camino::Utf8PathBuf =
-                metadata().target_directory.join("release").join("dist");
-        }
-
-        &DEFAULT_RELEASE_PATH
+    pub fn default_release_dir() -> camino::Utf8PathBuf {
+        metadata().target_directory.join("release").join("dist")
     }
 
     /// Build the given package for Wasm.
@@ -199,9 +188,9 @@ impl Dist {
 
         let dist_dir = self.dist_dir.unwrap_or_else(|| {
             if self.release {
-                Self::default_release_dir().as_std_path().to_path_buf()
+                Self::default_release_dir().into()
             } else {
-                Self::default_debug_dir().as_std_path().to_path_buf()
+                Self::default_debug_dir().into()
             }
         });
 

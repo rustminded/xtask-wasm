@@ -1,9 +1,7 @@
 use crate::{
     anyhow::{bail, ensure, Context, Result},
     camino::Utf8Path,
-    clap, Watch,
-    xtask_command,
-    Dist,
+    clap, xtask_command, Dist, Watch,
 };
 use derive_more::Debug;
 use std::{
@@ -267,9 +265,7 @@ impl DevServer {
     pub fn start(self) -> Result<()> {
         let dist_dir = self
             .dist_dir
-            .unwrap_or_else(|| {
-                Dist::default_debug_dir().as_std_path().to_path_buf()
-            });
+            .unwrap_or_else(|| Dist::default_debug_dir().into());
 
         let watch_process = {
             let mut commands = self.pre_commands;
@@ -296,14 +292,8 @@ impl DevServer {
         };
 
         if let Some(handler) = self.request_handler {
-            serve(
-                self.ip,
-                self.port,
-                dist_dir,
-                self.not_found_path,
-                handler,
-            )
-            .context("an error occurred when starting to serve")?;
+            serve(self.ip, self.port, dist_dir, self.not_found_path, handler)
+                .context("an error occurred when starting to serve")?;
         } else {
             serve(
                 self.ip,
