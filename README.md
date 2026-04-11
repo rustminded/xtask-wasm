@@ -147,6 +147,14 @@ They all implement [`clap::Parser`](https://docs.rs/clap/latest/clap/trait.Parse
 allowing them to be added easily to an existing CLI implementation and are
 flexible enough to be customized for most use-cases.
 
+The pre and post hooks of [`DevServer`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.DevServer.html)
+accept any type implementing the
+[`Processor`](https://docs.rs/xtask-wasm/latest/xtask_wasm/trait.Processor.html) trait.
+This lets you construct a [`process::Command`](https://doc.rust-lang.org/std/process/struct.Command.html) based on the server's final configuration
+— for example, to pass the resolved `dist_dir` or `port` as arguments to an external tool.
+A blanket implementation is provided for [`process::Command`](https://doc.rust-lang.org/std/process/struct.Command.html) itself, so no changes are
+needed for simple use-cases.
+
 You can find further information for each type at their documentation level.
 
 ## Examples
