@@ -29,6 +29,7 @@ fn main() -> Result<()> {
 
             dist.assets_dir("webapp/assets")
                 .app_name("web_app")
+                .transformer(xtask_wasm::SassTransformer::default())
                 .optimize_wasm(xtask_wasm::WasmOpt::level(1).shrink(2))
                 .build("webapp")?;
         }

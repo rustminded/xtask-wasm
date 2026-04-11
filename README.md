@@ -228,8 +228,9 @@ your `xtask` (or use your preferred logger).
 ### [`examples/demo`](https://github.com/rustminded/xtask-wasm/tree/main/examples/demo)
 
 Provides a basic implementation of xtask-wasm to generate the web app
-package, an "hello world" app using [Yew](https://yew.rs/). This example
-demonstrates a simple directory layout and a dist process that uses the
+package, a fractal clock screensaver using [egui](https://github.com/emilk/egui) and
+[egui-screensaver-fractal-clock](https://github.com/cecton/egui-screensaver-fractal-clock).
+This example demonstrates a simple directory layout and a dist process that uses the
 `wasm-opt` feature via [`Dist::optimize_wasm`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.Dist.html#method.optimize_wasm).
 
 The available subcommands are:
@@ -256,14 +257,12 @@ The available subcommands are:
 
 Additional flags can be found using `cargo xtask <subcommand> --help`.
 
-This example also demonstrates the use of the `run-example` feature that allows you to use the
-following:
+This example also demonstrates the use of the `run-example` feature with a Mystify screensaver
+using [egui-screensaver-mystify](https://github.com/cecton/egui-screensaver-mystify):
 
 ```console
 cargo run --example run_example
 ```
-
-This command will run the code in `examples/run_example` using the development server.
 
 ### [egui-screensaver-mystify](https://github.com/cecton/egui-screensaver-mystify)
 
