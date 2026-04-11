@@ -72,6 +72,7 @@ impl Hook for process::Command {
 }
 
 /// Abstraction over an HTTP request.
+#[derive(Debug)]
 #[non_exhaustive]
 pub struct Request<'a> {
     /// TCP stream of the request.

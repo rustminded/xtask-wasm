@@ -62,7 +62,7 @@ use std::{fs, path::Path};
 /// ```
 ///
 /// [`Dist`]: crate::Dist
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct SassTransformer {
     /// Options forwarded to [`sass_rs::compile_file`].
     pub options: sass_rs::Options,
