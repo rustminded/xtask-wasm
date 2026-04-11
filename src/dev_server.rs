@@ -143,15 +143,27 @@ impl DevServer {
         self
     }
 
-    /// Command(s) executed before the main command when a change is detected.
+    /// Add a command to execute before the main command when a change is detected.
     pub fn pre(mut self, command: process::Command) -> Self {
         self.pre_commands.push(command);
         self
     }
 
-    /// Command(s) executed after the main command when a change is detected.
+    /// Add multiple commands to execute before the main command when a change is detected.
+    pub fn pres(mut self, commands: impl IntoIterator<Item = process::Command>) -> Self {
+        self.pre_commands.extend(commands);
+        self
+    }
+
+    /// Add a command to execute after the main command when a change is detected.
     pub fn post(mut self, command: process::Command) -> Self {
         self.post_commands.push(command);
+        self
+    }
+
+    /// Add multiple commands to execute after the main command when a change is detected.
+    pub fn posts(mut self, commands: impl IntoIterator<Item = process::Command>) -> Self {
+        self.post_commands.extend(commands);
         self
     }
 
