@@ -25,7 +25,7 @@ use wasm_bindgen_cli_support::Bindgen;
 ///
 /// ```rust,no_run
 /// use std::path::Path;
-/// use xtask_wasm::{anyhow::Result, Transformer};
+/// use xtask_wasm::{anyhow::Result, clap, Transformer};
 ///
 /// struct UppercaseText;
 ///
@@ -40,10 +40,23 @@ use wasm_bindgen_cli_support::Bindgen;
 ///     }
 /// }
 ///
-/// xtask_wasm::Dist::default()
-///     .transformer(UppercaseText)
-///     .build("my-project")
-///     .unwrap();
+/// #[derive(clap::Parser)]
+/// enum Opt {
+///     Dist(xtask_wasm::Dist),
+/// }
+///
+/// fn main() -> Result<()> {
+///     let opt: Opt = clap::Parser::parse();
+///
+///     match opt {
+///         Opt::Dist(dist) => {
+///             dist.transformer(UppercaseText)
+///                 .build("my-project")?;
+///         }
+///     }
+///
+///     Ok(())
+/// }
 /// ```
 pub trait Transformer {
     /// Process a single asset file.
