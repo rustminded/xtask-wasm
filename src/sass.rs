@@ -62,17 +62,10 @@ use std::{fs, path::Path};
 /// ```
 ///
 /// [`Dist`]: crate::Dist
+#[derive(Default)]
 pub struct SassTransformer {
     /// Options forwarded to [`sass_rs::compile_file`].
     pub options: sass_rs::Options,
-}
-
-impl Default for SassTransformer {
-    fn default() -> Self {
-        SassTransformer {
-            options: sass_rs::Options::default(),
-        }
-    }
 }
 
 impl Transformer for SassTransformer {
