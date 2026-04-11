@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-04-11
+
+### Changed
+
+- `#[run_example]` now automatically applies
+  `WasmOpt::level(1).shrink(2)` on release builds when the `wasm-opt`
+  feature is enabled, matching the recommended manual setup.
+
 ## [0.6.0] - 2026-04-11
 
 ### Added
