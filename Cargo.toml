@@ -15,7 +15,7 @@ include = ["src/**/*.rs", "README.md", "LICENSE.Apache-2.0", "LICENSE.MIT"]
 
 [features]
 run-example = ["xtask-wasm-run-example", "console_error_panic_hook", "wasm-bindgen", "env_logger"]
-sass = ["sass-rs", "walkdir"]
+sass = ["sass-rs"]
 wasm-opt = ["binary-install"]
 
 [dependencies]
@@ -33,7 +33,7 @@ fs_extra = "1.2.0"
 lazy_static = "1.4.0"
 log = "0.4.14"
 sass-rs = { version = "0.2.2", optional = true }
-walkdir = { version = "2.3.2", optional = true }
+walkdir = "2.3.2"
 # NOTE: we don't depend on this crate but we need to activate this feature otherwise it's super slow
 walrus = { version = "0.23.0", features = ["parallel"] }
 wasm-bindgen-cli-support = "0.2.100"

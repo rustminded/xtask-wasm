@@ -2,8 +2,65 @@ use crate::{
     anyhow::{bail, ensure, Context, Result},
     camino, clap, default_build_command, metadata,
 };
+use derive_more::Debug;
 use std::{fs, path::PathBuf, process};
 use wasm_bindgen_cli_support::Bindgen;
+
+/// A type that can transform or copy a single asset file during [`Dist::build`].
+///
+/// Implement this trait to customise how individual files in the assets directory are
+/// processed before they land in the dist directory — for example to compile SASS to
+/// CSS, minify JavaScript, or generate additional output files from a source file.
+///
+/// Return `Ok(true)` if the file was handled (the transformer wrote its own output).
+/// Return `Ok(false)` to fall through to the next transformer, or to the default
+/// plain-copy behaviour if no transformer claims the file.
+///
+/// A blanket implementation is provided for `()` (no-op, always returns `Ok(false)`),
+/// so the trait is easy to stub out in tests.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use std::path::Path;
+/// use xtask_wasm::{anyhow::Result, Transformer};
+///
+/// struct UppercaseText;
+///
+/// impl Transformer for UppercaseText {
+///     fn transform(&self, source: &Path, dest: &Path) -> Result<bool> {
+///         if source.extension().and_then(|e| e.to_str()) == Some("txt") {
+///             let content = std::fs::read_to_string(source)?;
+///             std::fs::write(dest, content.to_uppercase())?;
+///             return Ok(true);
+///         }
+///         Ok(false)
+///     }
+/// }
+///
+/// xtask_wasm::Dist::default()
+///     .transformer(UppercaseText)
+///     .build("my-project")
+///     .unwrap();
+/// ```
+pub trait Transformer {
+    /// Process a single asset file.
+    ///
+    /// `source` is the absolute path to the file in the assets directory.
+    /// `dest` is the intended output path inside the dist directory, preserving
+    /// the same relative path as `source` (the implementor may change the extension).
+    ///
+    /// Return `Ok(true)` if the file was handled, `Ok(false)` to defer.
+    fn transform(&self, source: &Path, dest: &Path) -> Result<bool>;
+}
+
+use std::path::Path;
+
+impl Transformer for () {
+    fn transform(&self, _source: &Path, _dest: &Path) -> Result<bool> {
+        Ok(false)
+    }
+}
 
 /// A helper to generate the distributed package.
 ///
@@ -106,10 +163,16 @@ pub struct Dist {
     /// Set the resulting app name, default to `app`.
     #[clap(skip)]
     pub app_name: Option<String>,
-    /// Output style for SASS/SCSS
-    #[cfg(feature = "sass")]
+    /// Transformers applied to each file in the assets directory during the build.
+    ///
+    /// Each transformer is called in order for every file; the first one that returns
+    /// `Ok(true)` claims the file and the rest are skipped. Files not claimed by any
+    /// transformer are copied verbatim into the dist directory.
+    ///
+    /// When the `sass` feature is enabled, a [`SassTransformer`] is included by default.
     #[clap(skip)]
-    pub sass_options: sass_rs::Options,
+    #[debug(skip)]
+    pub transformers: Vec<Box<dyn Transformer>>,
 }
 
 impl Dist {
@@ -146,10 +209,11 @@ impl Dist {
         self
     }
 
-    /// Set the output style for SCSS/SASS
-    #[cfg(feature = "sass")]
-    pub fn sass_options(mut self, output_style: sass_rs::Options) -> Self {
-        self.sass_options = output_style;
+    /// Add a transformer for the asset copy step.
+    ///
+    /// Transformers are called in the order they are added. See [`Transformer`] for details.
+    pub fn transformer(mut self, transformer: impl Transformer + 'static) -> Self {
+        self.transformers.push(Box::new(transformer));
         self
     }
 
@@ -326,22 +390,8 @@ impl Dist {
         };
 
         if assets_dir.exists() {
-            #[cfg(feature = "sass")]
-            {
-                log::trace!("Generating CSS files from SASS/SCSS");
-                sass(&assets_dir, &dist_dir, &self.sass_options)?;
-            }
-
-            #[cfg(not(feature = "sass"))]
-            {
-                let mut copy_options = fs_extra::dir::CopyOptions::new();
-                copy_options.overwrite = true;
-                copy_options.content_only = true;
-
-                log::trace!("Copying assets directory into dist directory");
-                fs_extra::dir::copy(assets_dir, &dist_dir, &copy_options)
-                    .context("cannot copy assets directory")?;
-            }
+            log::trace!("Copying assets directory into dist directory");
+            copy_assets(&assets_dir, &dist_dir, &self.transformers)?;
         }
 
         log::info!("Successfully built in {}", dist_dir.display());
@@ -371,40 +421,23 @@ impl Default for Dist {
             dist_dir: Default::default(),
             assets_dir: Default::default(),
             app_name: Default::default(),
-            #[cfg(feature = "sass")]
-            sass_options: Default::default(),
+            transformers: vec![
+                #[cfg(feature = "sass")]
+                Box::new(SassTransformer::default()),
+            ],
         }
     }
 }
 
-#[cfg(feature = "sass")]
-fn sass(
-    assets_dir: &std::path::Path,
-    dist_dir: &std::path::Path,
-    options: &sass_rs::Options,
+fn copy_assets(
+    assets_dir: &Path,
+    dist_dir: &Path,
+    transformers: &[Box<dyn Transformer>],
 ) -> Result<()> {
-    fn is_sass(path: &std::path::Path) -> bool {
-        matches!(
-            path.extension()
-                .and_then(|x| x.to_str().map(|x| x.to_lowercase()))
-                .as_deref(),
-            Some("sass") | Some("scss")
-        )
-    }
-
-    fn should_ignore(path: &std::path::Path) -> bool {
-        path.file_name()
-            .expect("WalkDir does not yield paths ending with `..`  or `.`")
-            .to_str()
-            .map(|x| x.starts_with('_'))
-            .unwrap_or(false)
-    }
-
-    log::trace!("Generating dist artifacts");
     let walker = walkdir::WalkDir::new(assets_dir);
     for entry in walker {
         let entry = entry
-            .with_context(|| format!("cannot walk into directory `{}`", &assets_dir.display()))?;
+            .with_context(|| format!("cannot walk into directory `{}`", assets_dir.display()))?;
         let source = entry.path();
         let dest = dist_dir.join(source.strip_prefix(assets_dir).unwrap());
 
@@ -413,24 +446,104 @@ fn sass(
         }
 
         if let Some(parent) = dest.parent() {
-            let _ = fs::create_dir_all(parent);
+            fs::create_dir_all(parent)
+                .with_context(|| format!("cannot create directory `{}`", parent.display()))?;
         }
 
-        if is_sass(source) {
-            if !should_ignore(source) {
-                let dest = dest.with_extension("css");
+        let handled = transformers
+            .iter()
+            .map(|t| t.transform(source, &dest))
+            .find(|r| r.as_ref().map_or(false, |&v| v))
+            .transpose()?
+            .unwrap_or(false);
 
-                let css = sass_rs::compile_file(source, options.clone())
-                    .expect("could not convert SASS/ file");
-                fs::write(&dest, css)
-                    .with_context(|| format!("could not write CSS to file `{}`", dest.display()))?;
-            }
-        } else {
+        if !handled {
             fs::copy(source, &dest).with_context(|| {
-                format!("cannot move `{}` to `{}`", source.display(), dest.display())
+                format!("cannot copy `{}` to `{}`", source.display(), dest.display())
             })?;
         }
     }
 
     Ok(())
+}
+
+/// A [`Transformer`] that compiles SASS/SCSS files to CSS.
+///
+/// Files whose names begin with `_` are treated as partials and skipped (not emitted
+/// to the dist directory). All other `.sass` and `.scss` files are compiled to `.css`.
+/// Non-SASS files are not claimed and fall through to the default plain-copy behaviour.
+///
+/// `SassTransformer` is included automatically in [`Dist::default`] when the `sass`
+/// feature is enabled. To customise the compilation options, replace the default
+/// transformer:
+///
+/// ```rust,no_run
+/// # #[cfg(feature = "sass")]
+/// # {
+/// use xtask_wasm::{Dist, SassTransformer};
+///
+/// Dist::default()
+///     .transformer(SassTransformer {
+///         options: sass_rs::Options {
+///             output_style: sass_rs::OutputStyle::Compressed,
+///             ..Default::default()
+///         },
+///     })
+///     .build("my-project")
+///     .unwrap();
+/// # }
+/// ```
+#[cfg(feature = "sass")]
+pub struct SassTransformer {
+    /// Options forwarded to [`sass_rs::compile_file`].
+    pub options: sass_rs::Options,
+}
+
+#[cfg(feature = "sass")]
+impl Default for SassTransformer {
+    fn default() -> Self {
+        SassTransformer {
+            options: sass_rs::Options::default(),
+        }
+    }
+}
+
+#[cfg(feature = "sass")]
+impl Transformer for SassTransformer {
+    fn transform(&self, source: &Path, dest: &Path) -> Result<bool> {
+        fn is_sass(path: &Path) -> bool {
+            matches!(
+                path.extension()
+                    .and_then(|x| x.to_str().map(|x| x.to_lowercase()))
+                    .as_deref(),
+                Some("sass") | Some("scss")
+            )
+        }
+
+        fn is_partial(path: &Path) -> bool {
+            path.file_name()
+                .expect("WalkDir does not yield paths ending with `..` or `.`")
+                .to_str()
+                .map(|x| x.starts_with('_'))
+                .unwrap_or(false)
+        }
+
+        if !is_sass(source) {
+            return Ok(false);
+        }
+
+        // Partials are silently skipped — claiming the file prevents the plain-copy
+        // fallback from copying the raw .scss into dist.
+        if is_partial(source) {
+            return Ok(true);
+        }
+
+        let dest = dest.with_extension("css");
+        let css = sass_rs::compile_file(source, self.options.clone())
+            .expect("could not compile SASS file");
+        fs::write(&dest, css)
+            .with_context(|| format!("could not write CSS to `{}`", dest.display()))?;
+
+        Ok(true)
+    }
 }
