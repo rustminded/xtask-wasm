@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-04-11
+
 ### Added
 
 - `DevServer::xtask(name)` and `DevServer::cargo(subcommand)` convenience
@@ -99,4 +101,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   codebase used `assets`, silently breaking auto-discovery for anyone following
   the documented naming convention.
 
-[Unreleased]: https://github.com/rustminded/xtask-wasm/compare/v0.5.3...HEAD
+[Unreleased]: https://github.com/rustminded/xtask-wasm/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/rustminded/xtask-wasm/compare/v0.5.3...v0.6.0
