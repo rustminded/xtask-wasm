@@ -28,7 +28,7 @@ type RequestHandler = Arc<dyn Fn(Request) -> Result<()> + Send + Sync + 'static>
 ///
 /// ```rust,no_run
 /// use std::process;
-/// use xtask_wasm::{DevServer, Hook};
+/// use xtask_wasm::{anyhow::Result, clap, DevServer, Hook};
 ///
 /// struct NotifyOnPort;
 ///
@@ -40,11 +40,25 @@ type RequestHandler = Arc<dyn Fn(Request) -> Result<()> + Send + Sync + 'static>
 ///     }
 /// }
 ///
-/// DevServer::default()
-///     .xtask("dist")
-///     .post(NotifyOnPort)
-///     .start()
-///     .unwrap();
+/// #[derive(clap::Parser)]
+/// enum Opt {
+///     Start(xtask_wasm::DevServer),
+/// }
+///
+/// fn main() -> Result<()> {
+///     let opt: Opt = clap::Parser::parse();
+///
+///     match opt {
+///         Opt::Start(dev_server) => {
+///             dev_server
+///                 .xtask("dist")
+///                 .post(NotifyOnPort)
+///                 .start()?;
+///         }
+///     }
+///
+///     Ok(())
+/// }
 /// ```
 pub trait Hook {
     /// Construct the [`process::Command`] to run, using `server` as context.
