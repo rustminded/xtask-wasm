@@ -146,12 +146,12 @@ pub struct DevServer {
     #[clap(long, default_value = "8000")]
     pub port: u16,
 
-    /// Watch object for detecting changes.
+    /// Watch configuration for detecting file-system changes.
     ///
-    /// # Note
-    ///
-    /// Used when at least one of `pre_hooks`, `command` or `post_hooks` is set.
-    /// If no commands are provided, watching is disabled.
+    /// Controls which paths are watched, debounce timing, and other watch
+    /// behaviour. Watching is only active when at least one of `pre_hooks`,
+    /// `command`, or `post_hooks` is set; if none are provided the watch
+    /// thread is not started.
     #[clap(flatten)]
     pub watch: Watch,
 
