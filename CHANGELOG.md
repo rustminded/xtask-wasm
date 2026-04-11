@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `WasmOpt::level(1).shrink(2)` on release builds when the `wasm-opt`
   feature is enabled, matching the recommended manual setup.
 
+### Fixed
+
+- `#[run_example]` wasm-opt integration was non-functional: the
+  `#[cfg(feature = "wasm-opt")]` guard was emitted into the generated
+  code and evaluated against the user's crate, where the feature is
+  never declared. The check now runs at proc-macro compile time via a
+  feature on `xtask-wasm-run-example`, forwarded from the parent's
+  `wasm-opt` feature. (`xtask-wasm-run-example` v0.6.1)
+
 ## [0.6.0] - 2026-04-11
 
 ### Added
