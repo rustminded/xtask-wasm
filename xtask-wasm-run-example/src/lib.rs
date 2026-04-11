@@ -43,7 +43,7 @@ use syn::{parse, parse_macro_input};
 ///
 /// * `app_name` - Change the app name.
 /// * `index` - Content of a custom `index.html`.
-/// * `static_dir` - Path to a custom static directory.
+/// * `assets_dir` - Path to a custom assets directory.
 #[proc_macro_attribute]
 pub fn run_example(
     attr: proc_macro::TokenStream,
@@ -59,14 +59,14 @@ pub fn run_example(
 
 struct RunExample {
     index: Option<syn::Expr>,
-    static_dir: Option<syn::Expr>,
+    assets_dir: Option<syn::Expr>,
     app_name: Option<syn::Expr>,
 }
 
 impl RunExample {
     fn parse(input: parse::ParseStream) -> parse::Result<Self> {
         let mut index = None;
-        let mut static_dir = None;
+        let mut assets_dir = None;
         let mut app_name = None;
 
         while !input.is_empty() {
@@ -76,7 +76,7 @@ impl RunExample {
 
             match ident.to_string().as_str() {
                 "index" => index = Some(expr),
-                "static_dir" => static_dir = Some(expr),
+                "assets_dir" => assets_dir = Some(expr),
                 "app_name" => app_name = Some(expr),
                 _ => return Err(parse::Error::new(ident.span(), "unrecognized argument")),
             }
@@ -90,7 +90,7 @@ impl RunExample {
 
         Ok(RunExample {
             index,
-            static_dir,
+            assets_dir,
             app_name,
         })
     }
@@ -100,7 +100,7 @@ impl RunExample {
 
         let index = if let Some(expr) = &self.index {
             quote_spanned! { expr.span()=> std::fs::write(dist_dir.join("index.html"), #expr)?; }
-        } else if self.static_dir.is_some() {
+        } else if self.assets_dir.is_some() || self.app_name.is_some() {
             quote! {}
         } else {
             quote! {
@@ -117,8 +117,8 @@ impl RunExample {
             quote! {}
         };
 
-        let static_dir = if let Some(expr) = self.static_dir {
-            quote_spanned! { expr.span()=> .static_dir_path(#expr) }
+        let assets_dir = if let Some(expr) = self.assets_dir {
+            quote_spanned! { expr.span()=> .assets_dir(#expr) }
         } else {
             quote! {}
         };
@@ -161,29 +161,25 @@ impl RunExample {
                     .init();
 
                 let cli: Cli = clap::Parser::parse();
-                let mut dist_command = xtask_wasm::xtask_command();
-                dist_command.arg("dist");
 
                 match cli.command {
                     Some(Command::Dist(mut dist)) => {
                         let dist_dir = dist
                             .example(module_path!())
                             #app_name
-                            #static_dir
-                            .run(env!("CARGO_PKG_NAME"))?;
+                            #assets_dir
+                            .build(env!("CARGO_PKG_NAME"))?;
 
                         #index
 
                         Ok(())
                     }
                     Some(Command::Start(dev_server)) => {
-                        let served_path = xtask_wasm::default_dist_dir(false);
-                        dev_server.command(dist_command).start(served_path)
+                        dev_server.xtask("dist").start()
                     }
                     None => {
                         let dev_server: xtask_wasm::DevServer = clap::Parser::parse();
-                        let served_path = xtask_wasm::default_dist_dir(false);
-                        dev_server.command(dist_command).start(served_path)
+                        dev_server.xtask("dist").start()
                     }
                 }
             }

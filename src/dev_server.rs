@@ -1,7 +1,7 @@
 use crate::{
     anyhow::{bail, ensure, Context, Result},
     camino::Utf8Path,
-    clap, Watch,
+    clap, xtask_command, Dist, Watch,
 };
 use derive_more::Debug;
 use std::{
@@ -16,7 +16,63 @@ use std::{
 
 type RequestHandler = Arc<dyn Fn(Request) -> Result<()> + Send + Sync + 'static>;
 
+/// A type that can produce a [`process::Command`] given the final [`DevServer`] configuration.
+///
+/// Implement this trait to build a command whose arguments or environment depend on the server's
+/// configuration — for example to pass `--dist-dir`, `--port`, or other runtime values.
+///
+/// A blanket implementation is provided for [`process::Command`] itself, so existing call sites
+/// that pass a plain command continue to work without any changes.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use std::process;
+/// use xtask_wasm::{anyhow::Result, clap, DevServer, Hook};
+///
+/// struct NotifyOnPort;
+///
+/// impl Hook for NotifyOnPort {
+///     fn build_command(self: Box<Self>, server: &DevServer) -> process::Command {
+///         let mut cmd = process::Command::new("notify-send");
+///         cmd.arg(format!("dev server on port {}", server.port));
+///         cmd
+///     }
+/// }
+///
+/// #[derive(clap::Parser)]
+/// enum Opt {
+///     Start(xtask_wasm::DevServer),
+/// }
+///
+/// fn main() -> Result<()> {
+///     let opt: Opt = clap::Parser::parse();
+///
+///     match opt {
+///         Opt::Start(dev_server) => {
+///             dev_server
+///                 .xtask("dist")
+///                 .post(NotifyOnPort)
+///                 .start()?;
+///         }
+///     }
+///
+///     Ok(())
+/// }
+/// ```
+pub trait Hook {
+    /// Construct the [`process::Command`] to run, using `server` as context.
+    fn build_command(self: Box<Self>, server: &DevServer) -> process::Command;
+}
+
+impl Hook for process::Command {
+    fn build_command(self: Box<Self>, _server: &DevServer) -> process::Command {
+        *self
+    }
+}
+
 /// Abstraction over an HTTP request.
+#[derive(Debug)]
 #[non_exhaustive]
 pub struct Request<'a> {
     /// TCP stream of the request.
@@ -26,7 +82,7 @@ pub struct Request<'a> {
     /// Request header.
     pub header: &'a str,
     /// Path to the distributed directory.
-    pub dist_dir_path: &'a Path,
+    pub dist_dir: &'a Path,
     /// Path to the file used when the requested file cannot be found for the default request
     /// handler.
     pub not_found_path: Option<&'a Path>,
@@ -34,11 +90,12 @@ pub struct Request<'a> {
 
 /// A simple HTTP server useful during development.
 ///
-/// It can watch the source code for changes and restart a provided command.
+/// It can watch the source code for changes and restart a provided [`command`](Self::command).
 ///
-/// Get the files at `watch_path` and serve them at a given IP address
-/// (127.0.0.1:8000 by default). An optional command can be provided to restart
-/// the build when changes are detected.
+/// Serve the file from the provided [`dist_dir`](Self::dist_dir) at a given IP address
+/// (127.0.0.1:8000 by default). An optional command can be provided to restart the build when
+/// changes are detected using [`command`](Self::command), [`xtask`](Self::xtask) or
+/// [`cargo`](Self::cargo).
 ///
 /// # Usage
 ///
@@ -47,7 +104,6 @@ pub struct Request<'a> {
 /// use xtask_wasm::{
 ///     anyhow::Result,
 ///     clap,
-///     default_dist_dir,
 /// };
 ///
 /// #[derive(clap::Parser)]
@@ -60,20 +116,22 @@ pub struct Request<'a> {
 ///     let opt: Opt = clap::Parser::parse();
 ///
 ///     match opt {
-///         Opt::Start(mut dev_server) => {
-///             log::info!("Starting the development server...");
-///             dev_server.arg("dist").start(default_dist_dir(false))?;
-///         }
 ///         Opt::Dist => todo!("build project"),
+///         Opt::Start(dev_server) => {
+///             log::info!("Starting the development server...");
+///             dev_server
+///                 .xtask("dist")
+///                 .start()?;
+///         }
 ///     }
 ///
 ///     Ok(())
 /// }
 /// ```
 ///
-/// Add a `start` subcommand that will run `cargo xtask dist`, watching for
+/// This adds a `start` subcommand that will run `cargo xtask dist`, watching for
 /// changes in the workspace and serve the files in the default dist directory
-/// (`target/debug/dist` for non-release) at a given IP address.
+/// (`target/debug/dist`) at the default IP address.
 #[non_exhaustive]
 #[derive(Debug, clap::Parser)]
 #[clap(
@@ -89,17 +147,32 @@ pub struct DevServer {
     #[clap(long, default_value = "8000")]
     pub port: u16,
 
-    /// Watch object for detecting changes.
+    /// Watch configuration for detecting file-system changes.
     ///
-    /// # Note
-    ///
-    /// Used only if `command` is set.
+    /// Controls which paths are watched, debounce timing, and other watch
+    /// behaviour. Watching is only active when at least one of `pre_hooks`,
+    /// `command`, or `post_hooks` is set; if none are provided the watch
+    /// thread is not started.
     #[clap(flatten)]
     pub watch: Watch,
 
-    /// Command executed when a change is detected.
+    /// Directory of all generated artifacts.
+    #[clap(skip)]
+    pub dist_dir: Option<PathBuf>,
+
+    /// Commands executed before the main command when a change is detected.
+    #[clap(skip)]
+    #[debug(skip)]
+    pub pre_hooks: Vec<Box<dyn Hook>>,
+
+    /// Main command executed when a change is detected.
     #[clap(skip)]
     pub command: Option<process::Command>,
+
+    /// Commands executed after the main command when a change is detected.
+    #[clap(skip)]
+    #[debug(skip)]
+    pub post_hooks: Vec<Box<dyn Hook>>,
 
     /// Use another file path when the URL is not found.
     #[clap(skip)]
@@ -120,36 +193,142 @@ impl DevServer {
         self
     }
 
-    /// Set the command that is executed when a change is detected.
+    /// Set the directory for the generated artifacts.
+    ///
+    /// The default is `target/debug/dist`.
+    pub fn dist_dir(mut self, path: impl Into<PathBuf>) -> Self {
+        self.dist_dir = Some(path.into());
+        self
+    }
+
+    /// Add a command to execute before the main command when a change is detected.
+    pub fn pre(mut self, command: impl Hook + 'static) -> Self {
+        self.pre_hooks.push(Box::new(command));
+        self
+    }
+
+    /// Add multiple commands to execute before the main command when a change is detected.
+    pub fn pres(mut self, commands: impl IntoIterator<Item = impl Hook + 'static>) -> Self {
+        self.pre_hooks
+            .extend(commands.into_iter().map(|c| Box::new(c) as Box<dyn Hook>));
+        self
+    }
+
+    /// Add a command to execute after the main command when a change is detected.
+    pub fn post(mut self, command: impl Hook + 'static) -> Self {
+        self.post_hooks.push(Box::new(command));
+        self
+    }
+
+    /// Add multiple commands to execute after the main command when a change is detected.
+    pub fn posts(mut self, commands: impl IntoIterator<Item = impl Hook + 'static>) -> Self {
+        self.post_hooks
+            .extend(commands.into_iter().map(|c| Box::new(c) as Box<dyn Hook>));
+        self
+    }
+
+    /// Main command executed when a change is detected.
+    ///
+    /// See [`xtask`](Self::xtask) if you want to use an `xtask` command.
     pub fn command(mut self, command: process::Command) -> Self {
         self.command = Some(command);
         self
     }
 
-    /// Adds an argument to pass to the command executed when changes are
-    /// detected.
+    /// Name of the main xtask command that is executed when a change is detected.
     ///
-    /// This will use the xtask command by default.
-    pub fn arg<S: AsRef<ffi::OsStr>>(mut self, arg: S) -> Self {
-        self.set_xtask_command().arg(arg);
+    /// See [`command`](Self::command) to use an arbitrary command.
+    pub fn xtask(mut self, name: impl AsRef<str>) -> Self {
+        let mut command = xtask_command();
+        command.arg(name.as_ref());
+        self.command = Some(command);
         self
     }
 
-    /// Adds multiple arguments to pass to the command executed when changes are
-    /// detected.
+    /// Cargo subcommand executed as the main command when a change is detected.
     ///
-    /// This will use the xtask command by default.
+    /// See [`xtask`](Self::xtask) for xtask commands or [`command`](Self::command) for arbitrary
+    /// commands.
+    pub fn cargo(mut self, subcommand: impl AsRef<str>) -> Self {
+        let mut command = process::Command::new("cargo");
+        command.arg(subcommand.as_ref());
+        self.command = Some(command);
+        self
+    }
+
+    /// Adds an argument to the main command executed when changes are detected.
+    ///
+    /// # Panics
+    ///
+    /// Panics if called before [`command`](Self::command), [`xtask`](Self::xtask) or
+    /// [`cargo`](Self::cargo).
+    pub fn arg<S: AsRef<ffi::OsStr>>(mut self, arg: S) -> Self {
+        self.command
+            .as_mut()
+            .expect("`arg` called without a command set; call `command`, `xtask` or `cargo` first")
+            .arg(arg);
+        self
+    }
+
+    /// Adds multiple arguments to the main command executed when changes are detected.
+    ///
+    /// # Panics
+    ///
+    /// Panics if called before [`command`](Self::command), [`xtask`](Self::xtask) or
+    /// [`cargo`](Self::cargo).
     pub fn args<I, S>(mut self, args: I) -> Self
     where
         I: IntoIterator<Item = S>,
         S: AsRef<ffi::OsStr>,
     {
-        self.set_xtask_command().args(args);
+        self.command
+            .as_mut()
+            .expect("`args` called without a command set; call `command`, `xtask` or `cargo` first")
+            .args(args);
+        self
+    }
+
+    /// Inserts or updates an environment variable for the main command executed when changes are
+    /// detected.
+    ///
+    /// # Panics
+    ///
+    /// Panics if called before [`command`](Self::command), [`xtask`](Self::xtask) or
+    /// [`cargo`](Self::cargo).
+    pub fn env<K, V>(mut self, key: K, val: V) -> Self
+    where
+        K: AsRef<ffi::OsStr>,
+        V: AsRef<ffi::OsStr>,
+    {
+        self.command
+            .as_mut()
+            .expect("`env` called without a command set; call `command`, `xtask` or `cargo` first")
+            .env(key, val);
+        self
+    }
+
+    /// Inserts or updates multiple environment variables for the main command executed when
+    /// changes are detected.
+    ///
+    /// # Panics
+    ///
+    /// Panics if called before [`command`](Self::command), [`xtask`](Self::xtask) or
+    /// [`cargo`](Self::cargo).
+    pub fn envs<I, K, V>(mut self, vars: I) -> Self
+    where
+        I: IntoIterator<Item = (K, V)>,
+        K: AsRef<ffi::OsStr>,
+        V: AsRef<ffi::OsStr>,
+    {
+        self.command
+            .as_mut()
+            .expect("`envs` called without a command set; call `command`, `xtask` or `cargo` first")
+            .envs(vars);
         self
     }
 
     /// Use another file path when the URL is not found.
-    pub fn not_found(mut self, path: impl Into<PathBuf>) -> Self {
+    pub fn not_found_path(mut self, path: impl Into<PathBuf>) -> Self {
         self.not_found_path.replace(path.into());
         self
     }
@@ -163,41 +342,56 @@ impl DevServer {
         self
     }
 
-    /// Start the server, serving the files at `dist_dir_path`.
+    /// Start the server, serving the files at [`dist_dir`](Self::dist_dir).
     ///
-    /// [`crate::default_dist_dir`] should be used to get the dist directory
-    /// that needs to be served.
-    pub fn start(self, dist_dir_path: impl Into<PathBuf>) -> Result<()> {
-        let dist_dir_path = dist_dir_path.into();
+    /// If `dist_dir` has not been provided, [`Dist::default_debug_dir`] will be used.
+    pub fn start(mut self) -> Result<()> {
+        // Resolve dist_dir early so Hooks can observe the final value via &self.
+        if self.dist_dir.is_none() {
+            self.dist_dir = Some(Dist::default_debug_dir().into());
+        }
+        let dist_dir = self.dist_dir.clone().unwrap();
 
-        let watch_process = if let Some(command) = self.command {
-            // NOTE: the path needs to exists in order to be excluded because it is canonicalize
-            let _ = std::fs::create_dir_all(&dist_dir_path);
-            let watch = self.watch.exclude_path(&dist_dir_path);
-            let handle = std::thread::spawn(|| match watch.run(command) {
-                Ok(()) => log::trace!("Starting to watch"),
-                Err(err) => log::error!("an error occurred when starting to watch: {}", err),
-            });
+        let watch_process = {
+            // mem::take so we can pass &self to build_command while the fields are empty.
+            let pre_hooks = std::mem::take(&mut self.pre_hooks);
+            let post_hooks = std::mem::take(&mut self.post_hooks);
+            let main_command = self.command.take();
 
-            Some(handle)
-        } else {
-            None
+            let mut commands: Vec<process::Command> = pre_hooks
+                .into_iter()
+                .map(|p| p.build_command(&self))
+                .collect();
+            if let Some(command) = main_command {
+                commands.push(command);
+            }
+            commands.extend(post_hooks.into_iter().map(|p| p.build_command(&self)));
+
+            if !commands.is_empty() {
+                // NOTE: the path needs to exists in order to be excluded because it is canonicalize
+                std::fs::create_dir_all(&dist_dir).with_context(|| {
+                    format!("cannot create dist directory `{}`", dist_dir.display())
+                })?;
+                let watch = self.watch.exclude_path(&dist_dir);
+                let handle = std::thread::spawn(|| match watch.run(commands) {
+                    Ok(()) => log::trace!("Starting to watch"),
+                    Err(err) => log::error!("an error occurred when starting to watch: {err}"),
+                });
+
+                Some(handle)
+            } else {
+                None
+            }
         };
 
         if let Some(handler) = self.request_handler {
-            serve(
-                self.ip,
-                self.port,
-                dist_dir_path,
-                self.not_found_path,
-                handler,
-            )
-            .context("an error occurred when starting to serve")?;
+            serve(self.ip, self.port, dist_dir, self.not_found_path, handler)
+                .context("an error occurred when starting to serve")?;
         } else {
             serve(
                 self.ip,
                 self.port,
-                dist_dir_path,
+                dist_dir,
                 self.not_found_path,
                 Arc::new(default_request_handler),
             )
@@ -210,13 +404,6 @@ impl DevServer {
 
         Ok(())
     }
-
-    fn set_xtask_command(&mut self) -> &mut process::Command {
-        if self.command.is_none() {
-            self.command = Some(crate::xtask_command());
-        }
-        self.command.as_mut().unwrap()
-    }
 }
 
 impl Default for DevServer {
@@ -225,7 +412,10 @@ impl Default for DevServer {
             ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
             port: 8000,
             watch: Default::default(),
+            dist_dir: None,
+            pre_hooks: Default::default(),
             command: None,
+            post_hooks: Default::default(),
             not_found_path: None,
             request_handler: None,
         }
@@ -235,7 +425,7 @@ impl Default for DevServer {
 fn serve(
     ip: IpAddr,
     port: u16,
-    dist_dir_path: PathBuf,
+    dist_dir: PathBuf,
     not_found_path: Option<PathBuf>,
     handler: RequestHandler,
 ) -> Result<()> {
@@ -258,7 +448,7 @@ fn serve(
 
     for mut stream in listener.incoming().filter_map(Result::ok) {
         let handler = handler.clone();
-        let dist_dir_path = dist_dir_path.clone();
+        let dist_dir = dist_dir.clone();
         let not_found_path = not_found_path.clone();
         thread::spawn(move || {
             let header = warn_not_fail!(read_header(&stream));
@@ -266,13 +456,13 @@ fn serve(
                 stream: &mut stream,
                 header: header.as_ref(),
                 path: warn_not_fail!(parse_request_path(&header)),
-                dist_dir_path: dist_dir_path.as_ref(),
+                dist_dir: dist_dir.as_ref(),
                 not_found_path: not_found_path.as_deref(),
             };
 
             (handler)(request).unwrap_or_else(|e| {
                 let _ = stream.write("HTTP/1.1 500 INTERNAL SERVER ERROR\r\n\r\n".as_bytes());
-                log::error!("an error occurred: {}", e);
+                log::error!("an error occurred: {e}");
             });
         });
     }
@@ -319,10 +509,10 @@ fn parse_request_path(header: &str) -> Result<&str> {
 pub fn default_request_handler(request: Request) -> Result<()> {
     let requested_path = request.path;
 
-    log::debug!("<-- {}", requested_path);
+    log::debug!("<-- {requested_path}");
 
     let rel_path = Path::new(requested_path.trim_matches('/'));
-    let mut full_path = request.dist_dir_path.join(rel_path);
+    let mut full_path = request.dist_dir.join(rel_path);
 
     if full_path.is_dir() {
         if full_path.join("index.html").exists() {
@@ -336,7 +526,7 @@ pub fn default_request_handler(request: Request) -> Result<()> {
 
     if let Some(path) = request.not_found_path {
         if !full_path.is_file() {
-            full_path = request.dist_dir_path.join(path);
+            full_path = request.dist_dir.join(path);
         }
     }
 

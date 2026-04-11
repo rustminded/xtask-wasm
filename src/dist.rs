@@ -2,9 +2,78 @@ use crate::{
     anyhow::{ensure, Context, Result},
     camino, clap, default_build_command, metadata,
 };
-use lazy_static::lazy_static;
+use derive_more::Debug;
 use std::{fs, path::PathBuf, process};
 use wasm_bindgen_cli_support::Bindgen;
+
+/// A type that can transform or copy a single asset file during [`Dist::build`].
+///
+/// Implement this trait to customise how individual files in the assets directory are
+/// processed before they land in the dist directory — for example to compile SASS to
+/// CSS, minify JavaScript, or generate additional output files from a source file.
+///
+/// Return `Ok(true)` if the file was handled (the transformer wrote its own output).
+/// Return `Ok(false)` to fall through to the next transformer, or to the default
+/// plain-copy behaviour if no transformer claims the file.
+///
+/// A blanket implementation is provided for `()` (no-op, always returns `Ok(false)`),
+/// so the trait is easy to stub out in tests.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use std::path::Path;
+/// use xtask_wasm::{anyhow::Result, clap, Transformer};
+///
+/// struct UppercaseText;
+///
+/// impl Transformer for UppercaseText {
+///     fn transform(&self, source: &Path, dest: &Path) -> Result<bool> {
+///         if source.extension().and_then(|e| e.to_str()) == Some("txt") {
+///             let content = std::fs::read_to_string(source)?;
+///             std::fs::write(dest, content.to_uppercase())?;
+///             return Ok(true);
+///         }
+///         Ok(false)
+///     }
+/// }
+///
+/// #[derive(clap::Parser)]
+/// enum Opt {
+///     Dist(xtask_wasm::Dist),
+/// }
+///
+/// fn main() -> Result<()> {
+///     let opt: Opt = clap::Parser::parse();
+///
+///     match opt {
+///         Opt::Dist(dist) => {
+///             dist.transformer(UppercaseText)
+///                 .build("my-project")?;
+///         }
+///     }
+///
+///     Ok(())
+/// }
+/// ```
+pub trait Transformer {
+    /// Process a single asset file.
+    ///
+    /// `source` is the absolute path to the file in the assets directory.
+    /// `dest` is the intended output path inside the dist directory, preserving
+    /// the same relative path as `source` (the implementor may change the extension).
+    ///
+    /// Return `Ok(true)` if the file was handled, `Ok(false)` to defer.
+    fn transform(&self, source: &Path, dest: &Path) -> Result<bool>;
+}
+
+use std::path::Path;
+
+impl Transformer for () {
+    fn transform(&self, _source: &Path, _dest: &Path) -> Result<bool> {
+        Ok(false)
+    }
+}
 
 /// A helper to generate the distributed package.
 ///
@@ -27,10 +96,9 @@ use wasm_bindgen_cli_support::Bindgen;
 ///             log::info!("Generating package...");
 ///
 ///             dist
-///                 .static_dir_path("my-project/static")
+///                 .assets_dir("my-project/assets")
 ///                 .app_name("my-project")
-///                 .run_in_workspace(true)
-///                 .run("my-project")?;
+///                 .build("my-project")?;
 ///         }
 ///     }
 ///
@@ -40,8 +108,8 @@ use wasm_bindgen_cli_support::Bindgen;
 ///
 /// In this example, we added a `dist` subcommand to build and package the
 /// `my-project` crate. It will run the [`default_build_command`](crate::default_build_command)
-/// at the workspace root, copy the content of the `project/static` directory,
-/// generate JS bindings and output two files: `project.js` and `project.wasm`
+/// at the workspace root, copy the content of the `my-project/assets` directory,
+/// generate JS bindings and output two files: `my-project.js` and `my-project.wasm`
 /// into the dist directory.
 #[non_exhaustive]
 #[derive(Debug, clap::Parser)]
@@ -99,20 +167,30 @@ pub struct Dist {
     pub build_command: process::Command,
     /// Directory of all generated artifacts.
     #[clap(skip)]
-    pub dist_dir_path: Option<PathBuf>,
-    /// Directory of all static artifacts.
+    pub dist_dir: Option<PathBuf>,
+    /// Directory of all static assets artifacts.
+    ///
+    /// Default to `assets` in the package root when it exists.
     #[clap(skip)]
-    pub static_dir_path: Option<PathBuf>,
+    pub assets_dir: Option<PathBuf>,
     /// Set the resulting app name, default to `app`.
     #[clap(skip)]
     pub app_name: Option<String>,
-    /// Set the command's current directory as the workspace root.
-    #[clap(skip = true)]
-    pub run_in_workspace: bool,
-    /// Output style for SASS/SCSS
-    #[cfg(feature = "sass")]
+    /// Transformers applied to each file in the assets directory during the build.
+    ///
+    /// Each transformer is called in order for every file; the first one that returns
+    /// `Ok(true)` claims the file and the rest are skipped. Files not claimed by any
+    /// transformer are copied verbatim into the dist directory.
     #[clap(skip)]
-    pub sass_options: sass_rs::Options,
+    #[debug(skip)]
+    pub transformers: Vec<Box<dyn Transformer>>,
+
+    /// Optional `wasm-opt` pass to run on the generated Wasm binary after bindgen.
+    ///
+    /// Set via [`Dist::optimize_wasm`]. Only available when the `wasm-opt` feature is enabled.
+    #[cfg(feature = "wasm-opt")]
+    #[clap(skip)]
+    pub wasm_opt: Option<crate::WasmOpt>,
 }
 
 impl Dist {
@@ -128,14 +206,16 @@ impl Dist {
     ///
     /// The default for debug build is `target/debug/dist` and
     /// `target/release/dist` for the release build.
-    pub fn dist_dir_path(mut self, path: impl Into<PathBuf>) -> Self {
-        self.dist_dir_path = Some(path.into());
+    pub fn dist_dir(mut self, path: impl Into<PathBuf>) -> Self {
+        self.dist_dir = Some(path.into());
         self
     }
 
-    /// Set the directory for the static artifacts (like `index.html`).
-    pub fn static_dir_path(mut self, path: impl Into<PathBuf>) -> Self {
-        self.static_dir_path = Some(path.into());
+    /// Set the directory for the static assets artifacts (like `index.html`).
+    ///
+    /// Default to `assets` in the package root when it exists.
+    pub fn assets_dir(mut self, path: impl Into<PathBuf>) -> Self {
+        self.assets_dir = Some(path.into());
         self
     }
 
@@ -147,16 +227,52 @@ impl Dist {
         self
     }
 
-    /// Set the dist process current directory as the workspace root.
-    pub fn run_in_workspace(mut self, res: bool) -> Self {
-        self.run_in_workspace = res;
+    /// Add a transformer for the asset copy step.
+    ///
+    /// Transformers are called in the order they are added. See [`Transformer`] for details.
+    pub fn transformer(mut self, transformer: impl Transformer + 'static) -> Self {
+        self.transformers.push(Box::new(transformer));
         self
     }
 
-    #[cfg(feature = "sass")]
-    /// Set the output style for SCSS/SASS
-    pub fn sass_options(mut self, output_style: sass_rs::Options) -> Self {
-        self.sass_options = output_style;
+    /// Run [`WasmOpt`](crate::WasmOpt) on the generated Wasm binary after the bindgen step.
+    ///
+    /// This is the recommended way to integrate `wasm-opt`: it runs automatically at the
+    /// end of [`build`](Self::build) using the resolved output path, so you do not need to
+    /// wrap [`Dist`] in a custom struct or compute the path manually.
+    ///
+    /// The optimization is skipped for debug builds — it only runs when [`release`](Self::release)
+    /// is `true`. A `log::debug!` message is emitted when it is skipped.
+    ///
+    /// Requires the `wasm-opt` feature.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use xtask_wasm::{anyhow::Result, clap, WasmOpt};
+    ///
+    /// #[derive(clap::Parser)]
+    /// enum Opt {
+    ///     Dist(xtask_wasm::Dist),
+    /// }
+    ///
+    /// fn main() -> Result<()> {
+    ///     let opt: Opt = clap::Parser::parse();
+    ///
+    ///     match opt {
+    ///         Opt::Dist(dist) => {
+    ///             dist.optimize_wasm(WasmOpt::level(1).shrink(2))
+    ///                 .build("my-project")?;
+    ///         }
+    ///     }
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    #[cfg(feature = "wasm-opt")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "wasm-opt")))]
+    pub fn optimize_wasm(mut self, wasm_opt: crate::WasmOpt) -> Self {
+        self.wasm_opt = Some(wasm_opt);
         self
     }
 
@@ -166,28 +282,45 @@ impl Dist {
         self
     }
 
+    /// Get the default dist directory for debug builds.
+    pub fn default_debug_dir() -> camino::Utf8PathBuf {
+        metadata().target_directory.join("debug").join("dist")
+    }
+
+    /// Get the default dist directory for release builds.
+    pub fn default_release_dir() -> camino::Utf8PathBuf {
+        metadata().target_directory.join("release").join("dist")
+    }
+
     /// Build the given package for Wasm.
     ///
     /// This will generate JS bindings via [`wasm-bindgen`](https://docs.rs/wasm-bindgen/latest/wasm_bindgen/)
-    /// and copy files from a given static directory if any to finally return
+    /// and copy files from a given assets directory if any to finally return
     /// the path of the generated artifacts.
-    ///
-    /// Wasm optimizations can be achieved using [`crate::WasmOpt`] if the
-    /// feature `wasm-opt` is enabled.
-    pub fn run(self, package_name: &str) -> Result<PathBuf> {
+    #[cfg_attr(
+        feature = "wasm-opt",
+        doc = "Wasm optimizations can be achieved using [`WasmOpt`](crate::WasmOpt) if the feature `wasm-opt` is enabled."
+    )]
+    #[cfg_attr(
+        not(feature = "wasm-opt"),
+        doc = "Wasm optimizations can be achieved using `WasmOpt` if the feature `wasm-opt` is enabled."
+    )]
+    pub fn build(self, package_name: &str) -> Result<PathBuf> {
         log::trace!("Getting package's metadata");
         let metadata = metadata();
 
-        let dist_dir_path = self
-            .dist_dir_path
-            .unwrap_or_else(|| default_dist_dir(self.release).as_std_path().to_path_buf());
+        let dist_dir = self.dist_dir.unwrap_or_else(|| {
+            if self.release {
+                Self::default_release_dir().into()
+            } else {
+                Self::default_debug_dir().into()
+            }
+        });
 
         log::trace!("Initializing dist process");
         let mut build_command = self.build_command;
 
-        if self.run_in_workspace {
-            build_command.current_dir(&metadata.workspace_root);
-        }
+        build_command.current_dir(&metadata.workspace_root);
 
         if self.quiet {
             build_command.arg("--quiet");
@@ -289,36 +422,59 @@ impl Dist {
             .generate_output()
             .context("could not generate Wasm bindgen file")?;
 
-        if dist_dir_path.exists() {
+        if dist_dir.exists() {
             log::trace!("Removing already existing dist directory");
-            fs::remove_dir_all(&dist_dir_path)?;
+            fs::remove_dir_all(&dist_dir)?;
         }
 
         log::trace!("Writing outputs to dist directory");
-        output.emit(&dist_dir_path)?;
+        output.emit(&dist_dir)?;
 
-        if let Some(static_dir) = self.static_dir_path {
-            #[cfg(feature = "sass")]
-            {
-                log::trace!("Generating CSS files from SASS/SCSS");
-                sass(&static_dir, &dist_dir_path, &self.sass_options)?;
+        let assets_dir = if let Some(assets_dir) = self.assets_dir {
+            Some(assets_dir)
+        } else if let Some(package) = metadata.packages.iter().find(|p| p.name == package_name) {
+            let path = package
+                .manifest_path
+                .parent()
+                .context("package manifest has no parent directory")?
+                .join("assets")
+                .as_std_path()
+                .to_path_buf();
+            Some(path)
+        } else {
+            log::debug!(
+                "package `{package_name}` not found in workspace metadata, skipping assets"
+            );
+            None
+        };
+
+        match assets_dir {
+            Some(assets_dir) if assets_dir.exists() => {
+                log::trace!("Copying assets directory into dist directory");
+                copy_assets(&assets_dir, &dist_dir, &self.transformers)?;
             }
+            Some(assets_dir) => {
+                log::debug!(
+                    "assets directory `{}` does not exist, skipping",
+                    assets_dir.display()
+                );
+            }
+            None => {}
+        }
 
-            #[cfg(not(feature = "sass"))]
-            {
-                let mut copy_options = fs_extra::dir::CopyOptions::new();
-                copy_options.overwrite = true;
-                copy_options.content_only = true;
-
-                log::trace!("Copying static directory into dist directory");
-                fs_extra::dir::copy(static_dir, &dist_dir_path, &copy_options)
-                    .context("cannot copy static directory")?;
+        #[cfg(feature = "wasm-opt")]
+        if let Some(wasm_opt) = self.wasm_opt {
+            if self.release {
+                let wasm_path = dist_dir.join(format!("{app_name}_bg.wasm"));
+                wasm_opt.optimize(&wasm_path)?;
+            } else {
+                log::debug!("skipping wasm-opt: not a release build");
             }
         }
 
-        log::info!("Successfully built in {}", dist_dir_path.display());
+        log::info!("Successfully built in {}", dist_dir.display());
 
-        Ok(dist_dir_path)
+        Ok(dist_dir)
     }
 }
 
@@ -340,84 +496,51 @@ impl Default for Dist {
             ignore_rust_version: Default::default(),
             example: Default::default(),
             build_command: default_build_command(),
-            dist_dir_path: Default::default(),
-            static_dir_path: Default::default(),
+            dist_dir: Default::default(),
+            assets_dir: Default::default(),
             app_name: Default::default(),
-            run_in_workspace: Default::default(),
-            #[cfg(feature = "sass")]
-            sass_options: Default::default(),
+            transformers: vec![],
+            #[cfg(feature = "wasm-opt")]
+            wasm_opt: None,
         }
     }
 }
 
-#[cfg(feature = "sass")]
-fn sass(
-    static_dir: &std::path::Path,
-    dist_dir: &std::path::Path,
-    options: &sass_rs::Options,
+fn copy_assets(
+    assets_dir: &Path,
+    dist_dir: &Path,
+    transformers: &[Box<dyn Transformer>],
 ) -> Result<()> {
-    fn is_sass(path: &std::path::Path) -> bool {
-        matches!(
-            path.extension()
-                .and_then(|x| x.to_str().map(|x| x.to_lowercase()))
-                .as_deref(),
-            Some("sass") | Some("scss")
-        )
-    }
-
-    fn should_ignore(path: &std::path::Path) -> bool {
-        path.file_name()
-            .expect("WalkDir does not yield paths ending with `..`  or `.`")
-            .to_str()
-            .map(|x| x.starts_with('_'))
-            .unwrap_or(false)
-    }
-
-    log::trace!("Generating dist artifacts");
-    let walker = walkdir::WalkDir::new(static_dir);
+    let walker = walkdir::WalkDir::new(assets_dir);
     for entry in walker {
         let entry = entry
-            .with_context(|| format!("cannot walk into directory `{}`", &static_dir.display()))?;
+            .with_context(|| format!("cannot walk into directory `{}`", assets_dir.display()))?;
         let source = entry.path();
-        let dest = dist_dir.join(source.strip_prefix(static_dir).unwrap());
-        let _ = fs::create_dir_all(dest.parent().unwrap());
+        let dest = dist_dir.join(source.strip_prefix(assets_dir).unwrap());
 
         if !source.is_file() {
             continue;
-        } else if is_sass(source) {
-            if !should_ignore(source) {
-                let dest = dest.with_extension("css");
+        }
 
-                let css = sass_rs::compile_file(source, options.clone())
-                    .expect("could not convert SASS/ file");
-                fs::write(&dest, css)
-                    .with_context(|| format!("could not write CSS to file `{}`", dest.display()))?;
+        if let Some(parent) = dest.parent() {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("cannot create directory `{}`", parent.display()))?;
+        }
+
+        let mut handled = false;
+        for transformer in transformers {
+            if transformer.transform(source, &dest)? {
+                handled = true;
+                break;
             }
-        } else {
+        }
+
+        if !handled {
             fs::copy(source, &dest).with_context(|| {
-                format!("cannot move `{}` to `{}`", source.display(), dest.display())
+                format!("cannot copy `{}` to `{}`", source.display(), dest.display())
             })?;
         }
     }
 
     Ok(())
-}
-
-/// Get the default dist directory.
-///
-/// The default for debug build is `target/debug/dist` and `target/release/dist`
-/// for the release build.
-pub fn default_dist_dir(release: bool) -> &'static camino::Utf8Path {
-    lazy_static! {
-        static ref DEFAULT_RELEASE_PATH: camino::Utf8PathBuf =
-            metadata().target_directory.join("release").join("dist");
-        static ref DEFAULT_DEBUG_PATH: camino::Utf8PathBuf =
-            metadata().target_directory.join("debug").join("dist");
-    }
-
-    if release {
-        &DEFAULT_RELEASE_PATH
-    } else {
-        &DEFAULT_DEBUG_PATH
-    }
 }

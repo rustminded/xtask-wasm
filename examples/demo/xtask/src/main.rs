@@ -11,19 +11,9 @@ struct Opt {
 
 #[derive(clap::Parser)]
 enum Command {
-    Dist(Build),
+    Dist(xtask_wasm::Dist),
     Watch(xtask_wasm::Watch),
     Start(xtask_wasm::DevServer),
-}
-
-#[derive(clap::Parser)]
-struct Build {
-    /// Optimize the generated package using `wasm-opt`.
-    #[clap(long)]
-    optimize: bool,
-
-    #[clap(flatten)]
-    base: xtask_wasm::Dist,
 }
 
 fn main() -> Result<()> {
@@ -34,20 +24,13 @@ fn main() -> Result<()> {
         .init();
 
     match opt.cmd {
-        Command::Dist(arg) => {
+        Command::Dist(dist) => {
             log::info!("Generating package...");
 
-            let dist_result = arg
-                .base
-                .static_dir_path("webapp/static")
+            dist.assets_dir("webapp/assets")
                 .app_name("web_app")
-                .run("webapp")?;
-
-            if arg.optimize {
-                xtask_wasm::WasmOpt::level(1)
-                    .shrink(2)
-                    .optimize(dist_result.join("web_app.wasm"))?;
-            }
+                .optimize_wasm(xtask_wasm::WasmOpt::level(1).shrink(2))
+                .build("webapp")?;
         }
         Command::Watch(arg) => {
             log::info!("Watching for changes and check...");
@@ -60,7 +43,7 @@ fn main() -> Result<()> {
         Command::Start(arg) => {
             log::info!("Starting the development server...");
 
-            arg.arg("dist").start(xtask_wasm::default_dist_dir(false))?;
+            arg.xtask("dist").start()?;
         }
     }
 

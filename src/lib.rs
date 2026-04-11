@@ -6,6 +6,42 @@
 //! [`xtask` concept](https://github.com/matklad/cargo-xtask/), instead of using
 //! external tooling like [`wasm-pack`](https://github.com/rustwasm/wasm-pack).
 //!
+//! **[Changelog](https://github.com/rustminded/xtask-wasm/blob/main/CHANGELOG.md)**
+//!
+//! # Why xtask-wasm?
+//!
+//! ## No external tools to install
+//!
+//! `wasm-pack` and `trunk` are separate binaries that must be installed outside
+//! of Cargo — via `cargo install`, a shell script, or a system package manager.
+//! This means every contributor and every CI machine needs an extra installation
+//! step, and there is no built-in guarantee that everyone is running the same
+//! version.
+//!
+//! With xtask-wasm, `cargo xtask` is all you need. The build tooling is a
+//! regular Cargo dependency, versioned in your `Cargo.lock` and reproduced
+//! exactly like every other dependency in your project.
+//!
+//! ## `wasm-bindgen` version is always in sync
+//!
+//! This is the most common source of pain with `wasm-pack` and `trunk`: the
+//! `wasm-bindgen` CLI tool version must exactly match the `wasm-bindgen` library
+//! version declared in your `Cargo.toml`. When they drift — after a `cargo
+//! update`, a fresh clone, or a CI cache invalidation — you get a cryptic error
+//! at runtime rather than a clear compile-time failure.
+//!
+//! xtask-wasm uses [`wasm-bindgen-cli-support`](https://crates.io/crates/wasm-bindgen-cli-support)
+//! as a library dependency. The version is pinned in your `Cargo.lock` alongside
+//! your `wasm-bindgen` library dependency and kept in sync automatically — no
+//! manual version matching required.
+//!
+//! ## Fully customizable
+//!
+//! Because the build process is plain Rust code living inside your workspace,
+//! you can extend, replace or wrap any step. `wasm-pack` and `trunk` are
+//! opaque binaries driven by configuration files; xtask-wasm gives you the full
+//! build logic as code, under your control.
+//!
 //! # Setup
 //!
 //! The best way to add xtask-wasm to your project is to create a workspace
@@ -96,6 +132,22 @@
 //! allowing them to be added easily to an existing CLI implementation and are
 //! flexible enough to be customized for most use-cases.
 //!
+//! The pre and post hooks of [`DevServer`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.DevServer.html)
+//! accept any type implementing the
+//! [`Hook`](https://docs.rs/xtask-wasm/latest/xtask_wasm/trait.Hook.html) trait.
+//! This lets you construct a [`std::process::Command`] based on the server's final configuration
+//! — for example, to pass the resolved `dist_dir` or `port` as arguments to an external tool.
+//! A blanket implementation is provided for [`std::process::Command`] itself, so no changes are
+//! needed for simple use-cases.
+//!
+//! Asset files copied by [`Dist`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.Dist.html)
+//! can be processed by types implementing the
+//! [`Transformer`](https://docs.rs/xtask-wasm/latest/xtask_wasm/trait.Transformer.html) trait.
+//! Transformers are tried in order for each file; the first to return `Ok(true)` claims the file,
+//! while unclaimed files are copied verbatim. When the `sass` feature is enabled,
+//! [`SassTransformer`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.SassTransformer.html)
+//! is available to compile SASS/SCSS files to CSS.
+//!
 //! You can find further information for each type at their documentation level.
 //!
 //! # Examples
@@ -104,7 +156,7 @@
 //!
 //! ```rust,no_run
 //! use std::process::Command;
-//! use xtask_wasm::{anyhow::Result, clap, default_dist_dir};
+//! use xtask_wasm::{anyhow::Result, clap};
 //!
 //! #[derive(clap::Parser)]
 //! enum Opt {
@@ -115,6 +167,10 @@
 //!
 //!
 //! fn main() -> Result<()> {
+//!     env_logger::builder()
+//!         .filter_level(log::LevelFilter::Info)
+//!         .init();
+//!
 //!     let opt: Opt = clap::Parser::parse();
 //!
 //!     match opt {
@@ -122,11 +178,9 @@
 //!             log::info!("Generating package...");
 //!
 //!             dist
-//!                 .dist_dir_path(default_dist_dir(false))
-//!                 .static_dir_path("my-project/static")
+//!                 .assets_dir("my-project/assets")
 //!                 .app_name("my-project")
-//!                 .run_in_workspace(true)
-//!                 .run("my-project")?;
+//!                 .build("my-project")?;
 //!         }
 //!         Opt::Watch(watch) => {
 //!             log::info!("Watching for changes and check...");
@@ -139,7 +193,9 @@
 //!         Opt::Start(dev_server) => {
 //!             log::info!("Starting the development server...");
 //!
-//!             dev_server.arg("dist").start(default_dist_dir(false))?;
+//!             dev_server
+//!                 .xtask("dist")
+//!                 .start()?;
 //!         }
 //!     }
 //!
@@ -147,28 +203,24 @@
 //! }
 //! ```
 //!
+//! Note: this basic implementation uses `env_logger` and `log`. Add them to the `Cargo.toml` of
+//! your `xtask` (or use your preferred logger).
+//!
 //! ## [`examples/demo`](https://github.com/rustminded/xtask-wasm/tree/main/examples/demo)
 //!
 //! Provides a basic implementation of xtask-wasm to generate the web app
 //! package, an "hello world" app using [Yew](https://yew.rs/). This example
-//! demonstrates a simple directory layout and a customized dist process
-//! that use the `wasm-opt` feature.
+//! demonstrates a simple directory layout and a dist process that uses the
+//! `wasm-opt` feature via [`Dist::optimize_wasm`].
 //!
 //! The available subcommands are:
 //!
-//! * Build the web app package.
+//! * Build and optimize the web app package (downloads
+//!   [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools) if not cached).
 //!
 //!   ```console
 //!   cargo xtask dist
 //!   ```
-//!   * Build the web app package, download the
-//!     [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools)
-//!     binary (currently using the 123 version) and optimize the Wasm generated by the dist
-//!     process.
-//!
-//!     ```console
-//!     cargo xtask dist --optimize
-//!     ```
 //!
 //! * Build the web app package and watch for changes in the workspace root.
 //!
@@ -197,12 +249,22 @@
 //! # Features
 //!
 //! * `wasm-opt`: enable the
-//!    [`WasmOpt`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.WasmOpt.html) struct that helps
-//!    downloading and using [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools) very
-//!    easily.
+//!   [`WasmOpt`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.WasmOpt.html) struct and
+//!   [`Dist::optimize_wasm`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.Dist.html#method.optimize_wasm)
+//!   for downloading and running [`wasm-opt`](https://github.com/WebAssembly/binaryen#tools)
+//!   automatically as part of the dist build. This is the recommended way to integrate wasm-opt —
+//!   no custom wrapper struct or manual path computation needed:
+//!
+//!   ```rust,ignore
+//!   // requires the `wasm-opt` feature
+//!   dist.optimize_wasm(WasmOpt::level(1).shrink(2))
+//!       .build("my-project")?;
+//!   ```
+//!
 //! * `run-example`: a helper to run examples from `examples/` directory using a development
-//!    server.
-//! * `sass`: allow the use of SASS/SCSS in your project.
+//!   server.
+//! * `sass`: enable SASS/SCSS compilation via [`SassTransformer`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.SassTransformer.html).
+//!   Add it to your [`Dist`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.Dist.html) with `.transformer(SassTransformer::default())`.
 //!
 //! # Troubleshooting
 //!
@@ -238,54 +300,62 @@
 //! struct MyStruct {}
 //! ```
 
-#[macro_use]
-mod cfg;
+#[cfg(not(target_arch = "wasm32"))]
+use std::process::Command;
 
-cfg_not_wasm32! {
-    use std::process::Command;
+#[cfg(not(target_arch = "wasm32"))]
+pub use xtask_watch::{
+    anyhow, cargo_metadata, cargo_metadata::camino, clap, metadata, package, xtask_command, Watch,
+};
 
-    pub use xtask_watch::{
-        anyhow, cargo_metadata, cargo_metadata::camino, clap, metadata, package, xtask_command,
-        Watch,
-    };
+#[cfg(not(target_arch = "wasm32"))]
+mod dev_server;
+#[cfg(not(target_arch = "wasm32"))]
+mod dist;
+#[cfg(all(not(target_arch = "wasm32"), feature = "sass"))]
+mod sass;
+#[cfg(all(not(target_arch = "wasm32"), feature = "wasm-opt"))]
+mod wasm_opt;
 
-    mod dev_server;
-    mod dist;
+#[cfg(not(target_arch = "wasm32"))]
+pub use dev_server::*;
+#[cfg(not(target_arch = "wasm32"))]
+pub use dist::*;
+#[cfg(all(not(target_arch = "wasm32"), feature = "sass"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "sass")))]
+pub use sass::*;
 
-    pub use dev_server::*;
-    pub use dist::*;
+#[cfg(all(not(target_arch = "wasm32"), feature = "wasm-opt"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "wasm-opt")))]
+pub use wasm_opt::*;
 
-    cfg_run_example! {
-        pub use env_logger;
-        pub use log;
-    }
+#[cfg(all(not(target_arch = "wasm32"), feature = "sass"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "sass")))]
+pub use sass_rs;
 
-    cfg_wasm_opt! {
-        mod wasm_opt;
-        pub use wasm_opt::*;
-    }
+#[cfg(all(not(target_arch = "wasm32"), feature = "run-example"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "run-example")))]
+pub use env_logger;
 
-    cfg_sass! {
-        pub use sass_rs;
-    }
+#[cfg(all(not(target_arch = "wasm32"), feature = "run-example"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "run-example")))]
+pub use log;
 
-    /// Get the default command for the build in the dist process.
-    ///
-    /// This is `cargo build --target wasm32-unknown-unknown`.
-    pub fn default_build_command() -> Command {
-        let mut command = Command::new("cargo");
-        command.args(["build", "--target", "wasm32-unknown-unknown"]);
-        command
-    }
+/// Get the default command for the build in the dist process.
+///
+/// This is `cargo build --target wasm32-unknown-unknown`.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn default_build_command() -> Command {
+    let mut command = Command::new("cargo");
+    command.args(["build", "--target", "wasm32-unknown-unknown"]);
+    command
 }
 
-cfg_wasm32! {
-    cfg_run_example! {
-        pub use console_error_panic_hook;
-        pub use wasm_bindgen;
-    }
-}
+#[cfg(all(target_arch = "wasm32", feature = "run-example"))]
+pub use console_error_panic_hook;
 
-cfg_run_example! {
-    pub use xtask_wasm_run_example::*;
-}
+#[cfg(all(target_arch = "wasm32", feature = "run-example"))]
+pub use wasm_bindgen;
+
+#[cfg(feature = "run-example")]
+pub use xtask_wasm_run_example::*;
