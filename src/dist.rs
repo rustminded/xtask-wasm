@@ -1,5 +1,5 @@
 use crate::{
-    anyhow::{bail, ensure, Context, Result},
+    anyhow::{ensure, Context, Result},
     camino, clap, default_build_command, metadata,
 };
 use derive_more::Debug;
@@ -431,31 +431,36 @@ impl Dist {
         output.emit(&dist_dir)?;
 
         let assets_dir = if let Some(assets_dir) = self.assets_dir {
-            assets_dir
-        } else {
-            let package = metadata
-                .packages
-                .iter()
-                .find(|p| p.name == package_name)
-                .with_context(|| {
-                    format!("package `{package_name}` not found in workspace metadata")
-                })?;
-
-            package
+            Some(assets_dir)
+        } else if let Some(package) = metadata.packages.iter().find(|p| p.name == package_name) {
+            let path = package
                 .manifest_path
                 .parent()
                 .context("package manifest has no parent directory")?
                 .join("assets")
                 .as_std_path()
-                .to_path_buf()
+                .to_path_buf();
+            Some(path)
+        } else {
+            log::debug!(
+                "package `{package_name}` not found in workspace metadata, skipping assets"
+            );
+            None
         };
 
-        if !assets_dir.exists() {
-            bail!("assets directory `{}` does not exist", assets_dir.display());
+        match assets_dir {
+            Some(assets_dir) if assets_dir.exists() => {
+                log::trace!("Copying assets directory into dist directory");
+                copy_assets(&assets_dir, &dist_dir, &self.transformers)?;
+            }
+            Some(assets_dir) => {
+                log::debug!(
+                    "assets directory `{}` does not exist, skipping",
+                    assets_dir.display()
+                );
+            }
+            None => {}
         }
-
-        log::trace!("Copying assets directory into dist directory");
-        copy_assets(&assets_dir, &dist_dir, &self.transformers)?;
 
         #[cfg(feature = "wasm-opt")]
         if let Some(wasm_opt) = self.wasm_opt {
