@@ -275,7 +275,7 @@ This command will run the code in `examples/run_example` using the development s
   no custom wrapper struct or manual path computation needed:
 
   ```rust
-  # let dist: xtask_wasm::Dist = xtask_wasm::clap::Parser::parse_from(["dist"]);
+  // requires the `wasm-opt` feature
   dist.optimize_wasm(WasmOpt::level(1).shrink(2))
       .build("my-project")?;
   ```

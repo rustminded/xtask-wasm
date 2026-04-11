@@ -255,14 +255,10 @@
 //!   automatically as part of the dist build. This is the recommended way to integrate wasm-opt —
 //!   no custom wrapper struct or manual path computation needed:
 //!
-//!   ```rust,no_run
-//!   # use xtask_wasm::{anyhow::Result, WasmOpt};
-//!   # fn main() -> Result<()> {
-//!   # let dist: xtask_wasm::Dist = xtask_wasm::clap::Parser::parse_from(["dist"]);
+//!   ```rust,ignore
+//!   // requires the `wasm-opt` feature
 //!   dist.optimize_wasm(WasmOpt::level(1).shrink(2))
 //!       .build("my-project")?;
-//!   # Ok(())
-//!   # }
 //!   ```
 //!
 //! * `run-example`: a helper to run examples from `examples/` directory using a development
