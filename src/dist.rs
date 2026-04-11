@@ -170,8 +170,6 @@ pub struct Dist {
     /// Each transformer is called in order for every file; the first one that returns
     /// `Ok(true)` claims the file and the rest are skipped. Files not claimed by any
     /// transformer are copied verbatim into the dist directory.
-    ///
-    /// When the `sass` feature is enabled, a [`SassTransformer`] is included by default.
     #[clap(skip)]
     #[debug(skip)]
     pub transformers: Vec<Box<dyn Transformer>>,
@@ -423,10 +421,7 @@ impl Default for Dist {
             dist_dir: Default::default(),
             assets_dir: Default::default(),
             app_name: Default::default(),
-            transformers: vec![
-                #[cfg(feature = "sass")]
-                Box::new(SassTransformer::default()),
-            ],
+            transformers: vec![],
         }
     }
 }

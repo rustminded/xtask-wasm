@@ -8,9 +8,18 @@ use std::{fs, path::Path};
 /// to the dist directory). All other `.sass` and `.scss` files are compiled to `.css`.
 /// Non-SASS files are not claimed and fall through to the default plain-copy behaviour.
 ///
-/// `SassTransformer` is included automatically in [`Dist::default`] when the `sass`
-/// feature is enabled. To customise the compilation options, replace the default
-/// transformer:
+/// Add this transformer to [`Dist`] to enable SASS/SCSS compilation:
+///
+/// ```rust,no_run
+/// use xtask_wasm::{Dist, SassTransformer};
+///
+/// Dist::default()
+///     .transformer(SassTransformer::default())
+///     .build("my-project")
+///     .unwrap();
+/// ```
+///
+/// To customise the compilation options, construct `SassTransformer` directly:
 ///
 /// ```rust,no_run
 /// use xtask_wasm::{Dist, SassTransformer};
@@ -26,7 +35,7 @@ use std::{fs, path::Path};
 ///     .unwrap();
 /// ```
 ///
-/// [`Dist::default`]: crate::Dist::default
+/// [`Dist`]: crate::Dist
 pub struct SassTransformer {
     /// Options forwarded to [`sass_rs::compile_file`].
     pub options: sass_rs::Options,

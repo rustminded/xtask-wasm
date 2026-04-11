@@ -142,9 +142,9 @@
 //! can be processed by types implementing the
 //! [`Transformer`](https://docs.rs/xtask-wasm/latest/xtask_wasm/trait.Transformer.html) trait.
 //! Transformers are tried in order for each file; the first to return `Ok(true)` claims the file,
-//! while unclaimed files are copied verbatim. When the `sass` feature is enabled, a
+//! while unclaimed files are copied verbatim. When the `sass` feature is enabled,
 //! [`SassTransformer`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.SassTransformer.html)
-//! is included automatically.
+//! is available to compile SASS/SCSS files to CSS.
 //!
 //! You can find further information for each type at their documentation level.
 //!
@@ -259,8 +259,8 @@
 //!   easily.
 //! * `run-example`: a helper to run examples from `examples/` directory using a development
 //!   server.
-//! * `sass`: enable SASS/SCSS compilation via [`SassTransformer`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.SassTransformer.html),
-//!   which is automatically added to [`Dist::default`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.Dist.html#method.default).
+//! * `sass`: enable SASS/SCSS compilation via [`SassTransformer`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.SassTransformer.html).
+//!   Add it to your [`Dist`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.Dist.html) with `.transformer(SassTransformer::default())`.
 //!
 //! # Troubleshooting
 //!
