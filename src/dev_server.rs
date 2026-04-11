@@ -5,7 +5,7 @@ use crate::{
 };
 use derive_more::Debug;
 use std::{
-    ffi, fs,
+    fs,
     io::prelude::*,
     net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream},
     path::{Path, PathBuf},
@@ -60,7 +60,7 @@ pub struct Request<'a> {
 ///
 ///     match opt {
 ///         Opt::Dist => todo!("build project"),
-///         Opt::Start(mut dev_server) => {
+///         Opt::Start(dev_server) => {
 ///             log::info!("Starting the development server...");
 ///             dev_server
 ///                 .xtask("dist")
@@ -154,11 +154,10 @@ impl DevServer {
         self
     }
 
-    /// Main Program of the command that is executed when a change is detected.
+    /// Main command executed when a change is detected.
     ///
     /// See [`xtask`](Self::xtask) if you want to use an `xtask` command.
-    pub fn command(mut self, program: impl AsRef<str>) -> Self {
-        let command = process::Command::new(program.as_ref());
+    pub fn command(mut self, command: process::Command) -> Self {
         self.command = Some(command);
         self
     }
@@ -171,77 +170,6 @@ impl DevServer {
         command.arg(name.as_ref());
         self.command = Some(command);
         self
-    }
-
-    /// Adds an argument to pass to the main command executed when changes are detected.
-    ///
-    /// Returns an error if no [`command`](Self::command) or [`xtask`](Self::xtask) has been
-    /// provided.
-    pub fn arg<S: AsRef<ffi::OsStr>>(mut self, arg: S) -> Result<Self> {
-        let command = self
-            .command
-            .as_mut()
-            .context("`arg` used without command, call `command` or `xtask` first")?;
-        command.arg(arg);
-
-        Ok(self)
-    }
-
-    /// Adds multiple arguments to pass to the main command executed when changes are detected.
-    ///
-    /// Returns an error if no [`command`](Self::command) or [`xtask`](Self::xtask) has been
-    /// provided.
-    pub fn args<I, S>(mut self, args: I) -> Result<Self>
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<ffi::OsStr>,
-    {
-        let command = self
-            .command
-            .as_mut()
-            .context("`args` used without command, call `command` or `xtask` first")?;
-        command.args(args);
-
-        Ok(self)
-    }
-
-    /// Inserts or updates an explicit environment variable to the main command executed when
-    /// changes are detected.
-    ///
-    /// Returns an error if no [`command`](Self::command) or [`xtask`](Self::xtask) has been
-    /// provided.
-    pub fn env<K, V>(mut self, key: K, val: V) -> Result<Self>
-    where
-        K: AsRef<ffi::OsStr>,
-        V: AsRef<ffi::OsStr>,
-    {
-        let command = self
-            .command
-            .as_mut()
-            .context("`env` used without command, call `command` or `xtask` first")?;
-        command.env(key, val);
-
-        Ok(self)
-    }
-
-    /// Inserts or updates multiple explicit environment variables to the main command executed when
-    /// changes are detected.
-    ///
-    /// Returns an error if no [`command`](Self::command) or [`xtask`](Self::xtask) has been
-    /// provided.
-    pub fn envs<I, K, V>(mut self, vars: I) -> Result<Self>
-    where
-        I: IntoIterator<Item = (K, V)>,
-        K: AsRef<ffi::OsStr>,
-        V: AsRef<ffi::OsStr>,
-    {
-        let command = self
-            .command
-            .as_mut()
-            .context("`envs` used without command, call `command` or `xtask` first")?;
-        command.envs(vars);
-
-        Ok(self)
     }
 
     /// Use another file path when the URL is not found.
