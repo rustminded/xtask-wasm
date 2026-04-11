@@ -520,12 +520,13 @@ fn copy_assets(
                 .with_context(|| format!("cannot create directory `{}`", parent.display()))?;
         }
 
-        let handled = transformers
-            .iter()
-            .map(|t| t.transform(source, &dest))
-            .find(|r| r.as_ref().map_or(false, |&v| v))
-            .transpose()?
-            .unwrap_or(false);
+        let mut handled = false;
+        for transformer in transformers {
+            if transformer.transform(source, &dest)? {
+                handled = true;
+                break;
+            }
+        }
 
         if !handled {
             fs::copy(source, &dest).with_context(|| {
