@@ -68,6 +68,7 @@ fn download_wasm_opt() -> Result<&'static Path> {
 /// # Ok(())
 /// # }
 /// ```
+#[derive(Debug)]
 pub struct WasmOpt {
     /// How much to focus on optimizing code.
     pub optimization_level: u32,
