@@ -434,11 +434,15 @@ impl Dist {
 
         let assets_dir = if let Some(assets_dir) = self.assets_dir {
             assets_dir
-        } else if let Some(package) = metadata
-            .packages
-            .iter()
-            .find(|package| package.name == package_name)
-        {
+        } else {
+            let package = metadata
+                .packages
+                .iter()
+                .find(|p| p.name == package_name)
+                .with_context(|| {
+                    format!("package `{package_name}` not found in workspace metadata")
+                })?;
+
             package
                 .manifest_path
                 .parent()
@@ -446,14 +450,14 @@ impl Dist {
                 .join("assets")
                 .as_std_path()
                 .to_path_buf()
-        } else {
-            bail!("failed to determine assets directory path: package `{package_name}` not found");
         };
 
-        if assets_dir.exists() {
-            log::trace!("Copying assets directory into dist directory");
-            copy_assets(&assets_dir, &dist_dir, &self.transformers)?;
+        if !assets_dir.exists() {
+            bail!("assets directory `{}` does not exist", assets_dir.display());
         }
+
+        log::trace!("Copying assets directory into dist directory");
+        copy_assets(&assets_dir, &dist_dir, &self.transformers)?;
 
         #[cfg(feature = "wasm-opt")]
         if let Some(wasm_opt) = self.wasm_opt {
