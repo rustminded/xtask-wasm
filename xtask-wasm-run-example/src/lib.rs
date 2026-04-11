@@ -164,11 +164,13 @@ impl RunExample {
 
                 match cli.command {
                     Some(Command::Dist(mut dist)) => {
-                        let dist_dir = dist
+                        let dist = dist
                             .example(module_path!())
                             #app_name
-                            #assets_dir
-                            .build(env!("CARGO_PKG_NAME"))?;
+                            #assets_dir;
+                        #[cfg(feature = "wasm-opt")]
+                        let dist = dist.optimize_wasm(xtask_wasm::WasmOpt::level(1).shrink(2));
+                        let dist_dir = dist.build(env!("CARGO_PKG_NAME"))?;
 
                         #index
 
