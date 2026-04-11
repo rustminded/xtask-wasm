@@ -16,6 +16,47 @@ use std::{
 
 type RequestHandler = Arc<dyn Fn(Request) -> Result<()> + Send + Sync + 'static>;
 
+/// A type that can produce a [`process::Command`] given the final [`DevServer`] configuration.
+///
+/// Implement this trait to build a command whose arguments or environment depend on the server's
+/// configuration — for example to pass `--dist-dir`, `--port`, or other runtime values.
+///
+/// A blanket implementation is provided for [`process::Command`] itself, so existing call sites
+/// that pass a plain command continue to work without any changes.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use std::process;
+/// use xtask_wasm::{DevServer, Processor};
+///
+/// struct NotifyOnPort;
+///
+/// impl Processor for NotifyOnPort {
+///     fn build_command(self: Box<Self>, server: &DevServer) -> process::Command {
+///         let mut cmd = process::Command::new("notify-send");
+///         cmd.arg(format!("dev server on port {}", server.port));
+///         cmd
+///     }
+/// }
+///
+/// DevServer::default()
+///     .xtask("dist")
+///     .post(NotifyOnPort)
+///     .start()
+///     .unwrap();
+/// ```
+pub trait Processor {
+    /// Construct the [`process::Command`] to run, using `server` as context.
+    fn build_command(self: Box<Self>, server: &DevServer) -> process::Command;
+}
+
+impl Processor for process::Command {
+    fn build_command(self: Box<Self>, _server: &DevServer) -> process::Command {
+        *self
+    }
+}
+
 /// Abstraction over an HTTP request.
 #[non_exhaustive]
 pub struct Request<'a> {
@@ -104,17 +145,19 @@ pub struct DevServer {
     #[clap(skip)]
     pub dist_dir: Option<PathBuf>,
 
-    /// Command executed before the main command when a change is detected.
+    /// Commands executed before the main command when a change is detected.
     #[clap(skip)]
-    pub pre_commands: Vec<process::Command>,
+    #[debug(skip)]
+    pub pre_commands: Vec<Box<dyn Processor>>,
 
     /// Main command executed when a change is detected.
     #[clap(skip)]
     pub command: Option<process::Command>,
 
-    /// Command executed after the main command when a change is detected.
+    /// Commands executed after the main command when a change is detected.
     #[clap(skip)]
-    pub post_commands: Vec<process::Command>,
+    #[debug(skip)]
+    pub post_commands: Vec<Box<dyn Processor>>,
 
     /// Use another file path when the URL is not found.
     #[clap(skip)]
@@ -144,26 +187,34 @@ impl DevServer {
     }
 
     /// Add a command to execute before the main command when a change is detected.
-    pub fn pre(mut self, command: process::Command) -> Self {
-        self.pre_commands.push(command);
+    pub fn pre(mut self, command: impl Processor + 'static) -> Self {
+        self.pre_commands.push(Box::new(command));
         self
     }
 
     /// Add multiple commands to execute before the main command when a change is detected.
-    pub fn pres(mut self, commands: impl IntoIterator<Item = process::Command>) -> Self {
-        self.pre_commands.extend(commands);
+    pub fn pres(mut self, commands: impl IntoIterator<Item = impl Processor + 'static>) -> Self {
+        self.pre_commands.extend(
+            commands
+                .into_iter()
+                .map(|c| Box::new(c) as Box<dyn Processor>),
+        );
         self
     }
 
     /// Add a command to execute after the main command when a change is detected.
-    pub fn post(mut self, command: process::Command) -> Self {
-        self.post_commands.push(command);
+    pub fn post(mut self, command: impl Processor + 'static) -> Self {
+        self.post_commands.push(Box::new(command));
         self
     }
 
     /// Add multiple commands to execute after the main command when a change is detected.
-    pub fn posts(mut self, commands: impl IntoIterator<Item = process::Command>) -> Self {
-        self.post_commands.extend(commands);
+    pub fn posts(mut self, commands: impl IntoIterator<Item = impl Processor + 'static>) -> Self {
+        self.post_commands.extend(
+            commands
+                .into_iter()
+                .map(|c| Box::new(c) as Box<dyn Processor>),
+        );
         self
     }
 
@@ -285,17 +336,27 @@ impl DevServer {
     /// Start the server, serving the files at [`dist_dir`](Self::dist_dir).
     ///
     /// If `dist_dir` has not been provided, [`Dist::default_debug_dir`] will be used.
-    pub fn start(self) -> Result<()> {
-        let dist_dir = self
-            .dist_dir
-            .unwrap_or_else(|| Dist::default_debug_dir().into());
+    pub fn start(mut self) -> Result<()> {
+        // Resolve dist_dir early so Processors can observe the final value via &self.
+        if self.dist_dir.is_none() {
+            self.dist_dir = Some(Dist::default_debug_dir().into());
+        }
+        let dist_dir = self.dist_dir.clone().unwrap();
 
         let watch_process = {
-            let mut commands = self.pre_commands;
-            if let Some(command) = self.command {
+            // mem::take so we can pass &self to build_command while the fields are empty.
+            let pre_processors = std::mem::take(&mut self.pre_commands);
+            let post_processors = std::mem::take(&mut self.post_commands);
+            let main_command = self.command.take();
+
+            let mut commands: Vec<process::Command> = pre_processors
+                .into_iter()
+                .map(|p| p.build_command(&self))
+                .collect();
+            if let Some(command) = main_command {
                 commands.push(command);
             }
-            commands.extend(self.post_commands);
+            commands.extend(post_processors.into_iter().map(|p| p.build_command(&self)));
 
             if !commands.is_empty() {
                 // NOTE: the path needs to exists in order to be excluded because it is canonicalize
