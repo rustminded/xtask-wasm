@@ -6,7 +6,7 @@ extern "C" {
     fn log(message: &str);
 }
 
-#[xtask_wasm::run_example(assets_dir = "webapp/assets", app_name = "web_app")]
+#[xtask_wasm::run_example(app_name = "web_app")]
 fn run_app() {
     log("Hello World!");
 }
