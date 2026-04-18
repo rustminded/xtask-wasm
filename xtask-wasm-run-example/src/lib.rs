@@ -5,9 +5,22 @@ use syn::{parse, parse_macro_input};
 /// This macro helps to run an example in the project's `examples/` directory using a development
 /// server.
 ///
+/// The macro expands into:
+///
+/// * A `#[wasm_bindgen(start)]` entry-point (compiled only for `wasm32`) that runs your function
+///   body.
+/// * A native `main` (compiled for all other targets) with `dist` and `start` subcommands, so
+///   `cargo run --example my_example` automatically builds and serves the Wasm bundle without any
+///   separate `xtask/` crate.
+///
 /// # Usage
 ///
-/// * In the file `examples/my_example.rs`, create your example:
+/// ## Minimal example (no arguments)
+///
+/// When no arguments are passed the macro auto-generates a minimal `index.html` that loads
+/// `app.js`. This is the recommended approach for most projects.
+///
+/// * `examples/my_example.rs`:
 ///
 ///   ```rust,ignore
 ///   use wasm_bindgen::prelude::*;
@@ -15,35 +28,89 @@ use syn::{parse, parse_macro_input};
 ///   #[wasm_bindgen]
 ///   extern "C" {
 ///       #[wasm_bindgen(js_namespace = console)]
-///       fn log(message: &str);
+///       fn log(s: &str);
 ///   }
 ///
 ///   #[xtask_wasm::run_example]
 ///   fn run_app() {
-///       log::("Hello World!");
+///       log("Hello from Wasm!");
 ///   }
 ///   ```
 ///
-/// * In the project's `Cargo.toml`:
+/// * `Cargo.toml` (dev-dependency, wasm32 target only so native builds stay clean):
 ///
 ///   ```toml
-///   [dev-dependencies]
+///   [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 ///   xtask-wasm = { version = "*", features = ["run-example"] }
 ///   ```
 ///
-/// * Then to run the development server with the example:
+/// * Run the development server:
 ///
-///     ```console
-///     cargo run --example my_example
-///     ```
+///   ```console
+///   cargo run --example my_example
+///   ```
+///
+/// ## egui / eframe example
+///
+/// [eframe](https://crates.io/crates/eframe) builds on top of `wasm_bindgen` and uses
+/// `web_sys::HtmlCanvasElement` directly — no canvas ID string. The pattern below is compatible
+/// with eframe 0.29+.
+///
+/// * `examples/webapp.rs`:
+///
+///   ```rust,ignore
+///   use eframe::wasm_bindgen::JsCast as _;
+///
+///   #[xtask_wasm::run_example]
+///   fn run() {
+///       // Create a <canvas> element dynamically — no index.html canvas needed.
+///       let document = web_sys::window().unwrap().document().unwrap();
+///       let body = document.body().unwrap();
+///       let canvas = document
+///           .create_element("canvas").unwrap()
+///           .dyn_into::<web_sys::HtmlCanvasElement>().unwrap();
+///       canvas.set_id("the_canvas_id");
+///       canvas.set_attribute("style", "width:100%;height:100%").unwrap();
+///       body.append_child(&canvas).unwrap();
+///
+///       let runner = eframe::WebRunner::new();
+///       // `spawn_local` drives the async start() future on the wasm32 executor.
+///       wasm_bindgen_futures::spawn_local(async move {
+///           runner
+///               .start(canvas, eframe::WebOptions::default(), Box::new(|_cc| {
+///                   Ok(Box::new(MyApp::default()))
+///               }))
+///               .await
+///               .expect("failed to start eframe");
+///       });
+///   }
+///   ```
+///
+/// * `Cargo.toml`:
+///
+///   ```toml
+///   [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+///   xtask-wasm = { version = "*", features = ["run-example"] }
+///   eframe = { version = "0.29", default-features = false, features = ["glow"] }
+///   wasm-bindgen-futures = "0.4"
+///   web-sys = { version = "0.3", features = ["HtmlCanvasElement", "Document", "Window", "Element", "HtmlElement"] }
+///   ```
 ///
 /// ## Arguments
 ///
-/// You can give arguments to the macro to customize the example:
+/// You can give arguments to the macro to customise the example:
 ///
-/// * `app_name` - Change the app name.
-/// * `index` - Content of a custom `index.html`.
+/// * `app_name` - Override the app name used by [`xtask_wasm::Dist`].
+/// * `index` - Provide the full content of a custom `index.html` as a string expression.
 /// * `assets_dir` - Path to a custom assets directory.
+///
+/// > **Warning — `app_name` / `assets_dir` suppress the auto-generated `index.html`.**
+/// >
+/// > When either `app_name` or `assets_dir` is set (and `index` is not), the macro skips writing
+/// > `index.html` into the dist directory. You must then supply your own `index.html` — either via
+/// > the `index` argument or by placing it in the `assets_dir`. Forgetting this results in a blank
+/// > page with no errors, which can be confusing. If you don't need a custom app name or assets
+/// > directory, omit all arguments so the macro generates a working HTML page automatically.
 #[proc_macro_attribute]
 pub fn run_example(
     attr: proc_macro::TokenStream,

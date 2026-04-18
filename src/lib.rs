@@ -135,9 +135,9 @@
 //! The pre and post hooks of [`DevServer`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.DevServer.html)
 //! accept any type implementing the
 //! [`Hook`](https://docs.rs/xtask-wasm/latest/xtask_wasm/trait.Hook.html) trait.
-//! This lets you construct a [`std::process::Command`] based on the server's final configuration
+//! This lets you construct a [`process::Command`](https://doc.rust-lang.org/std/process/struct.Command.html) based on the server's final configuration
 //! — for example, to pass the resolved `dist_dir` or `port` as arguments to an external tool.
-//! A blanket implementation is provided for [`std::process::Command`] itself, so no changes are
+//! A blanket implementation is provided for [`process::Command`](https://doc.rust-lang.org/std/process/struct.Command.html) itself, so no changes are
 //! needed for simple use-cases.
 //!
 //! Asset files copied by [`Dist`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.Dist.html)
@@ -209,9 +209,10 @@
 //! ## [`examples/demo`](https://github.com/rustminded/xtask-wasm/tree/main/examples/demo)
 //!
 //! Provides a basic implementation of xtask-wasm to generate the web app
-//! package, an "hello world" app using [Yew](https://yew.rs/). This example
-//! demonstrates a simple directory layout and a dist process that uses the
-//! `wasm-opt` feature via [`Dist::optimize_wasm`].
+//! package, a fractal clock screensaver using [egui](https://github.com/emilk/egui) and
+//! [egui-screensaver-fractal-clock](https://github.com/cecton/egui-screensaver-fractal-clock).
+//! This example demonstrates a simple directory layout and a dist process that uses the
+//! `wasm-opt` feature via [`Dist::optimize_wasm`](https://docs.rs/xtask-wasm/latest/xtask_wasm/struct.Dist.html#method.optimize_wasm).
 //!
 //! The available subcommands are:
 //!
@@ -237,14 +238,23 @@
 //!
 //! Additional flags can be found using `cargo xtask <subcommand> --help`.
 //!
-//! This example also demonstrates the use of the `run-example` feature that allows you to use the
-//! following:
+//! This example also demonstrates the use of the `run-example` feature with a Mystify screensaver
+//! using [egui-screensaver-mystify](https://github.com/cecton/egui-screensaver-mystify):
 //!
 //! ```console
 //! cargo run --example run_example
 //! ```
 //!
-//! This command will run the code in `examples/run_example` using the development server.
+//! ## [egui-screensaver-mystify](https://github.com/cecton/egui-screensaver-mystify)
+//!
+//! A Mystify screensaver built with [egui](https://github.com/emilk/egui). Demonstrates how to use
+//! the `run-example` feature to run examples locally and how to set up GitHub Actions to release the
+//! Wasm app automatically.
+//!
+//! ## [egui-screensaver-fractal-clock](https://github.com/cecton/egui-screensaver-fractal-clock)
+//!
+//! A fractal clock screensaver built with [egui](https://github.com/emilk/egui). Also demonstrates
+//! the `run-example` feature and automated GitHub releases.
 //!
 //! # Features
 //!
