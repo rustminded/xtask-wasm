@@ -272,6 +272,11 @@ Wasm app automatically.
 A fractal clock screensaver built with [egui](https://github.com/emilk/egui). Also demonstrates
 the `run-example` feature and automated GitHub releases.
 
+### [egui-minesweeper](https://github.com/cecton/egui-minesweeper)
+
+A Minesweeper game built with [egui](https://github.com/emilk/egui). Demonstrates the
+`run-example` feature and automated GitHub releases for the live Wasm demo.
+
 ## Features
 
 * `wasm-opt`: enable the
