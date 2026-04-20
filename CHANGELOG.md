@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [xtask-wasm-run-example 0.6.3] - 2026-04-20
+
+### Fixed
+
+- Generated `index.html` no longer passes the wasm file URL to `init()`.
+  Newer versions of wasm-bindgen do not require it.
+
+## [0.6.3] - 2026-04-20
+
+### Changed
+
+- Remove explicit `walrus` dependency. It was added to force-enable the
+  `parallel` feature for performance, but `wasm-bindgen-cli-support` has
+  been enabling that feature itself since v0.2.98, making the pin
+  redundant.
+
 ## [xtask-wasm-run-example 0.6.2] - 2026-04-11
 
 ### Fixed
