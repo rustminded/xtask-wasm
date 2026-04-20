@@ -5,6 +5,7 @@
 [![documentation][docs-badge]][docs-url]
 [![dependencies status][deps-badge]][deps-url]
 ![licenses][licenses-badge]
+[![keep a changelog][changelog-badge]][changelog-url]
 
 [actions-badge]: https://github.com/rustminded/xtask-wasm/actions/workflows/rust.yml/badge.svg
 [actions-url]: https://github.com/rustminded/xtask-wasm/actions
@@ -15,8 +16,8 @@
 [deps-badge]: https://deps.rs/repo/github/rustminded/xtask-wasm/status.svg
 [deps-url]: https://deps.rs/repo/github/rustminded/xtask-wasm
 [licenses-badge]: https://img.shields.io/crates/l/xtask-wasm
-
-**[Changelog](https://github.com/rustminded/xtask-wasm/blob/main/CHANGELOG.md)**
+[changelog-badge]: https://img.shields.io/badge/keep%20a%20changelog-1.1.0-E05735
+[changelog-url]: https://github.com/rustminded/xtask-wasm/blob/main/CHANGELOG.md
 
 This crate aims to provide an easy and customizable way to help you build
 Wasm projects by extending them with custom subcommands, based on the
