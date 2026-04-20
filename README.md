@@ -16,16 +16,12 @@
 [deps-url]: https://deps.rs/repo/github/rustminded/xtask-wasm
 [licenses-badge]: https://img.shields.io/crates/l/xtask-wasm
 
-**[Changelog](CHANGELOG.md)**
-
-<!-- cargo-rdme start -->
+**[Changelog](https://github.com/rustminded/xtask-wasm/blob/main/CHANGELOG.md)**
 
 This crate aims to provide an easy and customizable way to help you build
 Wasm projects by extending them with custom subcommands, based on the
 [`xtask` concept](https://github.com/matklad/cargo-xtask/), instead of using
 external tooling like [`wasm-pack`](https://github.com/rustwasm/wasm-pack).
-
-**[Changelog](https://github.com/rustminded/xtask-wasm/blob/main/CHANGELOG.md)**
 
 ## Why xtask-wasm?
 
@@ -173,7 +169,7 @@ You can find further information for each type at their documentation level.
 
 ### A basic implementation
 
-```rust
+```rust,no_run
 use std::process::Command;
 use xtask_wasm::{anyhow::Result, clap};
 
@@ -284,7 +280,7 @@ the `run-example` feature and automated GitHub releases.
   automatically as part of the dist build. This is the recommended way to integrate wasm-opt —
   no custom wrapper struct or manual path computation needed:
 
-  ```rust
+  ```rust,ignore
   // requires the `wasm-opt` feature
   dist.optimize_wasm(WasmOpt::level(1).shrink(2))
       .build("my-project")?;
@@ -328,5 +324,3 @@ use xtask_wasm::{clap, clap::Parser};
 #[derive(Parser)]
 struct MyStruct {}
 ```
-
-<!-- cargo-rdme end -->
