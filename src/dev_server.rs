@@ -10,7 +10,7 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream},
     path::{Path, PathBuf},
     process,
-    sync::Arc,
+    sync::{Arc, Condvar, Mutex},
     thread,
 };
 
@@ -352,6 +352,9 @@ impl DevServer {
         }
         let dist_dir = self.dist_dir.clone().unwrap();
 
+        // Track how many build batches are currently active.
+        let active_builds = Arc::new((Mutex::new(0), Condvar::new()));
+
         let watch_process = {
             // mem::take so we can pass &self to build_command while the fields are empty.
             let pre_hooks = std::mem::take(&mut self.pre_hooks);
@@ -373,9 +376,33 @@ impl DevServer {
                     format!("cannot create dist directory `{}`", dist_dir.display())
                 })?;
                 let watch = self.watch.exclude_path(&dist_dir);
-                let handle = std::thread::spawn(|| match watch.run(commands) {
-                    Ok(()) => log::trace!("Starting to watch"),
-                    Err(err) => log::error!("an error occurred when starting to watch: {err}"),
+
+                let active_builds_watch = Arc::clone(&active_builds);
+                let handle = std::thread::spawn(move || {
+                    match watch.run_with_hooks(
+                        commands,
+                        {
+                            let b = Arc::clone(&active_builds_watch);
+                            move || {
+                                let mut count = b.0.lock().unwrap();
+                                *count += 1;
+                                b.1.notify_all();
+                            }
+                        },
+                        {
+                            let b = Arc::clone(&active_builds_watch);
+                            move || {
+                                let mut count = b.0.lock().unwrap();
+                                if *count > 0 {
+                                    *count -= 1;
+                                }
+                                b.1.notify_all();
+                            }
+                        },
+                    ) {
+                        Ok(()) => log::trace!("Starting to watch"),
+                        Err(err) => log::error!("an error occurred when starting to watch: {err}"),
+                    }
                 });
 
                 Some(handle)
@@ -385,8 +412,15 @@ impl DevServer {
         };
 
         if let Some(handler) = self.request_handler {
-            serve(self.ip, self.port, dist_dir, self.not_found_path, handler)
-                .context("an error occurred when starting to serve")?;
+            serve(
+                self.ip,
+                self.port,
+                dist_dir,
+                self.not_found_path,
+                handler,
+                active_builds,
+            )
+            .context("an error occurred when starting to serve")?;
         } else {
             serve(
                 self.ip,
@@ -394,6 +428,7 @@ impl DevServer {
                 dist_dir,
                 self.not_found_path,
                 Arc::new(default_request_handler),
+                active_builds,
             )
             .context("an error occurred when starting to serve")?;
         }
@@ -428,6 +463,7 @@ fn serve(
     dist_dir: PathBuf,
     not_found_path: Option<PathBuf>,
     handler: RequestHandler,
+    active_builds: Arc<(Mutex<usize>, Condvar)>,
 ) -> Result<()> {
     let address = SocketAddr::new(ip, port);
     let listener = TcpListener::bind(address).context("cannot bind to the given address")?;
@@ -450,7 +486,15 @@ fn serve(
         let handler = handler.clone();
         let dist_dir = dist_dir.clone();
         let not_found_path = not_found_path.clone();
+        let active_builds = Arc::clone(&active_builds);
         thread::spawn(move || {
+            // Block until all active build batches are done.
+            let (lock, cvar) = &*active_builds;
+            drop(
+                cvar.wait_while(lock.lock().unwrap(), |count| *count > 0)
+                    .unwrap(),
+            );
+
             let header = warn_not_fail!(read_header(&stream));
             let request = Request {
                 stream: &mut stream,
