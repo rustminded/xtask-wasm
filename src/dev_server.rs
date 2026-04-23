@@ -10,9 +10,10 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream},
     path::{Path, PathBuf},
     process,
-    sync::{Arc, Mutex},
+    sync::Arc,
     thread,
 };
+use xtask_watch::Lock;
 
 type RequestHandler = Arc<dyn Fn(Request) -> Result<()> + Send + Sync + 'static>;
 
@@ -353,7 +354,7 @@ impl DevServer {
         let dist_dir = self.dist_dir.clone().unwrap();
 
         // Shared critical section between build execution and request serving.
-        let section_lock = Arc::new(Mutex::new(()));
+        let section_lock = Lock::new();
 
         let watch_process = {
             // mem::take so we can pass &self to build_command while the fields are empty.
@@ -377,7 +378,7 @@ impl DevServer {
                 })?;
                 let watch = self.watch.exclude_path(&dist_dir);
 
-                let section_lock_watch = Arc::clone(&section_lock);
+                let section_lock_watch = section_lock.clone();
                 let handle = std::thread::spawn(move || {
                     match watch.run_with_lock(commands, section_lock_watch) {
                         Ok(()) => log::trace!("Starting to watch"),
@@ -443,7 +444,7 @@ fn serve(
     dist_dir: PathBuf,
     not_found_path: Option<PathBuf>,
     handler: RequestHandler,
-    section_lock: Arc<Mutex<()>>,
+    section_lock: Lock,
 ) -> Result<()> {
     let address = SocketAddr::new(ip, port);
     let listener = TcpListener::bind(address).context("cannot bind to the given address")?;
@@ -466,11 +467,11 @@ fn serve(
         let handler = handler.clone();
         let dist_dir = dist_dir.clone();
         let not_found_path = not_found_path.clone();
-        let section_lock = Arc::clone(&section_lock);
+        let section_lock = section_lock.clone();
         thread::spawn(move || {
             let header = warn_not_fail!(read_header(&stream));
             let path = warn_not_fail!(parse_request_path(&header));
-            let _guard = section_lock.lock().expect("not poisoned");
+            let _guard = section_lock.lock();
             let request = Request {
                 stream: &mut stream,
                 header: header.as_ref(),
