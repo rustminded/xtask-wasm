@@ -37,7 +37,7 @@ walkdir = "2.3.2"
 # NOTE: we don't depend on this crate but we need to activate this feature otherwise it's super slow
 walrus = { version = "0.26.1", features = ["parallel"] }
 wasm-bindgen-cli-support = "0.2.100"
-xtask-watch = { version = "0.3.2" }
+xtask-watch = "0.3.2"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.112"

@@ -470,12 +470,11 @@ fn serve(
         let section_lock = section_lock.clone();
         thread::spawn(move || {
             let header = warn_not_fail!(read_header(&stream));
-            let path = warn_not_fail!(parse_request_path(&header));
             let _guard = section_lock.lock();
             let request = Request {
                 stream: &mut stream,
                 header: header.as_ref(),
-                path,
+                path: warn_not_fail!(parse_request_path(&header)),
                 dist_dir: dist_dir.as_ref(),
                 not_found_path: not_found_path.as_deref(),
             };
