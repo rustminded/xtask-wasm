@@ -10,7 +10,7 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream},
     path::{Path, PathBuf},
     process,
-    sync::{Arc, Condvar, Mutex},
+    sync::{Arc, Mutex},
     thread,
 };
 
@@ -352,8 +352,8 @@ impl DevServer {
         }
         let dist_dir = self.dist_dir.clone().unwrap();
 
-        // Track how many build batches are currently active.
-        let active_builds = Arc::new((Mutex::new(0), Condvar::new()));
+        // Shared critical section between build execution and request serving.
+        let section_lock = Arc::new(Mutex::new(()));
 
         let watch_process = {
             // mem::take so we can pass &self to build_command while the fields are empty.
@@ -377,29 +377,9 @@ impl DevServer {
                 })?;
                 let watch = self.watch.exclude_path(&dist_dir);
 
-                let active_builds_watch = Arc::clone(&active_builds);
+                let section_lock_watch = Arc::clone(&section_lock);
                 let handle = std::thread::spawn(move || {
-                    match watch.run_with_hooks(
-                        commands,
-                        {
-                            let b = Arc::clone(&active_builds_watch);
-                            move || {
-                                let mut count = b.0.lock().unwrap();
-                                *count += 1;
-                                b.1.notify_all();
-                            }
-                        },
-                        {
-                            let b = Arc::clone(&active_builds_watch);
-                            move || {
-                                let mut count = b.0.lock().unwrap();
-                                if *count > 0 {
-                                    *count -= 1;
-                                }
-                                b.1.notify_all();
-                            }
-                        },
-                    ) {
+                    match watch.run_with_lock(commands, section_lock_watch) {
                         Ok(()) => log::trace!("Starting to watch"),
                         Err(err) => log::error!("an error occurred when starting to watch: {err}"),
                     }
@@ -418,7 +398,7 @@ impl DevServer {
                 dist_dir,
                 self.not_found_path,
                 handler,
-                active_builds,
+                section_lock,
             )
             .context("an error occurred when starting to serve")?;
         } else {
@@ -428,7 +408,7 @@ impl DevServer {
                 dist_dir,
                 self.not_found_path,
                 Arc::new(default_request_handler),
-                active_builds,
+                section_lock,
             )
             .context("an error occurred when starting to serve")?;
         }
@@ -463,7 +443,7 @@ fn serve(
     dist_dir: PathBuf,
     not_found_path: Option<PathBuf>,
     handler: RequestHandler,
-    active_builds: Arc<(Mutex<usize>, Condvar)>,
+    section_lock: Arc<Mutex<()>>,
 ) -> Result<()> {
     let address = SocketAddr::new(ip, port);
     let listener = TcpListener::bind(address).context("cannot bind to the given address")?;
@@ -486,20 +466,15 @@ fn serve(
         let handler = handler.clone();
         let dist_dir = dist_dir.clone();
         let not_found_path = not_found_path.clone();
-        let active_builds = Arc::clone(&active_builds);
+        let section_lock = Arc::clone(&section_lock);
         thread::spawn(move || {
-            // Block until all active build batches are done.
-            let (lock, cvar) = &*active_builds;
-            drop(
-                cvar.wait_while(lock.lock().unwrap(), |count| *count > 0)
-                    .unwrap(),
-            );
-
             let header = warn_not_fail!(read_header(&stream));
+            let path = warn_not_fail!(parse_request_path(&header));
+            let _guard = section_lock.lock().expect("not poisoned");
             let request = Request {
                 stream: &mut stream,
                 header: header.as_ref(),
-                path: warn_not_fail!(parse_request_path(&header)),
+                path,
                 dist_dir: dist_dir.as_ref(),
                 not_found_path: not_found_path.as_deref(),
             };
