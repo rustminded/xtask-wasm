@@ -470,7 +470,14 @@ fn serve(
         let section_lock = section_lock.clone();
         thread::spawn(move || {
             let header = warn_not_fail!(read_header(&stream));
-            let _guard = section_lock.lock();
+            let _guard = match section_lock.read() {
+                Ok(guard) => guard,
+                Err(err) => {
+                    let _ = stream.write("HTTP/1.1 500 INTERNAL SERVER ERROR\r\n\r\n".as_bytes());
+                    log::error!("could not acquire read lock: {err}");
+                    return;
+                }
+            };
             let request = Request {
                 stream: &mut stream,
                 header: header.as_ref(),
