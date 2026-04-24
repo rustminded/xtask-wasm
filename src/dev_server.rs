@@ -13,7 +13,7 @@ use std::{
     sync::Arc,
     thread,
 };
-use xtask_watch::Lock;
+use xtask_watch::WatchLock;
 
 type RequestHandler = Arc<dyn Fn(Request) -> Result<()> + Send + Sync + 'static>;
 
@@ -353,8 +353,7 @@ impl DevServer {
         }
         let dist_dir = self.dist_dir.clone().unwrap();
 
-        // Shared critical section between build execution and request serving.
-        let section_lock = Lock::new();
+        let watch_lock = self.watch.lock();
 
         let watch_process = {
             // mem::take so we can pass &self to build_command while the fields are empty.
@@ -378,12 +377,9 @@ impl DevServer {
                 })?;
                 let watch = self.watch.exclude_path(&dist_dir);
 
-                let section_lock_watch = section_lock.clone();
-                let handle = std::thread::spawn(move || {
-                    match watch.run_with_lock(commands, section_lock_watch) {
-                        Ok(()) => log::trace!("Starting to watch"),
-                        Err(err) => log::error!("an error occurred when starting to watch: {err}"),
-                    }
+                let handle = std::thread::spawn(move || match watch.run(commands) {
+                    Ok(()) => log::trace!("Starting to watch"),
+                    Err(err) => log::error!("an error occurred when starting to watch: {err}"),
                 });
 
                 Some(handle)
@@ -399,7 +395,7 @@ impl DevServer {
                 dist_dir,
                 self.not_found_path,
                 handler,
-                section_lock,
+                watch_lock,
             )
             .context("an error occurred when starting to serve")?;
         } else {
@@ -409,7 +405,7 @@ impl DevServer {
                 dist_dir,
                 self.not_found_path,
                 Arc::new(default_request_handler),
-                section_lock,
+                watch_lock,
             )
             .context("an error occurred when starting to serve")?;
         }
@@ -444,7 +440,7 @@ fn serve(
     dist_dir: PathBuf,
     not_found_path: Option<PathBuf>,
     handler: RequestHandler,
-    section_lock: Lock,
+    watch_lock: WatchLock,
 ) -> Result<()> {
     let address = SocketAddr::new(ip, port);
     let listener = TcpListener::bind(address).context("cannot bind to the given address")?;
@@ -467,10 +463,10 @@ fn serve(
         let handler = handler.clone();
         let dist_dir = dist_dir.clone();
         let not_found_path = not_found_path.clone();
-        let section_lock = section_lock.clone();
+        let watch_lock = watch_lock.clone();
         thread::spawn(move || {
             let header = warn_not_fail!(read_header(&stream));
-            let _guard = match section_lock.read() {
+            let _guard = match watch_lock.read() {
                 Ok(guard) => guard,
                 Err(err) => {
                     let _ = stream.write("HTTP/1.1 500 INTERNAL SERVER ERROR\r\n\r\n".as_bytes());
