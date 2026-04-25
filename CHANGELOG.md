@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.4] - 2026-04-25
+
+### Added
+
+- `WatchLock` and `WatchLockGuard` are now re-exported from `xtask-wasm` so
+  consumers don't need a direct `xtask-watch` dependency to name the types.
+- The dev server now acquires a read guard on the watcher lock before serving
+  files, preventing browsers from receiving incomplete or inconsistent dist
+  artifacts during an active rebuild.
+
 ## [xtask-wasm-run-example 0.6.3] - 2026-04-20
 
 ### Fixed
