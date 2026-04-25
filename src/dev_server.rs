@@ -465,6 +465,10 @@ fn serve(
         let not_found_path = not_found_path.clone();
         let watch_lock = watch_lock.clone();
         thread::spawn(move || {
+            // Read the request header *before* acquiring the watch lock so that connections
+            // can be accepted and parsed while a rebuild is in progress. This reduces
+            // perceived latency: the response is dispatched immediately once the build
+            // finishes rather than having to re-parse the header afterward.
             let header = warn_not_fail!(read_header(&stream));
             let _guard = watch_lock.acquire();
             let request = Request {
