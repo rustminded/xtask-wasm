@@ -465,6 +465,17 @@ fn serve(
         let not_found_path = not_found_path.clone();
         let watch_lock = watch_lock.clone();
         thread::spawn(move || {
+            // Detect TLS/HTTPS connections and emit an actionable warning instead of a
+            // cryptic parse error.
+            let mut tls_probe = [0u8; 2];
+            if stream.peek(&mut tls_probe).is_ok() && tls_probe[0] == 0x16 && tls_probe[1] == 0x03 {
+                log::warn!(
+                    "Received a TLS/HTTPS connection on a plain HTTP server. \
+                     Use http:// instead of https:// to connect."
+                );
+                return;
+            }
+
             // Read the request header *before* acquiring the watch lock so that connections
             // can be accepted and parsed while a rebuild is in progress. This reduces
             // perceived latency: the response is dispatched immediately once the build
@@ -480,7 +491,9 @@ fn serve(
             };
 
             (handler)(request).unwrap_or_else(|e| {
-                let _ = stream.write("HTTP/1.1 500 INTERNAL SERVER ERROR\r\n\r\n".as_bytes());
+                let _ = stream.write(
+                    "HTTP/1.1 500 INTERNAL SERVER ERROR\r\nConnection: close\r\n\r\n".as_bytes(),
+                );
                 log::error!("an error occurred: {e}");
             });
         });
@@ -567,7 +580,7 @@ pub fn default_request_handler(request: Request) -> Result<()> {
             .stream
             .write(
                 format!(
-                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nContent-Type: {}\r\n\r\n",
+                    "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: {}\r\nContent-Type: {}\r\n\r\n",
                     full_path.metadata()?.len(),
                     content_type,
                 )
@@ -580,7 +593,7 @@ pub fn default_request_handler(request: Request) -> Result<()> {
         log::error!("--> {} (404 NOT FOUND)", full_path.display());
         request
             .stream
-            .write("HTTP/1.1 404 NOT FOUND\r\n\r\n".as_bytes())
+            .write("HTTP/1.1 404 NOT FOUND\r\nConnection: close\r\n\r\n".as_bytes())
             .context("cannot write response")?;
     }
 

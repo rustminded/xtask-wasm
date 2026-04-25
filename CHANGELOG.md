@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Dev server now includes `Connection: close` in all responses, fixing indefinite
+  loading on local-network clients (e.g. mobile browsers) that follow HTTP/1.1
+  keep-alive strictly.
+- Dev server now detects incoming TLS/HTTPS connections and logs an actionable
+  warning instead of a cryptic `"Malformed request's header: Unexpected EOF"` error.
+
 ## [0.6.4] - 2026-04-25
 
 ### Added
