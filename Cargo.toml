@@ -35,7 +35,7 @@ log = "0.4.14"
 sass-rs = { version = "0.2.2", optional = true }
 walkdir = "2.3.2"
 wasm-bindgen-cli-support = "0.2.100"
-xtask-watch = "0.3.2"
+xtask-watch = "0.3.3"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.112"

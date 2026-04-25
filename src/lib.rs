@@ -8,6 +8,7 @@ use std::process::Command;
 #[cfg(not(target_arch = "wasm32"))]
 pub use xtask_watch::{
     anyhow, cargo_metadata, cargo_metadata::camino, clap, metadata, package, xtask_command, Watch,
+    WatchLock, WatchLockGuard,
 };
 
 #[cfg(not(target_arch = "wasm32"))]

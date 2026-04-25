@@ -13,6 +13,7 @@ use std::{
     sync::Arc,
     thread,
 };
+use xtask_watch::WatchLock;
 
 type RequestHandler = Arc<dyn Fn(Request) -> Result<()> + Send + Sync + 'static>;
 
@@ -352,6 +353,8 @@ impl DevServer {
         }
         let dist_dir = self.dist_dir.clone().unwrap();
 
+        let watch_lock = self.watch.lock();
+
         let watch_process = {
             // mem::take so we can pass &self to build_command while the fields are empty.
             let pre_hooks = std::mem::take(&mut self.pre_hooks);
@@ -373,7 +376,8 @@ impl DevServer {
                     format!("cannot create dist directory `{}`", dist_dir.display())
                 })?;
                 let watch = self.watch.exclude_path(&dist_dir);
-                let handle = std::thread::spawn(|| match watch.run(commands) {
+
+                let handle = std::thread::spawn(move || match watch.run(commands) {
                     Ok(()) => log::trace!("Starting to watch"),
                     Err(err) => log::error!("an error occurred when starting to watch: {err}"),
                 });
@@ -385,8 +389,15 @@ impl DevServer {
         };
 
         if let Some(handler) = self.request_handler {
-            serve(self.ip, self.port, dist_dir, self.not_found_path, handler)
-                .context("an error occurred when starting to serve")?;
+            serve(
+                self.ip,
+                self.port,
+                dist_dir,
+                self.not_found_path,
+                handler,
+                watch_lock,
+            )
+            .context("an error occurred when starting to serve")?;
         } else {
             serve(
                 self.ip,
@@ -394,6 +405,7 @@ impl DevServer {
                 dist_dir,
                 self.not_found_path,
                 Arc::new(default_request_handler),
+                watch_lock,
             )
             .context("an error occurred when starting to serve")?;
         }
@@ -428,6 +440,7 @@ fn serve(
     dist_dir: PathBuf,
     not_found_path: Option<PathBuf>,
     handler: RequestHandler,
+    watch_lock: WatchLock,
 ) -> Result<()> {
     let address = SocketAddr::new(ip, port);
     let listener = TcpListener::bind(address).context("cannot bind to the given address")?;
@@ -450,8 +463,14 @@ fn serve(
         let handler = handler.clone();
         let dist_dir = dist_dir.clone();
         let not_found_path = not_found_path.clone();
+        let watch_lock = watch_lock.clone();
         thread::spawn(move || {
+            // Read the request header *before* acquiring the watch lock so that connections
+            // can be accepted and parsed while a rebuild is in progress. This reduces
+            // perceived latency: the response is dispatched immediately once the build
+            // finishes rather than having to re-parse the header afterward.
             let header = warn_not_fail!(read_header(&stream));
+            let _guard = watch_lock.acquire();
             let request = Request {
                 stream: &mut stream,
                 header: header.as_ref(),
