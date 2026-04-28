@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `run_example`: an existing `index.html` from the assets directory is no
+  longer overwritten by the generated default.
+
 - Dev server now includes `Connection: close` in all responses, fixing indefinite
   loading on local-network clients (e.g. mobile browsers) that follow HTTP/1.1
   keep-alive strictly.

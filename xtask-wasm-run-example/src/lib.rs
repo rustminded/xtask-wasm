@@ -171,10 +171,16 @@ impl RunExample {
             quote! {}
         } else {
             quote! {
-                std::fs::write(
-                    dist_dir.join("index.html"),
-                    r#"<!DOCTYPE html><html><head><meta charset="utf-8"/><script type="module">import init from "./app.js";init();</script></head><body></body></html>"#,
-                )?;
+                if let Ok(mut f) = std::fs::OpenOptions::new()
+                    .write(true)
+                    .create_new(true)
+                    .open(dist_dir.join("index.html"))
+                {
+                    std::io::Write::write_all(
+                        &mut f,
+                        b"<!DOCTYPE html><html><head><meta charset=\"utf-8\"/><script type=\"module\">import init from \"./app.js\";init();</script></head><body></body></html>",
+                    )?;
+                }
             }
         };
 
