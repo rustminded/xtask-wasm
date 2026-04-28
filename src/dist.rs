@@ -191,6 +191,14 @@ pub struct Dist {
     #[cfg(feature = "wasm-opt")]
     #[clap(skip)]
     pub wasm_opt: Option<crate::WasmOpt>,
+
+    /// Optional Progressive Web App metadata and fallback file generation.
+    ///
+    /// Set via [`Dist::pwa`]. When enabled, files needed (e.g. `manifest.json` and `sw.js`) are
+    /// generated if they don't exists in the `assets` directory.
+    #[cfg(feature = "pwa")]
+    #[clap(skip)]
+    pub pwa: Option<crate::Pwa>,
 }
 
 impl Dist {
@@ -273,6 +281,18 @@ impl Dist {
     #[cfg_attr(docsrs, doc(cfg(feature = "wasm-opt")))]
     pub fn optimize_wasm(mut self, wasm_opt: crate::WasmOpt) -> Self {
         self.wasm_opt = Some(wasm_opt);
+        self
+    }
+
+    /// Enable Progressive Web App support by generating needed files:
+    /// - `manifest.json`
+    /// - `sw.js`
+    ///
+    /// Existing user assets always take precedence.
+    #[cfg(feature = "pwa")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "pwa")))]
+    pub fn pwa(mut self, pwa: crate::Pwa) -> Self {
+        self.pwa = Some(pwa);
         self
     }
 
@@ -472,6 +492,11 @@ impl Dist {
             }
         }
 
+        #[cfg(feature = "pwa")]
+        if let Some(pwa) = self.pwa {
+            pwa.apply(&dist_dir)?;
+        }
+
         log::info!("Successfully built in {}", dist_dir.display());
 
         Ok(dist_dir)
@@ -502,6 +527,8 @@ impl Default for Dist {
             transformers: vec![],
             #[cfg(feature = "wasm-opt")]
             wasm_opt: None,
+            #[cfg(feature = "pwa")]
+            pwa: None,
         }
     }
 }
