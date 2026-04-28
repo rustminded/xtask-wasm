@@ -7,11 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [xtask-wasm-run-example 0.6.4] - 2026-04-28
+
 ### Fixed
 
 - `run_example`: an existing `index.html` from the assets directory is no
   longer overwritten by the generated default.
 
+## [0.6.5] - 2026-04-28
+
+### Fixed
+
+- `run_example`: an existing `index.html` from the assets directory is no
+  longer overwritten by the generated default.
 - Dev server now includes `Connection: close` in all responses, fixing indefinite
   loading on local-network clients (e.g. mobile browsers) that follow HTTP/1.1
   keep-alive strictly.
@@ -173,5 +181,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   codebase used `assets`, silently breaking auto-discovery for anyone following
   the documented naming convention.
 
-[Unreleased]: https://github.com/rustminded/xtask-wasm/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/rustminded/xtask-wasm/compare/v0.6.5...HEAD
+[0.6.5]: https://github.com/rustminded/xtask-wasm/compare/v0.6.4...v0.6.5
+[0.6.4]: https://github.com/rustminded/xtask-wasm/compare/v0.6.3...v0.6.4
 [0.6.0]: https://github.com/rustminded/xtask-wasm/compare/v0.5.3...v0.6.0
