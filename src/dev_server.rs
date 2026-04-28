@@ -560,6 +560,9 @@ pub fn default_request_handler(request: Request) -> Result<()> {
             Some("css") => "text/css;charset=utf-8",
             Some("js") => "application/javascript",
             Some("wasm") => "application/wasm",
+            Some("json") => "application/json;charset=utf-8",
+            Some("png") => "image/png",
+            Some("svg") => "image/svg+xml",
             _ => "application/octet-stream",
         };
 
