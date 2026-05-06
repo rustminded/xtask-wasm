@@ -17,6 +17,7 @@ include = ["src/**/*.rs", "README.md", "CHANGELOG.md", "LICENSE.Apache-2.0", "LI
 run-example = ["xtask-wasm-run-example", "console_error_panic_hook", "wasm-bindgen", "env_logger"]
 sass = ["sass-rs"]
 wasm-opt = ["binary-install", "xtask-wasm-run-example?/wasm-opt"]
+pwa = ["serde", "serde_json"]
 
 [dependencies]
 xtask-wasm-run-example = { version = "0.6", path = "xtask-wasm-run-example", optional = true }
@@ -33,6 +34,8 @@ fs_extra = "1.2.0"
 lazy_static = "1.4.0"
 log = "0.4.14"
 sass-rs = { version = "0.2.2", optional = true }
+serde = { version = "1.0.228", optional = true }
+serde_json = { version = "1.0.149", optional = true }
 walkdir = "2.3.2"
 wasm-bindgen-cli-support = "0.2.100"
 xtask-watch = "0.3.3"
