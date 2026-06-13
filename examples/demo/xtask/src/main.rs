@@ -31,6 +31,10 @@ fn main() -> Result<()> {
                 .app_name("web_app")
                 .transformer(xtask_wasm::SassTransformer::default())
                 .optimize_wasm(xtask_wasm::WasmOpt::level(1).shrink(2))
+                .pwa(
+                    xtask_wasm::Pwa::new()
+                        .name("web_app")
+                )
                 .build("webapp")?;
         }
         Command::Watch(arg) => {
